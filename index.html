@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f7a4f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="BetIQ Lite">
+<title>BetIQ Lite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap">
+<style>
+/* Layout: one narrow column, a betting-slip stack. One pick per match, ranked, tap a card for every bookmaker's price. */
+:root {
+  --bg: #f1f4f0;
+  --surface: #ffffff;
+  --ink: #101713;
+  --muted: #5a665e;
+  --line: #dbe2db;
+  --accent: #0f7a4f;
+  --accent-ink: #ffffff;
+  --accent-soft: #dff1e7;
+  --value: #8a4b00;
+  --value-bg: #fdecc8;
+  --warn: #a4261b;
+  --warn-bg: #fde4e0;
+  --display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c110e; --surface: #141b17; --ink: #e8efe9; --muted: #99a59d; --line: #25312a;
+    --accent: #3ddc97; --accent-ink: #06140d; --accent-soft: #14301f;
+    --value: #f5c15a; --value-bg: #2c2310; --warn: #ff9a8b; --warn-bg: #351a16;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0c110e; --surface: #141b17; --ink: #e8efe9; --muted: #99a59d; --line: #25312a;
+  --accent: #3ddc97; --accent-ink: #06140d; --accent-soft: #14301f;
+  --value: #f5c15a; --value-bg: #2c2310; --warn: #ff9a8b; --warn-bg: #351a16;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 16px/1.45 var(--body);
+  padding-block: max(14px, env(safe-area-inset-top, 0px)) max(32px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+h1 { font: 700 34px/1 var(--display); letter-spacing: .01em; margin: 0; text-transform: uppercase; }
+h1 span { color: var(--accent); }
+.credits { text-align: right; font-size: 12px; color: var(--muted); line-height: 1.25; }
+.credits b { display: block; font: 700 22px/1 var(--display); color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.panel h2 { font: 700 20px/1.1 var(--display); text-transform: uppercase; margin: 0; letter-spacing: .02em; }
+.panel p { margin: 0; color: var(--muted); font-size: 14px; }
+.panel ol { margin: 0; padding-left: 20px; color: var(--muted); font-size: 14px; display: flex; flex-direction: column; gap: 4px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+input[type="password"], input[type="text"] {
+  flex: 1 1 200px; min-width: 0; padding: 11px 12px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--bg);
+}
+.btn { padding: 11px 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); font-weight: 600; min-height: 44px; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.small { padding: 6px 12px; min-height: 36px; font-size: 14px; }
+.btn[disabled] { opacity: .55; cursor: default; }
+
+.controls { display: flex; flex-direction: column; gap: 10px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
+.seg button { border: 0; background: transparent; padding: 11px 8px; font: 700 18px/1 var(--display); text-transform: uppercase; letter-spacing: .03em; color: var(--muted); min-height: 46px; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.filters label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.filters select { padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); min-height: 36px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px; font-size: 14px; min-height: 34px; }
+.chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); font-weight: 600; }
+
+.status { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+.msg { padding: 10px 12px; border-radius: 8px; background: var(--warn-bg); color: var(--warn); font-size: 14px; }
+.msg.info { background: var(--accent-soft); color: var(--ink); }
+
+.list { display: flex; flex-direction: column; gap: 10px; padding: 0; margin: 0; list-style: none; }
+details.pick { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+details.pick[open] { border-color: var(--accent); }
+details.pick > summary { list-style: none; cursor: pointer; padding: 12px 14px; display: grid; grid-template-columns: auto 1fr auto; gap: 2px 12px; align-items: center; }
+details.pick > summary::-webkit-details-marker { display: none; }
+.rank { grid-row: 1 / span 3; font: 700 22px/1 var(--display); color: var(--muted); width: 26px; font-variant-numeric: tabular-nums; align-self: start; padding-top: 2px; }
+.meta { grid-column: 2; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.match { grid-column: 2; font-size: 14px; color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
+.sel { grid-column: 2; font: 700 25px/1.05 var(--display); text-transform: uppercase; min-width: 0; overflow-wrap: anywhere; }
+.chance { grid-column: 3; grid-row: 1 / span 3; text-align: right; }
+.chance b { display: block; font: 700 38px/1 var(--display); color: var(--accent); font-variant-numeric: tabular-nums; }
+.chance span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; padding: 0 14px 12px; }
+.stat { background: var(--bg); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+.stat span { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.stat b { font: 700 20px/1.15 var(--display); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.stat small { display: block; font-size: 12px; color: var(--muted); }
+.badge { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; font: 700 12px/1.4 var(--display); letter-spacing: .06em; vertical-align: middle; }
+.badge.value { background: var(--value-bg); color: var(--value); }
+.badge.warn { background: var(--warn-bg); color: var(--warn); }
+.pos { color: var(--accent); }
+.neg { color: var(--muted); }
+.books { padding: 0 14px 14px; }
+.books table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.books td { padding: 6px 0; border-top: 1px solid var(--line); }
+.books td:last-child { text-align: right; font-weight: 600; }
+.books tr.best td { color: var(--accent); font-weight: 600; }
+.books .note { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+
+.leagues { display: flex; flex-direction: column; gap: 10px; max-height: 320px; overflow-y: auto; }
+.leagues h3 { margin: 0 0 4px; font: 700 15px/1 var(--display); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.leagues label { display: flex; align-items: center; gap: 10px; padding: 6px 0; min-height: 36px; }
+.leagues input { width: 20px; height: 20px; accent-color: var(--accent); flex: none; }
+
+.empty { text-align: center; padding: 28px 12px; color: var(--muted); }
+.empty b { display: block; font: 700 22px/1.1 var(--display); color: var(--ink); text-transform: uppercase; margin-bottom: 6px; }
+footer { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 6px; }
+footer b { color: var(--ink); }
+@media (prefers-reduced-motion: no-preference) { details.pick { transition: border-color .15s; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>BetIQ <span>Lite</span></h1>
+    <div class="credits" id="credits" aria-live="polite"></div>
+  </header>
+
+  <section class="panel" id="setup" hidden>
+    <h2>Connect your odds key</h2>
+    <p>Paste the key from your The Odds API email. It is saved only in this browser on this phone and is sent only to The Odds API.</p>
+    <div class="row">
+      <input id="keyInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Your API key" aria-label="The Odds API key">
+      <button class="btn primary" id="keySave">Save and check</button>
+    </div>
+    <div id="keyMsg"></div>
+  </section>
+
+  <section id="main" hidden>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Ranking">
+        <button id="modeLikely" aria-pressed="true">Most likely</button>
+        <button id="modeValue" aria-pressed="false">Best value</button>
+      </div>
+      <div class="filters">
+        <label>Minimum odds
+          <select id="minOdds">
+            <option value="1">Any</option>
+            <option value="1.2">1.20</option>
+            <option value="1.3">1.30</option>
+            <option value="1.5">1.50</option>
+            <option value="2">2.00</option>
+            <option value="3">3.00</option>
+          </select>
+        </label>
+        <label>Kick-off within
+          <select id="windowH">
+            <option value="12">12 hours</option>
+            <option value="24">24 hours</option>
+            <option value="48">2 days</option>
+            <option value="72">3 days</option>
+            <option value="168">7 days</option>
+          </select>
+        </label>
+      </div>
+      <div class="chips" id="groupChips" role="group" aria-label="Sport"></div>
+    </div>
+
+    <div class="status">
+      <span id="updated"></span>
+      <span class="row">
+        <button class="btn small" id="settingsBtn">Leagues</button>
+        <button class="btn small primary" id="refreshBtn">Refresh</button>
+      </span>
+    </div>
+    <div id="alerts"></div>
+
+    <section class="panel" id="settings" hidden>
+      <h2>Choose leagues</h2>
+      <p id="costNote"></p>
+      <div class="leagues" id="leagues"></div>
+      <div class="row">
+        <button class="btn primary small" id="settingsDone">Done</button>
+        <button class="btn small" id="reloadSports">Reload list</button>
+        <button class="btn small" id="changeKey">Change key</button>
+      </div>
+    </section>
+
+    <ol class="list" id="list"></ol>
+  </section>
+
+  <footer>
+    <span><b>How it ranks.</b> Each bookmaker's margin is removed, then the prices are averaged to get a win chance. "Edge" compares the best price on offer with that average. It measures how a price compares with the market, not who will win. Value flags can be stale prices, so check the bookmaker before betting.</span>
+    <span>Horse racing is not covered by this data source. 18+ only. Bet only what you can afford to lose. <a href="https://www.begambleaware.org" target="_blank" rel="noopener">BeGambleAware.org</a></span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var LS = "betiqlite.v1";
+  var API = "https://api.the-odds-api.com/v4";
+  var DEFAULTS = { key: "", selected: [], mode: "likely", minOdds: 1.3, windowH: 72, group: "all",
+                   sports: [], sportsAt: 0, cache: {}, remaining: null, used: null, picked: false };
+  var GROUPS = { "Soccer": "Football", "American Football": "US football", "Ice Hockey": "Ice hockey",
+                 "Mixed Martial Arts": "MMA", "Rugby League": "Rugby", "Rugby Union": "Rugby", "Aussie Rules": "Aussie rules" };
+  var DEFAULT_FOOTBALL = ["soccer_epl", "soccer_efl_champ", "soccer_uefa_champs_league", "soccer_uefa_europa_league"];
+
+  var S = load();
+  var busy = false;
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(LS);
+      var o = raw ? JSON.parse(raw) : {};
+      var s = {}; for (var k in DEFAULTS) s[k] = (o && o[k] !== undefined) ? o[k] : DEFAULTS[k];
+      return s;
+    } catch (e) { var d = {}; for (var k2 in DEFAULTS) d[k2] = DEFAULTS[k2]; return d; }
+  }
+  function save() { try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) {} }
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined && text !== null) n.textContent = text;
+    return n;
+  }
+  function groupLabel(g) { return GROUPS[g] || g || "Other"; }
+
+  /* ---------- API ---------- */
+  function api(path, params) {
+    var url = new URL(API + path);
+    url.searchParams.set("apiKey", S.key);
+    Object.keys(params || {}).forEach(function (k) { url.searchParams.set(k, params[k]); });
+    return fetch(url.toString()).then(function (res) {
+      var rem = res.headers.get("x-requests-remaining");
+      var used = res.headers.get("x-requests-used");
+      if (rem !== null && !isNaN(+rem)) S.remaining = +rem;
+      if (used !== null && !isNaN(+used)) S.used = +used;
+      if (!res.ok) {
+        var code = res.status === 401 ? "key" : res.status === 429 ? "quota" : "http";
+        var err = new Error(code); err.code = code; err.status = res.status; throw err;
+      }
+      return res.json();
+    }, function () { var e = new Error("network"); e.code = "network"; throw e; });
+  }
+  function errText(e) {
+    if (!e) return "Something went wrong.";
+    if (e.code === "key") return "The Odds API rejected this key. Check it was copied in full.";
+    if (e.code === "quota") return "You have used this month's free credits. They reset on your monthly renewal date.";
+    if (e.code === "network") return "No connection to The Odds API. Check your signal and try again.";
+    return "The Odds API returned an error (" + (e.status || "unknown") + ").";
+  }
+
+  function fetchSports() {
+    return api("/sports/", {}).then(function (list) {
+      S.sports = list.filter(function (s) { return s.active && !s.has_outrights; })
+        .map(function (s) { return { key: s.key, title: s.title, group: s.group }; });
+      S.sportsAt = Date.now();
+      if (!S.picked) {
+        var def = S.sports.filter(function (s) { return DEFAULT_FOOTBALL.indexOf(s.key) > -1; }).map(function (s) { return s.key; });
+        var tennis = S.sports.filter(function (s) { return s.group === "Tennis"; }).slice(0, 2).map(function (s) { return s.key; });
+        S.selected = def.concat(tennis);
+      } else {
+        S.selected = S.selected.filter(function (k) { return S.sports.some(function (s) { return s.key === k; }); });
+      }
+      save();
+    });
+  }
+
+  function refreshAll() {
+    if (busy || !S.selected.length) return Promise.resolve();
+    busy = true; renderStatus();
+    var errors = [];
+    var jobs = S.selected.map(function (key) {
+      return api("/sports/" + key + "/odds/", { regions: "uk", markets: "h2h", oddsFormat: "decimal" })
+        .then(function (events) {
+          S.cache[key] = { at: Date.now(), events: events.map(slim) };
+        }, function (e) { errors.push(e); });
+    });
+    return Promise.all(jobs).then(function () {
+      busy = false; save();
+      renderAll();
+      var first = errors[0];
+      if (first) showAlert(errText(first) + (errors.length > 1 ? " (" + errors.length + " leagues affected.)" : ""), false);
+    });
+  }
+  function slim(ev) {
+    var books = [];
+    (ev.bookmakers || []).forEach(function (b) {
+      var m = (b.markets || []).filter(function (x) { return x.key === "h2h"; })[0];
+      if (!m || !m.outcomes) return;
+      var o = m.outcomes.filter(function (x) { return x.price > 1; }).map(function (x) { return [x.name, x.price]; });
+      if (o.length >= 2) books.push({ t: b.title, o: o });
+    });
+    return { id: ev.id, c: ev.commence_time, h: ev.home_team, a: ev.away_team, books: books };
+  }
+
+  /* ---------- Maths ---------- */
+  function analyse(ev) {
+    var map = {}, order = [], nBooks = 0;
+    ev.books.forEach(function (b) {
+      var inv = b.o.map(function (x) { return 1 / x[1]; });
+      var sum = inv.reduce(function (p, c) { return p + c; }, 0);
+      nBooks++;
+      b.o.forEach(function (x, i) {
+        var n = x[0];
+        if (!map[n]) { map[n] = { name: n, fair: [], prices: [] }; order.push(n); }
+        map[n].fair.push(inv[i] / sum);
+        map[n].prices.push({ book: b.t, price: x[1] });
+      });
+    });
+    if (nBooks < 2) return null;
+    var need = Math.max(2, Math.ceil(nBooks * 0.6));
+    var sels = order.map(function (n) { return map[n]; })
+      .filter(function (s) { return s.fair.length >= need; })
+      .map(function (s) {
+        var fair = s.fair.reduce(function (p, c) { return p + c; }, 0) / s.fair.length;
+        s.prices.sort(function (a, b) { return b.price - a.price; });
+        var best = s.prices[0];
+        return { name: s.name, fair: fair, fairOdds: 1 / fair, best: best.price, bestBook: best.book,
+                 prices: s.prices, ev: fair * best.price - 1 };
+      });
+    return sels.length >= 2 ? { sels: sels, nBooks: nBooks } : null;
+  }
+
+  function buildPicks() {
+    var now = Date.now(), end = now + S.windowH * 3600000, out = [];
+    S.selected.forEach(function (key) {
+      var c = S.cache[key]; if (!c) return;
+      var meta = S.sports.filter(function (s) { return s.key === key; })[0] || {};
+      var grp = groupLabel(meta.group);
+      if (S.group !== "all" && grp !== S.group) return;
+      c.events.forEach(function (ev) {
+        var t = Date.parse(ev.c);
+        if (!(t > now && t <= end)) return;
+        var a = analyse(ev); if (!a) return;
+        var pick = a.sels[0];
+        a.sels.forEach(function (s) {
+          if (S.mode === "value" ? s.ev > pick.ev : s.fair > pick.fair) pick = s;
+        });
+        if (pick.best < S.minOdds) return;
+        if (S.mode === "value" && pick.ev <= 0) return;
+        out.push({ ev: ev, league: meta.title || key, group: grp, time: t, pick: pick, nBooks: a.nBooks });
+      });
+    });
+    out.sort(function (x, y) { return S.mode === "value" ? y.pick.ev - x.pick.ev : y.pick.fair - x.pick.fair; });
+    return out.slice(0, 60);
+  }
+
+  /* ---------- Rendering ---------- */
+  var TF = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" });
+  function pct(x, dp) { return (x * 100).toFixed(dp === undefined ? 0 : dp) + "%"; }
+  function signed(x) { return (x >= 0 ? "+" : "") + (x * 100).toFixed(1) + "%"; }
+  function ago(ms) {
+    var m = Math.round((Date.now() - ms) / 60000);
+    if (m < 1) return "just now"; if (m < 60) return m + " min ago";
+    var h = Math.round(m / 60); if (h < 24) return h + " h ago";
+    return Math.round(h / 24) + " d ago";
+  }
+
+  function renderCredits() {
+    var c = $("credits"); c.textContent = "";
+    var b = el("b", null, S.remaining === null ? "–" : String(S.remaining));
+    c.appendChild(b); c.appendChild(document.createTextNode("credits left"));
+  }
+  function renderStatus() {
+    var times = S.selected.map(function (k) { return S.cache[k] && S.cache[k].at; }).filter(Boolean);
+    var u = $("updated");
+    u.textContent = busy ? "Loading odds…" : times.length ? "Odds updated " + ago(Math.min.apply(null, times)) : "No odds loaded yet";
+    var rb = $("refreshBtn");
+    rb.disabled = busy || !S.selected.length;
+    rb.textContent = busy ? "Loading…" : "Refresh · " + S.selected.length + (S.selected.length === 1 ? " credit" : " credits");
+  }
+  function renderChips() {
+    var box = $("groupChips"); box.textContent = "";
+    var groups = [];
+    S.selected.forEach(function (k) {
+      var m = S.sports.filter(function (s) { return s.key === k; })[0];
+      var g = groupLabel(m && m.group);
+      if (groups.indexOf(g) < 0) groups.push(g);
+    });
+    if (groups.length < 2) { if (S.group !== "all") { S.group = "all"; } return; }
+    ["all"].concat(groups).forEach(function (g) {
+      var b = el("button", "chip", g === "all" ? "All sports" : g);
+      b.setAttribute("aria-pressed", String(S.group === g));
+      b.addEventListener("click", function () { S.group = g; save(); renderAll(); });
+      box.appendChild(b);
+    });
+  }
+  function statBox(label, value, sub, cls) {
+    var d = el("div", "stat"); d.appendChild(el("span", null, label));
+    d.appendChild(el("b", cls || null, value));
+    if (sub) d.appendChild(el("small", null, sub));
+    return d;
+  }
+  function renderList() {
+    var list = $("list"); list.textContent = "";
+    var picks = buildPicks();
+    if (!picks.length) {
+      var li = el("li", "empty");
+      var hasData = S.selected.some(function (k) { return S.cache[k]; });
+      li.appendChild(el("b", null, hasData ? "Nothing matches" : "Load today's odds"));
+      li.appendChild(document.createTextNode(hasData
+        ? (S.mode === "value" ? "No pick is priced above the market average right now. Try Most likely, a longer kick-off window or more leagues." : "Try a lower minimum odds, a longer kick-off window or more leagues.")
+        : "Press Refresh to fetch prices. Each league costs one credit."));
+      list.appendChild(li); return;
+    }
+    picks.forEach(function (p, i) {
+      var s = p.pick;
+      var isValue = s.ev >= 0.03 && s.ev <= 0.12 && p.nBooks >= 4;
+      var suspect = s.ev > 0.12;
+      var d = el("details", "pick");
+      var sum = el("summary");
+      sum.appendChild(el("span", "rank", String(i + 1)));
+      sum.appendChild(el("span", "meta", p.league + " · " + TF.format(new Date(p.time))));
+      var sel = el("span", "sel", s.name);
+      if (isValue) sel.appendChild(el("span", "badge value", "VALUE"));
+      if (suspect) sel.appendChild(el("span", "badge warn", "CHECK PRICE"));
+      sum.appendChild(sel);
+      sum.appendChild(el("span", "match", p.ev.h + " v " + p.ev.a));
+      var ch = el("span", "chance"); ch.appendChild(el("b", null, pct(s.fair))); ch.appendChild(el("span", null, "win chance"));
+      sum.appendChild(ch);
+      d.appendChild(sum);
+
+      var st = el("div", "stats");
+      st.appendChild(statBox("Best price", s.best.toFixed(2), s.bestBook));
+      st.appendChild(statBox("Fair price", s.fairOdds.toFixed(2), "market average"));
+      st.appendChild(statBox("Edge", signed(s.ev), suspect ? "unusually high" : isValue ? "above market" : "vs market", s.ev > 0 ? "pos" : "neg"));
+      d.appendChild(st);
+
+      var bk = el("div", "books"), tb = el("table");
+      s.prices.forEach(function (x, j) {
+        var tr = el("tr", j === 0 ? "best" : null);
+        tr.appendChild(el("td", null, x.book)); tr.appendChild(el("td", null, x.price.toFixed(2)));
+        tb.appendChild(tr);
+      });
+      bk.appendChild(tb);
+      bk.appendChild(el("p", "note", p.nBooks + " UK bookmakers compared. Odds change quickly, so confirm the price on the bookmaker's site."));
+      d.appendChild(bk);
+      var wrap = el("li"); wrap.appendChild(d); list.appendChild(wrap);
+    });
+  }
+  function renderSettings() {
+    var box = $("leagues"); box.textContent = "";
+    var byGroup = {}, order = [];
+    S.sports.forEach(function (s) {
+      var g = groupLabel(s.group);
+      if (!byGroup[g]) { byGroup[g] = []; order.push(g); }
+      byGroup[g].push(s);
+    });
+    order.sort(function (a, b) { return a === "Football" ? -1 : b === "Football" ? 1 : a.localeCompare(b); });
+    order.forEach(function (g) {
+      var sec = el("div"); sec.appendChild(el("h3", null, g));
+      byGroup[g].forEach(function (s) {
+        var lab = el("label"), cb = el("input");
+        cb.type = "checkbox"; cb.checked = S.selected.indexOf(s.key) > -1;
+        cb.addEventListener("change", function () {
+          S.picked = true;
+          if (cb.checked) { if (S.selected.indexOf(s.key) < 0) S.selected.push(s.key); }
+          else S.selected = S.selected.filter(function (k) { return k !== s.key; });
+          save(); renderCost(); renderStatus(); renderChips(); renderList();
+        });
+        lab.appendChild(cb); lab.appendChild(el("span", null, s.title)); sec.appendChild(lab);
+      });
+      box.appendChild(sec);
+    });
+    if (!order.length) box.appendChild(el("p", null, "No leagues loaded yet. Press Reload list."));
+    renderCost();
+  }
+  function renderCost() {
+    $("costNote").textContent = "Each refresh uses " + S.selected.length + (S.selected.length === 1 ? " credit" : " credits") +
+      " (one per league). The free plan gives 500 a month. Leagues with no matches cost nothing.";
+  }
+  function showAlert(text, info) {
+    var a = $("alerts"); a.textContent = "";
+    if (text) a.appendChild(el("div", info ? "msg info" : "msg", text));
+  }
+  function renderAll() {
+    $("setup").hidden = !!S.key;
+    $("main").hidden = !S.key;
+    if (!S.key) return;
+    $("modeLikely").setAttribute("aria-pressed", String(S.mode === "likely"));
+    $("modeValue").setAttribute("aria-pressed", String(S.mode === "value"));
+    $("minOdds").value = String(S.minOdds);
+    $("windowH").value = String(S.windowH);
+    renderCredits(); renderStatus(); renderChips(); renderList();
+  }
+
+  /* ---------- Events ---------- */
+  $("keySave").addEventListener("click", function () {
+    var v = $("keyInput").value.trim();
+    var msg = $("keyMsg"); msg.textContent = "";
+    if (v.length < 8) { msg.appendChild(el("div", "msg", "That looks too short. Paste the full key from the email.")); return; }
+    S.key = v; $("keySave").disabled = true;
+    fetchSports().then(function () {
+      $("keySave").disabled = false; $("keyInput").value = ""; save(); renderAll();
+      renderSettings(); $("settings").hidden = false;
+      showAlert("Key accepted. Pick your leagues, press Done, then Refresh to load odds.", true);
+    }, function (e) {
+      $("keySave").disabled = false; S.key = ""; save();
+      msg.appendChild(el("div", "msg", errText(e)));
+    });
+  });
+  $("keyInput").addEventListener("keydown", function (e) { if (e.key === "Enter") $("keySave").click(); });
+  $("modeLikely").addEventListener("click", function () { S.mode = "likely"; save(); renderAll(); });
+  $("modeValue").addEventListener("click", function () { S.mode = "value"; save(); renderAll(); });
+  $("minOdds").addEventListener("change", function (e) { S.minOdds = +e.target.value; save(); renderList(); });
+  $("windowH").addEventListener("change", function (e) { S.windowH = +e.target.value; save(); renderList(); });
+  $("refreshBtn").addEventListener("click", function () { showAlert(""); refreshAll(); });
+  $("settingsBtn").addEventListener("click", function () { var s = $("settings"); s.hidden = !s.hidden; if (!s.hidden) renderSettings(); });
+  $("settingsDone").addEventListener("click", function () { $("settings").hidden = true; renderAll(); });
+  $("reloadSports").addEventListener("click", function () {
+    fetchSports().then(function () { renderSettings(); renderAll(); }, function (e) { showAlert(errText(e), false); });
+  });
+  $("changeKey").addEventListener("click", function () {
+    S.key = ""; S.remaining = null; save(); $("settings").hidden = true; renderAll(); $("keyInput").focus();
+  });
+
+  /* ---------- Start ---------- */
+  renderAll();
+  if (S.key && !S.sports.length) { fetchSports().then(function () { renderAll(); }, function (e) { showAlert(errText(e), false); }); }
+})();
+</script>
+</body>
+</html>
