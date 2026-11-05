@@ -172,6 +172,20 @@ details.pick > summary::-webkit-details-marker { display: none; }
 .bet .res { font: 700 18px/1 var(--display); }
 .bet label { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
 
+.mk { margin: 0 14px 12px; display: flex; flex-direction: column; gap: 8px; }
+.mk > b { font: 700 15px/1.2 var(--display); text-transform: uppercase; letter-spacing: .04em; }
+.mkrow { display: flex; justify-content: space-between; gap: 10px; align-items: center; background: var(--bg); border-radius: 8px; padding: 8px 10px; }
+.mkl { min-width: 0; }
+.mkname { font: 700 18px/1.15 var(--display); text-transform: uppercase; overflow-wrap: anywhere; }
+.mkl small { display: block; font-size: 12px; color: var(--muted); line-height: 1.3; }
+.mkr { text-align: right; flex: none; }
+.mkr b { display: block; font: 700 22px/1 var(--display); color: var(--accent); font-variant-numeric: tabular-nums; }
+.mkr span { font-size: 11px; color: var(--muted); }
+.mk .note { font-size: 12px; color: var(--muted); margin: 0; }
+.calc { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+.calc label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.calc input, .calc select { flex: none; width: 100%; padding: 8px 10px; min-height: 40px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.calc .wide { grid-column: 1 / -1; }
 .leagues { display: flex; flex-direction: column; gap: 10px; max-height: 320px; overflow-y: auto; }
 .leagues h3 { margin: 0 0 4px; }
 .leagues label { display: flex; align-items: center; gap: 10px; padding: 6px 0; min-height: 36px; }
@@ -215,6 +229,8 @@ footer b { color: var(--ink); }
       <h2>Leagues</h2>
       <p id="costNote"></p>
       <div class="leagues" id="leagues"></div>
+      <label class="check"><input type="checkbox" id="totalsOn"> Include over/under goals prices (doubles the credit cost)</label>
+      <p>After changing this, press Refresh to load the extra prices.</p>
       <h2>My bookmakers</h2>
       <p>Tick the ones you have accounts with. Suggested bets only use these. Load odds once to see the list.</p>
       <div class="chips" id="bookChips"></div>
@@ -285,6 +301,11 @@ footer b { color: var(--ink); }
       <div class="body" id="betsBody"></div>
     </details>
 
+    <details class="learn" id="calcBox">
+      <summary>Matched betting calculator</summary>
+      <div class="body" id="calcBody"></div>
+    </details>
+
     <details class="learn">
       <summary>New to betting? Read this first</summary>
       <div class="body">
@@ -312,7 +333,7 @@ footer b { color: var(--ink); }
   var API = "https://api.the-odds-api.com/v4";
   var DEFAULTS = { key: "", selected: [], mode: "likely", minOdds: 1.3, windowH: 72, group: "all",
                    sports: [], sportsAt: 0, cache: {}, remaining: null, used: null, picked: false,
-                   bankroll: 100, myBooks: null, hist: {}, bets: [], auto: true, autoHours: 4, noLinks: false };
+                   bankroll: 100, myBooks: null, hist: {}, bets: [], auto: true, autoHours: 4, noLinks: false, totals: false };
   var GROUPS = { "Soccer": "Football", "American Football": "US football", "Ice Hockey": "Ice hockey",
                  "Mixed Martial Arts": "MMA", "Rugby League": "Rugby", "Rugby Union": "Rugby", "Aussie Rules": "Aussie rules" };
   var DEFAULT_FOOTBALL = ["soccer_epl", "soccer_efl_champ", "soccer_uefa_champs_league", "soccer_uefa_europa_league"];
@@ -406,7 +427,7 @@ footer b { color: var(--ink); }
     });
   }
   function fetchOdds(key) {
-    var p = { regions: "uk", markets: "h2h", oddsFormat: "decimal" };
+    var p = { regions: "uk", markets: S.totals ? "h2h,totals" : "h2h", oddsFormat: "decimal" };
     if (!S.noLinks) p.includeLinks = "true";
     return api("/sports/" + key + "/odds/", p).catch(function (e) {
       if (e.code === "http" && !S.noLinks) {
@@ -436,15 +457,26 @@ footer b { color: var(--ink); }
     });
   }
   function slim(ev) {
-    var books = [];
+    var books = [], tb = [];
     (ev.bookmakers || []).forEach(function (b) {
+      var tm = (b.markets || []).filter(function (x) { return x.key === "totals"; })[0];
+      if (tm && tm.outcomes) {
+        var pts = {};
+        tm.outcomes.forEach(function (x) {
+          if (typeof x.point !== "number" || !(x.price > 1)) return;
+          var k = String(x.point); if (!pts[k]) pts[k] = [0, 0];
+          if (x.name === "Over") pts[k][0] = x.price; else if (x.name === "Under") pts[k][1] = x.price;
+        });
+        Object.keys(pts).forEach(function (k) { if (!(pts[k][0] > 1 && pts[k][1] > 1)) delete pts[k]; });
+        if (Object.keys(pts).length) tb.push({ t: b.title, k: b.key, p: pts });
+      }
       var m = (b.markets || []).filter(function (x) { return x.key === "h2h"; })[0];
       if (!m || !m.outcomes) return;
       var base = safeLink(m.link) || safeLink(b.link);
       var o = m.outcomes.filter(function (x) { return x.price > 1; }).map(function (x) { return [x.name, x.price, safeLink(x.link) || base]; });
       if (o.length >= 2) books.push({ t: b.title, k: b.key, o: o });
     });
-    return { id: ev.id, c: ev.commence_time, h: ev.home_team, a: ev.away_team, books: books };
+    return { id: ev.id, c: ev.commence_time, h: ev.home_team, a: ev.away_team, books: books, tb: tb };
   }
   function safeLink(u) { return (typeof u === "string" && u.indexOf("https://") === 0) ? u : ""; }
 
@@ -479,6 +511,51 @@ footer b { color: var(--ink); }
     return sels.length >= 2 ? { sels: sels, nBooks: nBooks } : null;
   }
 
+  /* Over/under lines: chance and best price for the three most balanced lines. */
+  function analyseTotals(ev, unit) {
+    var lines = {};
+    (ev.tb || []).forEach(function (b) {
+      Object.keys(b.p).forEach(function (k) {
+        var o = b.p[k][0], u = b.p[k][1], io = 1 / o, iu = 1 / u, t = io + iu;
+        var L = lines[k] || (lines[k] = { point: +k, fo: [], ov: [], un: [] });
+        L.fo.push(io / t);
+        L.ov.push({ book: b.t, price: eff(o, b.k), ex: !!EXCH[b.k], ok: allowed(b.t) });
+        L.un.push({ book: b.t, price: eff(u, b.k), ex: !!EXCH[b.k], ok: allowed(b.t) });
+      });
+    });
+    var arr = Object.keys(lines).map(function (k) { return lines[k]; }).filter(function (L) { return L.fo.length >= 3; });
+    arr.forEach(function (L) { L.fair = L.fo.reduce(function (p, c) { return p + c; }, 0) / L.fo.length; });
+    arr.sort(function (a, b) { return Math.abs(a.fair - 0.5) - Math.abs(b.fair - 0.5); });
+    arr = arr.slice(0, 3).sort(function (a, b) { return a.point - b.point; });
+    var rows = [];
+    arr.forEach(function (L) {
+      [["Over", L.fair, L.ov], ["Under", 1 - L.fair, L.un]].forEach(function (x) {
+        var best = null;
+        x[2].forEach(function (q) { if (q.ok && (!best || q.price > best.price)) best = q; });
+        if (!best) return;
+        rows.push({ label: x[0] + " " + L.point + (unit || ""), fair: x[1], fairOdds: 1 / x[1], best: best.price, book: best.book,
+                    ex: best.ex, ev: x[1] * best.price - 1, n: L.fo.length });
+      });
+    });
+    return rows;
+  }
+  /* Bets worked out from the win/draw/win chances, so they cost no extra credits. */
+  function derivedMarkets(a, ev) {
+    var h = 0, d = 0, w = 0;
+    a.sels.forEach(function (s) { if (s.name === ev.h) h = s.fair; else if (s.name === ev.a) w = s.fair; else if (s.name === "Draw") d = s.fair; });
+    if (!(h > 0 && d > 0 && w > 0)) return [];
+    var t = h + d + w; h /= t; d /= t; w /= t;
+    function row(label, p, sub, text) { return { label: label, fair: p, fairOdds: 1 / p, need: 1.03 / p, sub: sub, chanceText: text }; }
+    var dnb = "Stake back if it is a draw";
+    return [
+      row(ev.h + " or draw", h + d, "Double chance"),
+      row("Draw or " + ev.a, d + w, "Double chance"),
+      row(ev.h + " or " + ev.a, h + w, "Double chance, no draw"),
+      row(ev.h + " draw no bet", h / (h + w), dnb, pct(h) + " win"),
+      row(ev.a + " draw no bet", w / (h + w), dnb, pct(w) + " win")
+    ];
+  }
+
   function buildPicks(mode) {
     var now = Date.now(), end = now + S.windowH * 3600000, out = [];
     S.selected.forEach(function (key) {
@@ -496,7 +573,7 @@ footer b { color: var(--ink); }
         });
         if (pick.best < S.minOdds) return;
         if (mode === "value" && pick.ev <= 0) return;
-        var p = { ev: ev, key: key, league: meta.title || key, group: grp, time: t, pick: pick, nBooks: a.nBooks };
+        var p = { ev: ev, key: key, league: meta.title || key, group: grp, time: t, pick: pick, nBooks: a.nBooks, a: a };
         p.isValue = pick.ev >= VALUE_MIN && pick.ev <= VALUE_MAX && a.nBooks >= 4;
         p.suspect = pick.ev > VALUE_MAX;
         p.id = ev.id + "|" + pick.name;
@@ -617,6 +694,9 @@ footer b { color: var(--ink); }
   function pct(x, dp) { return (x * 100).toFixed(dp === undefined ? 0 : dp) + "%"; }
   function signed(x) { return (x >= 0 ? "+" : "") + (x * 100).toFixed(1) + "%"; }
   function gbp(x) { return "£" + Math.abs(x).toFixed(2); }
+  function likeWord(p) {
+    return p >= 0.75 ? "very likely to win" : p >= 0.55 ? "likely to win" : p >= 0.4 ? "toss-up" : p >= 0.2 ? "unlikely to win" : "long shot";
+  }
   function sgbp(x) { return (x < -0.004 ? "−" : "+") + gbp(x); }
   function ago(ms) {
     var m = Math.round((Date.now() - ms) / 60000);
@@ -651,7 +731,8 @@ footer b { color: var(--ink); }
     $("updated").textContent = busy ? "Working…" : times.length ? "Odds updated " + ago(Math.min.apply(null, times)) : "No odds loaded yet";
     var rb = $("refreshBtn");
     rb.disabled = busy || !S.selected.length;
-    rb.textContent = busy ? "Working…" : "Refresh · " + S.selected.length + (S.selected.length === 1 ? " credit" : " credits");
+    var cost = S.selected.length * (S.totals ? 2 : 1);
+    rb.textContent = busy ? "Working…" : "Refresh · " + cost + (cost === 1 ? " credit" : " credits");
   }
   function renderChips() {
     var box = $("groupChips"); box.textContent = "";
@@ -790,6 +871,27 @@ footer b { color: var(--ink); }
     body.appendChild(el("p", null, "Chances use the market's own estimate, so treat them as rough."));
   }
 
+  function marketsBox(p) {
+    var foot = p.a.sels.some(function (x) { return x.name === "Draw"; });
+    var rows = analyseTotals(p.ev, foot ? " goals" : "").concat(foot ? derivedMarkets(p.a, p.ev) : []);
+    if (!rows.length) return null;
+    var box = el("div", "mk"); box.appendChild(el("b", null, "More ways to bet this match"));
+    rows.forEach(function (r) {
+      var row = el("div", "mkrow"), left = el("div", "mkl");
+      var nm = el("span", "mkname", r.label);
+      if (r.best && r.ev >= VALUE_MIN && r.ev <= VALUE_MAX && r.n >= 4) nm.appendChild(el("span", "badge value", "VALUE"));
+      left.appendChild(nm);
+      left.appendChild(el("small", null, r.best
+        ? "Best " + r.best.toFixed(2) + " at " + r.book + (r.ex ? " after commission" : "") + " · edge " + signed(r.ev)
+        : r.sub + ". Good value at " + r.need.toFixed(2) + " or better."));
+      var right = el("div", "mkr"); right.appendChild(el("b", null, r.chanceText || pct(r.fair)));
+      right.appendChild(el("span", null, "fair " + r.fairOdds.toFixed(2)));
+      row.appendChild(left); row.appendChild(right); box.appendChild(row);
+    });
+    box.appendChild(el("p", "note", "Chances come from the market average. Double chance and draw no bet are worked out for free, so their prices are not loaded: check your bookmaker, and a price at or above the one shown is good value. Over/under prices need the goals option in Settings."));
+    return box;
+  }
+
   function renderList() {
     var list = $("list"); list.textContent = "";
     var picks = buildPicks(S.mode).slice(0, 60);
@@ -817,7 +919,7 @@ footer b { color: var(--ink); }
       if (p.suspect) sel.appendChild(el("span", "badge warn", "CHECK PRICE"));
       sum.appendChild(sel);
       sum.appendChild(el("span", "match", p.ev.h + " v " + p.ev.a));
-      var ch = el("span", "chance"); ch.appendChild(el("b", null, pct(s.fair))); ch.appendChild(el("span", null, "win chance"));
+      var ch = el("span", "chance"); ch.appendChild(el("b", null, pct(s.fair))); ch.appendChild(el("span", null, likeWord(s.fair)));
       sum.appendChild(ch);
       d.appendChild(sum);
 
@@ -837,6 +939,7 @@ footer b { color: var(--ink); }
       d.appendChild(tb);
 
       var pa = el("div", "pickactions"); pa.appendChild(actionsFor(p, st)); d.appendChild(pa);
+      var mkb = marketsBox(p); if (mkb) d.appendChild(mkb);
 
       var bk = el("div", "books"), tbl = el("table");
       s.prices.forEach(function (x) {
@@ -933,7 +1036,7 @@ footer b { color: var(--ink); }
       box.appendChild(sec);
     });
     if (!order.length) box.appendChild(el("p", null, "No leagues loaded yet. Press Reload leagues."));
-    $("autoOn").checked = !!S.auto; $("autoHours").value = String(S.autoHours);
+    $("autoOn").checked = !!S.auto; $("autoHours").value = String(S.autoHours); $("totalsOn").checked = !!S.totals;
     renderCost(); renderBooks();
   }
   function seenBooks() {
@@ -959,8 +1062,9 @@ footer b { color: var(--ink); }
     });
   }
   function renderCost() {
-    $("costNote").textContent = "Each refresh uses " + S.selected.length + (S.selected.length === 1 ? " credit" : " credits") +
-      " (one per league). The free plan gives 500 a month. Leagues with no matches cost nothing.";
+    var cost = S.selected.length * (S.totals ? 2 : 1);
+    $("costNote").textContent = "Each refresh uses " + cost + (cost === 1 ? " credit" : " credits") +
+      " (" + (S.totals ? "two" : "one") + " per league). The free plan gives 500 a month. Leagues with no matches cost nothing.";
   }
   function showAlert(text, info) {
     var a = $("alerts"); a.textContent = "";
@@ -1022,6 +1126,7 @@ footer b { color: var(--ink); }
     save(); renderView();
   });
   $("autoOn").addEventListener("change", function (e) { S.auto = e.target.checked; save(); });
+  $("totalsOn").addEventListener("change", function (e) { S.totals = e.target.checked; save(); renderCost(); renderStatus(); });
   $("autoHours").addEventListener("change", function (e) { S.autoHours = +e.target.value; save(); });
   $("refreshBtn").addEventListener("click", function () { showAlert(""); refreshAll(); });
   $("settingsBtn").addEventListener("click", function () { var s = $("settings"); s.hidden = !s.hidden; if (!s.hidden) renderSettings(); });
@@ -1038,7 +1143,44 @@ footer b { color: var(--ink); }
   });
   document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") { renderAll(); autoRun(); } });
 
+  /* ---------- Matched betting calculator ---------- */
+  function initCalc() {
+    var body = $("calcBody");
+    body.appendChild(el("p", null, "Works out how much to lay on an exchange so you lose or win the same whichever way the match goes. Offers change daily, so read each bookmaker's own terms for minimum odds, expiry, and whether the free bet returns the stake."));
+    var form = el("div", "calc");
+    function field(id, label, el2, cls) { var l = el("label", cls || null, label); l.setAttribute("for", id); el2.id = id; l.appendChild(el2); form.appendChild(l); return el2; }
+    var type = document.createElement("select");
+    [["qual", "Qualifying bet (stake is risked)"], ["free", "Free bet (stake not returned)"]].forEach(function (o) { var op = el("option", null, o[1]); op.value = o[0]; type.appendChild(op); });
+    field("cType", "Type of bet", type, "wide");
+    function num(v, step) { var i = document.createElement("input"); i.type = "number"; i.step = step; i.min = "0"; i.value = v; i.setAttribute("inputmode", "decimal"); return i; }
+    var stake = field("cStake", "Stake £", num("10", "0.5"));
+    var back = field("cBack", "Bookmaker odds", num("2.50", "0.01"));
+    var lay = field("cLay", "Exchange lay odds", num("2.54", "0.01"));
+    var comm = field("cComm", "Exchange commission %", num("2", "0.5"));
+    body.appendChild(form);
+    var out = el("div", "stats"); body.appendChild(out);
+    var note = el("p", null, ""); body.appendChild(note);
+    function calc() {
+      out.textContent = ""; note.textContent = "";
+      var B = parseFloat(stake.value), Ob = parseFloat(back.value), Ol = parseFloat(lay.value), c = parseFloat(comm.value) / 100;
+      if (!(B > 0 && Ob > 1 && Ol > 1 && c >= 0 && c < 1 && Ol - c > 0)) { note.textContent = "Enter a stake, odds above 1.00 and a commission."; return; }
+      var free = type.value === "free", L, win, lose;
+      if (free) { L = B * (Ob - 1) / (Ol - c); win = B * (Ob - 1) - L * (Ol - 1); lose = L * (1 - c); }
+      else { L = B * Ob / (Ol - c); win = B * (Ob - 1) - L * (Ol - 1); lose = L * (1 - c) - B; }
+      var profit = Math.min(win, lose);
+      out.appendChild(statBox("Lay stake", gbp(L), "bet this on the exchange"));
+      out.appendChild(statBox("Cash to keep free", gbp(L * (Ol - 1)), "liability if it wins"));
+      out.appendChild(statBox("If bookmaker bet wins", sgbp(win), "net result", win >= 0 ? "pos" : "neg"));
+      out.appendChild(statBox("If lay bet wins", sgbp(lose), "net result", lose >= 0 ? "pos" : "neg"));
+      out.appendChild(statBox(free ? "Free bet value kept" : "Cost of qualifying", free ? pct(Math.max(0, profit) / B) : sgbp(profit), free ? "of the free bet" : "an expected small loss", free ? "pos" : (profit >= 0 ? "pos" : "neg")));
+      note.textContent = "Place both bets on the same match and market, one straight after the other, and re-check both odds first. If either price moves, enter the new odds here. Lay odds close to the bookmaker odds keep the cost down. Round the lay stake to the exchange's minimum.";
+    }
+    [type, stake, back, lay, comm].forEach(function (x) { x.addEventListener("input", calc); x.addEventListener("change", calc); });
+    calc();
+  }
+
   /* ---------- Start ---------- */
+  initCalc();
   renderAll();
   if (S.key) {
     var boot = S.sports.length ? Promise.resolve() : fetchSports();
