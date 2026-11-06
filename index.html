@@ -355,6 +355,49 @@ details.acc .pcheck { margin-bottom: 12px; }
 .field input, .field select { flex: none; width: 100%; min-height: 46px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: 17px; }
 .backbtn { align-self: flex-start; }
 .stats .stat { background: var(--bg); }
+
+/* ===== Level board ===== */
+.tiles { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tile { min-height: 0; padding: 10px 12px; border-radius: 16px; }
+.tile b { font-size: 22px; }
+.tile span { font-size: 12px; }
+.tile small { font-size: 12px; }
+.tile.wide { grid-column: 1 / -1; }
+.tile.nudge { padding: 10px 12px; }
+.tile.nudge b { font-size: 16px; }
+.tile.nudge small { font-size: 13px; }
+.board { display: flex; flex-direction: column; gap: 10px; }
+.brow { background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); border-left: 6px solid var(--line); overflow: hidden; }
+.brow.gold { border-left-color: #e0b030; background: linear-gradient(180deg, #fffaf0, var(--surface) 60%); }
+.brow.silver { border-left-color: #a8b3bb; }
+.brow.bronze { border-left-color: #cf9060; }
+.bmain { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 12px 12px 12px 10px; color: inherit; }
+.btop { display: flex; gap: 10px; align-items: flex-start; }
+.bbadge { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font: 700 15px/1 var(--display); background: var(--bg); color: var(--muted); flex: none; }
+.gold .bbadge { background: #f3c53b; color: #4a3500; }
+.silver .bbadge { background: #d6dde2; color: #2b3640; }
+.bronze .bbadge { background: #e8b184; color: #4a2a08; }
+.btxt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bn1 { font: 700 19px/1.15 var(--display); overflow-wrap: anywhere; }
+.bsub { font-size: 13px; color: var(--muted); }
+.bprofit { text-align: right; flex: none; display: flex; flex-direction: column; }
+.bprofit b { font: 700 22px/1.1 var(--display); color: var(--accent); font-variant-numeric: tabular-nums; }
+.bprofit small { font-size: 12px; color: var(--muted); }
+.trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+.t3 { display: flex; flex-direction: column; gap: 3px; --c: #b5bcc2; }
+.t3.good { --c: var(--accent); } .t3.mid { --c: #e0a100; } .t3.low { --c: #b5bcc2; } .t3.info { --c: #3b82c4; } .t3.warn { --c: var(--warn); }
+.t3l { font-size: 12px; color: var(--muted); }
+.t3 b { font: 700 18px/1.1 var(--display); font-variant-numeric: tabular-nums; }
+.meter { display: block; height: 7px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--c); border-radius: 99px; }
+.bbet { display: block; margin-top: 10px; font-size: 13px; color: var(--muted); }
+.bacts { padding: 0 12px 6px; display: flex; flex-direction: column; gap: 4px; }
+.lgsec { list-style: none; }
+.lghead { display: flex; justify-content: space-between; align-items: baseline; font: 700 18px/1.2 var(--display); padding: 4px 2px 6px; margin: 10px 0 8px; border-bottom: 2px solid var(--accent); }
+.lghead span { font: 500 13px var(--body); color: var(--muted); }
+.legend, .legendli { font-size: 13px; color: var(--muted); list-style: none; margin: 0; }
+.panel p.legend { color: var(--muted); }
+.trio + .legend { margin-top: 4px; }
 @media (prefers-reduced-motion: no-preference) { details.pick { transition: border-color .15s; } }
 </style>
 </head>
@@ -1119,15 +1162,57 @@ details.acc .pcheck { margin-bottom: 12px; }
     return t;
   }
   function stakeLine(st) { return st.amount >= 0.5 ? "Bet " + gbp(st.amount) : st.kind; }
+  var LEAGUE_ORDER = ["soccer_epl", "soccer_efl_champ", "soccer_england_league1", "soccer_england_league2", "soccer_fa_cup", "soccer_england_efl_cup",
+                      "soccer_uefa_champs_league", "soccer_uefa_europa_league", "soccer_uefa_europa_conf_league"];
+  function leagueRank(g) { var k = LEAGUE_ORDER.indexOf(g.key); return k > -1 ? k : (g.group === "Football" ? 100 : 200); }
+  function stat3(label, text, frac, tone) {
+    var d = el("span", "t3 " + tone); d.appendChild(el("span", "t3l", label)); d.appendChild(el("b", null, text));
+    var m = el("span", "meter"), fi = el("i"); fi.style.width = Math.max(5, Math.min(100, frac * 100)) + "%"; m.appendChild(fi); d.appendChild(m); return d;
+  }
+  /* The three numbers every bet shows: chance of winning, reward if it wins (as % of the stake), and value (price vs market). */
+  function trio(p) {
+    var s = p.pick, t = el("span", "trio"), rw = s.best - 1;
+    t.appendChild(stat3("Chance", pct(s.fair), s.fair, s.fair >= 0.5 ? "good" : s.fair >= 0.3 ? "mid" : "low"));
+    t.appendChild(stat3("Reward", "+" + Math.round(rw * 100) + "%", rw / 3, "info"));
+    t.appendChild(stat3("Value", signed(s.ev), Math.max(s.ev, 0) / VALUE_MAX, p.suspect ? "warn" : s.ev >= VALUE_MIN ? "good" : s.ev >= 0.005 ? "mid" : "low"));
+    return t;
+  }
+  function legend() {
+    return el("p", "legend", "Chance: how likely it is to win. Reward: profit as a % of your stake if it wins. Value: how much better than the market average the price is.");
+  }
+  /* One row of the level board. medal = 1, 2, 3 for gold, silver, bronze. */
+  function boardRow(p, rank, medal, withActions) {
+    var s = p.pick, st = stakeFor(s);
+    var wrap = el("div", "brow" + (medal === 1 ? " gold" : medal === 2 ? " silver" : medal === 3 ? " bronze" : ""));
+    var main = el("button", "bmain"); main.type = "button";
+    var top = el("span", "btop");
+    top.appendChild(el("span", "bbadge", String(rank)));
+    var tx = el("span", "btxt"), nm = el("span", "bn1", s.name); badgesFor(p, nm); tx.appendChild(nm);
+    tx.appendChild(el("span", "bsub", p.ev.h + " v " + p.ev.a + " · " + TF.format(new Date(p.time))));
+    top.appendChild(tx);
+    var pr = el("span", "bprofit");
+    pr.appendChild(el("b", null, st.amount >= 0.5 ? "+" + gbp(st.amount * (s.best - 1)) : "–")); pr.appendChild(el("small", null, "if it wins"));
+    top.appendChild(pr); main.appendChild(top);
+    main.appendChild(trio(p));
+    main.appendChild(el("span", "bbet", st.amount >= 0.5 ? "Bet " + gbp(st.amount) + " at odds " + s.best.toFixed(2) + " with " + s.bestBook : st.kind + " · best odds " + s.best.toFixed(2) + " with " + s.bestBook));
+    main.addEventListener("click", function () { openSheet(p, main); });
+    wrap.appendChild(main);
+    if (withActions) {
+      var acts = el("div", "bacts"); acts.appendChild(actionsFor(p, st));
+      var dt = el("button", "accbtn", "Check the price and see more details"); dt.type = "button"; dt.addEventListener("click", function () { openSheet(p, dt); }); acts.appendChild(dt);
+      wrap.appendChild(acts);
+    }
+    return wrap;
+  }
+
   function renderPlan(d) {
     var box = $("plan"); box.textContent = "";
     if (!S.selected.some(function (k) { return S.cache[k]; })) {
-      box.appendChild(el("h2", null, "Best bet right now"));
-      box.appendChild(el("p", null, busy ? "Loading odds…" : "Load today's prices and the best bet appears here."));
+      box.appendChild(el("h2", null, "Today's level board"));
+      box.appendChild(el("p", null, busy ? "Loading odds…" : "Load today's prices and your ranked bets appear here."));
       if (!busy) { var go = el("button", "btn primary", "Load prices"); go.type = "button"; go.addEventListener("click", function () { refreshAll(); }); box.appendChild(go); }
       return;
     }
-    var wk = weeklyStrip();
     if (S.practice) {
       var pb = el("div", "pracbar"); pb.appendChild(el("b", null, "Practice mode"));
       pb.appendChild(document.createTextNode(" Bets you log are pretend, with no real money. "));
@@ -1135,56 +1220,35 @@ details.acc .pcheck { margin-bottom: 12px; }
       pb.appendChild(off); box.appendChild(pb);
     }
     if (!S.booksSet && !S.bets.length && !S.pbets.length) {
-      var nb = el("button", "tile nudge"); nb.type = "button";
+      var nb = el("button", "tile nudge wide"); nb.type = "button";
       nb.appendChild(el("b", null, "Which bookmakers do you use?"));
-      nb.appendChild(el("small", null, "Bets are picked from every UK bookmaker and betting exchange, including ones you may not have an account with. Tap to choose yours."));
+      nb.appendChild(el("small", null, "Bets come from every UK bookmaker and exchange, including ones you may not have. Tap to choose yours."));
       nb.addEventListener("click", function () { setTab("more"); });
       box.appendChild(nb);
     }
-    if (d.value.length) {
-      var p0 = d.value[0], s0 = p0.pick, st0 = stakeFor(s0);
-      var hero = el("div", "hero2");
-      var ht0 = el("div", "htop"); ht0.appendChild(el("span", "kick", "Best bet right now")); badgesFor(p0, ht0); hero.appendChild(ht0);
-      hero.appendChild(el("div", "hname", s0.name));
-      hero.appendChild(el("div", "hmatch", p0.ev.h + " v " + p0.ev.a + " · " + p0.league + " · " + TF.format(new Date(p0.time))));
-      var hf = el("div", "hfacts");
-      var f1 = el("div", "hf"); f1.appendChild(el("span", null, "Chance")); f1.appendChild(ring(s0.fair)); f1.appendChild(el("small", null, inN(s0.fair)));
-      var f2 = el("div", "hf"); f2.appendChild(el("span", null, "Your bet")); f2.appendChild(el("b", null, st0.amount >= 0.5 ? gbp(st0.amount) : "–")); f2.appendChild(el("small", null, st0.amount >= 0.5 ? "at odds " + s0.best.toFixed(2) : st0.kind));
-      var f3 = el("div", "hf"); f3.appendChild(el("span", null, "If it wins")); f3.appendChild(el("b", "pos", st0.amount >= 0.5 ? "+" + gbp(st0.amount * (s0.best - 1)) : "–")); f3.appendChild(el("small", null, "profit"));
-      [f1, f2, f3].forEach(function (x) { hf.appendChild(x); }); hero.appendChild(hf);
-      hero.appendChild(el("div", "havg", "Bet with " + s0.bestBook + ". Over many bets like this, the average result is " + sgbp(st0.amount * s0.ev) + "."));
-      hero.appendChild(actionsFor(p0, st0));
-      var pcw = el("details", "acc"); pcw.appendChild(el("summary", null, "Check the price first")); pcw.appendChild(priceCheck(p0)); hero.appendChild(pcw);
-      var pt = plainText(p0, st0);
-      if (pt) { var wm = el("details", "acc"); wm.appendChild(el("summary", null, "What does this mean?")); wm.appendChild(el("div", "accbody", pt)); hero.appendChild(wm); }
-      var dt = el("button", "accbtn", "Full details and other ways to bet this match"); dt.type = "button"; dt.addEventListener("click", function () { openSheet(p0, dt); }); hero.appendChild(dt);
-      box.appendChild(hero);
-      if (wk) box.appendChild(wk);
-      var rest = d.ranked.filter(function (p) { return p !== p0 && p.id !== p0.id; }).slice(0, 8);
-      if (rest.length) {
-        box.appendChild(el("h3", null, "Next best bets"));
-        var pg = el("div", "pgrid"); rest.forEach(function (p) { pg.appendChild(pickTile(p)); }); box.appendChild(pg);
-        var more = el("button", "btn linkbtn", "See all bets"); more.type = "button"; more.addEventListener("click", function () { setTab("all"); }); box.appendChild(more);
-      }
-      var total = 0, ex = 0; d.value.forEach(function (p) { var st = stakeFor(p.pick); total += st.amount; ex += st.amount * p.pick.ev; });
-      var cap = budget() * DAILY_CAP, today = stakedToday();
-      box.appendChild(el("p", null, "All " + d.value.length + " together: stake " + gbp(total) + ", average result " + sgbp(ex) + ". Averages play out over many bets, not one." +
-        (S.weekly > 0 ? "" : " Staked today " + gbp(today) + " of a " + gbp(cap) + " daily limit (10%).")));
-      if (S.weekly > 0 ? false : today + total > cap + 0.001) box.appendChild(el("div", "msg", "Placing all of these would go over your 10% daily limit. Pick fewer."));
-    } else {
-      box.appendChild(el("h2", null, "Best bet right now"));
+    var picks = d.ranked.length ? d.ranked.slice(0, 6) : d.likely;
+    box.appendChild(el("h2", null, "Today's level board"));
+    if (d.value.length) box.appendChild(el("p", "subnote", "Ranked best first. Gold is your best bet right now."));
+    else {
       var steady = d.plans.filter(function (x) { return x.id === "steady"; })[0];
       var r = el("div", "reco"); r.appendChild(el("b", null, "No bet beats the market"));
       r.appendChild(document.createTextNode(steady && steady.sim.exp < 0
-        ? "Skipping is a fine choice. The list below is ranked best first, so number 1 is the least bad. If you want a bet for fun, keep it small: favourites are the cheapest way to play but on average lose about " + gbp(steady.sim.exp) + " per round."
-        : "No price is clearly above the market. The list below is ranked best first. If you want a bet, keep to small stakes."));
+        ? "Skipping is a fine choice. The board shows the closest ones, best first. If you want a bet for fun, keep it small: favourites are the cheapest way to play but on average lose about " + gbp(steady.sim.exp) + " per round."
+        : "No price is clearly above the market. The board shows the closest ones. If you want a bet, keep to small stakes."));
       box.appendChild(r);
-      if (wk) box.appendChild(wk);
-      if (d.ranked.length) {
-        box.appendChild(el("h3", null, "Closest to good value"));
-        var pg2 = el("div", "pgrid"); d.ranked.slice(0, 6).forEach(function (p) { pg2.appendChild(pickTile(p)); }); box.appendChild(pg2);
-      }
     }
+    box.appendChild(legend());
+    var board = el("div", "board");
+    picks.forEach(function (p, i) { board.appendChild(boardRow(p, i + 1, i < 3 ? i + 1 : 0, i === 0 && d.value.length > 0)); });
+    box.appendChild(board);
+    if (d.value.length) {
+      var total = 0, ex = 0; d.value.forEach(function (p) { var st = stakeFor(p.pick); total += st.amount; ex += st.amount * p.pick.ev; });
+      var cap = budget() * DAILY_CAP, today = stakedToday();
+      box.appendChild(el("p", "subnote", "All " + d.value.length + " value bets together: stake " + gbp(total) + ", average result " + sgbp(ex) + ". Averages play out over many bets, not one." +
+        (S.weekly > 0 ? "" : " Staked today " + gbp(today) + " of a " + gbp(cap) + " daily limit (10%).")));
+      if (S.weekly > 0 ? false : today + total > cap + 0.001) box.appendChild(el("div", "msg", "Placing all of these would go over your 10% daily limit. Pick fewer."));
+    }
+    var more = el("button", "btn linkbtn", "See every bet by league"); more.type = "button"; more.addEventListener("click", function () { setTab("all"); }); box.appendChild(more);
   }
 
   function renderScenarios(d) {
@@ -1333,6 +1397,7 @@ details.acc .pcheck { margin-bottom: 12px; }
     ht.appendChild(el("div", "dsub", p.ev.h + " v " + p.ev.a + " · " + p.league + " · " + TF.format(new Date(p.time))));
     ht.appendChild(el("div", "dsub", likeWord(s.fair) + " · " + inN(s.fair)));
     head.appendChild(ht); root.appendChild(head);
+    root.appendChild(trio(p)); root.appendChild(legend());
 
     var pt = plainText(p, st); if (pt) { var pe = el("div", "plain"); pe.appendChild(el("b", null, "In plain English")); pe.appendChild(document.createTextNode(pt)); root.appendChild(pe); }
     root.appendChild(priceCheck(p));
@@ -1406,18 +1471,22 @@ details.acc .pcheck { margin-bottom: 12px; }
         : "Press Refresh to fetch prices. Each league costs one credit."));
       list.appendChild(li); return;
     }
-    picks.forEach(function (p, i) {
-      var s = p.pick, st = stakeFor(s);
-      var b = el("button", "pcard" + (p.isValue ? " isvalue" : "")); b.type = "button";
-      b.appendChild(ring(s.fair));
-      var mid = el("span", "pmid");
-      mid.appendChild(el("span", "meta", "#" + (i + 1) + " · " + p.league + " · " + TF.format(new Date(p.time))));
-      var sel = el("span", "sel", s.name); badgesFor(p, sel); mid.appendChild(sel);
-      mid.appendChild(el("span", "match", p.ev.h + " v " + p.ev.a + " · " + likeWord(s.fair)));
-      mid.appendChild(slipFor(p, st));
-      b.appendChild(mid);
-      b.addEventListener("click", function () { openSheet(p, b); });
-      var wrap = el("li"); wrap.appendChild(b); list.appendChild(wrap);
+    list.appendChild(el("li", "legendli", "Leagues run top tier first. A gold, silver or bronze badge means one of your three best bets overall."));
+    list.appendChild(el("li", "legendli", "Chance: how likely it is to win. Reward: profit as a % of your stake if it wins. Value: how much better than the market average the price is."));
+    var groups = {}, order = [];
+    picks.forEach(function (p, gi) {
+      p._g = gi;
+      var g = groups[p.key]; if (!g) { g = groups[p.key] = { key: p.key, title: p.league, group: p.group, items: [] }; order.push(g); }
+      g.items.push(p);
+    });
+    order.sort(function (a, b) { return leagueRank(a) - leagueRank(b) || a.title.localeCompare(b.title); });
+    order.forEach(function (g) {
+      var sec = el("li", "lgsec"), h = el("div", "lghead");
+      h.appendChild(el("b", null, g.title)); h.appendChild(el("span", null, g.items.length + (g.items.length === 1 ? " bet" : " bets")));
+      sec.appendChild(h);
+      var inner = el("div", "board");
+      g.items.forEach(function (p, j) { inner.appendChild(boardRow(p, j + 1, p._g < 3 ? p._g + 1 : 0, false)); });
+      sec.appendChild(inner); list.appendChild(sec);
     });
   }
 
@@ -1440,14 +1509,13 @@ details.acc .pcheck { margin-bottom: 12px; }
     var open = BETS().filter(function (b) { return b.status === "open"; }), done = BETS().filter(function (b) { return b.status !== "open"; }), profit = 0;
     done.forEach(function (b) { profit += b.profit; });
     if (S.weekly > 0) {
-      var t = tile("Left this week", gbp(weeklyLeft()), "of " + gbp(S.weekly) + " · " + gbp(spentWeek()) + " staked", null, function () { setTab("more"); });
+      var t = tile("Left this week", gbp(weeklyLeft()), "of " + gbp(S.weekly), null, function () { setTab("more"); });
       var bar = el("div", "bar"), fill = el("i"); fill.style.width = Math.min(100, spentWeek() / S.weekly * 100) + "%"; bar.appendChild(fill); t.appendChild(bar);
       box.appendChild(t);
-    } else box.appendChild(tile("Weekly budget", "Not set", "Tap to set a weekly limit", null, function () { setTab("more"); }));
-    box.appendChild(tile(S.practice ? "Practice profit" : "Profit so far", done.length ? sgbp(profit) : "–", done.length ? done.length + " settled · budget " + gbp(budget()) : "No settled bets yet", profit >= 0 ? "pos" : "neg", function () { setTab("bets"); }));
+    } else box.appendChild(tile("Weekly budget", "Not set", "tap to set", null, function () { setTab("more"); }));
+    box.appendChild(tile(S.practice ? "Practice profit" : "Profit so far", done.length ? sgbp(profit) : "–", done.length ? done.length + " settled" : "none settled yet", profit >= 0 ? "pos" : "neg", function () { setTab("bets"); }));
     var due = dueBets().length;
-    box.appendChild(tile("Open bets", String(open.length), due ? due + " need a result" : open.length ? "waiting for results" : "none placed", null, function () { setTab("bets"); }));
-    box.appendChild(tile("Value bets now", String(d.value.length), d.value.length ? "priced above the market" : "none, skipping is fine", null, function () { setTab("all"); }));
+    box.appendChild(tile("Open bets", String(open.length), due ? due + " need a result" : open.length ? "waiting" : "none placed", null, function () { setTab("bets"); }));
     if (!S.practice && !S.pracAsked && !S.bets.length && !S.pbets.length) {
       var pn = el("button", "tile nudge wide"); pn.type = "button";
       pn.appendChild(el("b", null, "New to betting? Practise first"));
