@@ -400,6 +400,8 @@ details.acc .pcheck { margin-bottom: 12px; }
 .panel p.legend { color: var(--muted); }
 .trio + .legend { margin-top: 4px; }
 
+.lossbar { background: var(--warn-bg); color: var(--warn); border-radius: 12px; padding: 10px 12px; font-size: 14px; line-height: 1.4; }
+.lossbar b { display: block; font: 700 16px/1.2 var(--display); margin-bottom: 2px; }
 .balsum { list-style: none; background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); padding: 12px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
 .lgsec > .subnote { margin: -2px 2px 8px; }
 .seg button { font-size: 15px; padding: 11px 4px; }
@@ -507,8 +509,17 @@ details.acc .pcheck { margin-bottom: 12px; }
       <label class="field">Matches to load extra markets for on each refresh
         <select id="extraMax"><option value="6">6 matches</option><option value="12">12 matches</option><option value="20">20 matches</option></select>
       </label>
+      <label class="field">Reload a match's extra markets only if they are older than
+        <select id="extraFresh"><option value="1">1 hour</option><option value="3">3 hours</option><option value="6">6 hours</option></select>
+      </label>
       <p>Extra markets are football only and cost about one credit per market per match. They load when you press Refresh, soonest kick-offs first, never when the page just opens.</p>
       <div id="mkCheck"></div>
+      <h2>Team news (optional)</h2>
+      <p>Shows injuries and who is missing beside a bet, as a warning only. It never changes the numbers. It needs a free key from api-football.com, and the free plan may not include the current season, so use Test to find out.</p>
+      <label class="check"><input type="checkbox" id="newsOn"> Show team news when available</label>
+      <label class="field">API-Football key<input id="afKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your key (optional)"></label>
+      <div class="row"><button class="btn small" id="afTest" type="button">Test team news</button></div>
+      <div id="afMsg"></div>
       <p>After changing this, press Refresh to load the extra prices.</p>
       <h2>My bookmakers</h2>
       <p>Tick the ones you have accounts with. Suggested bets only use these. Load odds once to see the list.</p>
@@ -516,6 +527,12 @@ details.acc .pcheck { margin-bottom: 12px; }
       <h2>Practice mode</h2>
       <p>Logs pretend bets instead of real ones, kept completely separate from your real record. Good for learning how this works before spending anything.</p>
       <label class="check"><input type="checkbox" id="practiceOn"> Practice mode (no real money)</label>
+      <h2>Safety limits</h2>
+      <p>These pause bet suggestions when things go badly, so a bad run cannot snowball. They apply to real bets, not practice mode. Pausing is deliberate: changing a limit is a choice you make here, not a button on the pause message.</p>
+      <label class="field">Weekly loss limit £ (0 means off)<input id="lossLimit" type="number" inputmode="decimal" min="0" step="1" placeholder="0"></label>
+      <label class="field">Pause for a day after this many losing bets in a row
+        <select id="lossStreak"><option value="0">Off</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="8">8</option><option value="10">10</option></select>
+      </label>
       <h2>Weekly budget</h2>
       <p>The most you want to spend in a week (Monday to Sunday). Stakes are shared across the best bets and never go over it. Leave empty for no limit. You do not have to spend it all: if few bets have an edge, the rest stays in your pocket.</p>
       <label class="check" for="weeklyIn">Weekly budget £ <input id="weeklyIn" type="number" inputmode="decimal" min="0" step="1" placeholder="no limit"></label>
@@ -540,6 +557,7 @@ details.acc .pcheck { margin-bottom: 12px; }
     </section>
 
       <section class="panel" id="creditBox"><h2>Credit use</h2><p>What your recent refreshes cost, so you can see how the 500 a month is going.</p><div id="creditLog"></div></section>
+      <section class="panel" id="tourBox"><h2>New here?</h2><p>A short walk-through of how to read the page and stay in control.</p><button class="btn" id="tourAgain" type="button">Show the tour</button></section>
       <section class="panel" id="backupBox">
         <h2>Back up your bets</h2>
         <p>Your bet log lives only in this browser. If you clear site data or change phone it is gone, so copy a backup now and then and keep it in Notes. Your API key is not included.</p>
@@ -581,6 +599,10 @@ details.acc .pcheck { margin-bottom: 12px; }
   <button data-tab="bets"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z M9 8h6 M9 12h6"/></svg><span id="betsTabLbl">My bets</span></button>
   <button data-tab="more"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/></svg><span>More</span></button>
 </nav>
+<div class="sheet" id="tour" hidden>
+  <div class="backdrop" id="tourBack"></div>
+  <div class="panelsheet" role="dialog" aria-modal="true" aria-label="Quick tour" id="tourPanel"></div>
+</div>
 <div class="sheet" id="sheet" hidden>
   <div class="backdrop" id="sheetBack"></div>
   <div class="panelsheet" role="dialog" aria-modal="true" aria-label="Bet details">
@@ -596,7 +618,7 @@ details.acc .pcheck { margin-bottom: 12px; }
   var API = "https://api.the-odds-api.com/v4";
   var DEFAULTS = { key: "", selected: [], mode: "value", minOdds: 1.3, windowH: 72, group: "all",
                    sports: [], sportsAt: 0, cache: {}, remaining: null, used: null, picked: false,
-                   bankroll: 100, weekly: 0, league: "all", extras: true, extraMax: 12, xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
+                   bankroll: 100, weekly: 0, league: "all", extras: true, extraMax: 12, extraFreshH: 3, lossLimit: 0, lossStreak: 5, tour: false, afKey: "", newsOn: true, news: {}, afUse: { d: "", n: 0 }, afStatus: "", xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
   var GROUPS = { "Soccer": "Football", "American Football": "US football", "Ice Hockey": "Ice hockey",
                  "Mixed Martial Arts": "MMA", "Rugby League": "Rugby", "Rugby Union": "Rugby", "Aussie Rules": "Aussie rules" };
   var DEFAULT_FOOTBALL = ["soccer_epl", "soccer_efl_champ", "soccer_uefa_champs_league", "soccer_uefa_europa_league"];
@@ -706,20 +728,21 @@ details.acc .pcheck { margin-bottom: 12px; }
       throw e;
     });
   }
+  function loadLeague(key, errors) {
+    return fetchOdds(key).then(function (events) {
+      var old = S.cache[key]; if (old) snapshot(old);
+      var oldX = {}; if (old) old.events.forEach(function (e) { if (e.x) oldX[e.id] = e.x; });
+      var evs = events.map(slim); evs.forEach(function (e) { if (oldX[e.id]) e.x = oldX[e.id]; });
+      S.cache[key] = { at: Date.now(), events: evs };
+    }, function (e) { errors.push(e); });
+  }
   var busyMsg = "";
   function refreshAll(opts) {
     if (busy || !S.selected.length) return Promise.resolve();
     var wantExtras = S.extras && !(opts && opts.extras === false), before = S.remaining, startCount = spentCounter;
     busy = true; busyMsg = ""; renderStatus();
     var errors = [];
-    var jobs = S.selected.map(function (key) {
-      return fetchOdds(key).then(function (events) {
-        var old = S.cache[key]; if (old) snapshot(old);
-        var oldX = {}; if (old) old.events.forEach(function (e) { if (e.x) oldX[e.id] = e.x; });
-        var evs = events.map(slim); evs.forEach(function (e) { if (oldX[e.id]) e.x = oldX[e.id]; });
-        S.cache[key] = { at: Date.now(), events: evs };
-      }, function (e) { errors.push(e); });
-    });
+    var jobs = S.selected.map(function (key) { return loadLeague(key, errors); });
     return Promise.all(jobs).then(function () {
       if (!wantExtras || errors.length) return null;
       var targets = pickExtraTargets(), per = extraMarkets().length, skipped = false;
@@ -733,7 +756,11 @@ details.acc .pcheck { margin-bottom: 12px; }
         if (errs[0]) errors.push(errs[0]); return skipped ? "credits" : null;
       });
     }).then(function (note) {
-      busy = false; busyMsg = "";
+      if (errors.length) return note;
+      busyMsg = "Checking team news…"; renderStatus();
+      return loadNews().then(function () { return note; });
+    }).then(function (note) {
+      busy = false; busyMsg = ""; captureClosings();
       logCredits(before, startCount, wantExtras ? "Refresh with extra markets" : "Refresh");
       var ids = {};
       S.selected.forEach(function (k) { (S.cache[k] ? S.cache[k].events : []).forEach(function (e) { ids[e.id] = 1; }); });
@@ -752,12 +779,20 @@ details.acc .pcheck { margin-bottom: 12px; }
     var now = Date.now(), end = now + S.windowH * 3600000, list = [];
     S.selected.forEach(function (k) {
       var c = S.cache[k]; if (!c) return;
-      c.events.forEach(function (ev) { var t = Date.parse(ev.c); if (t > now && t <= end && isFootball(ev)) list.push({ key: k, ev: ev, t: t }); });
+      c.events.forEach(function (ev) {
+        var t = Date.parse(ev.c);
+        if (t > now && t <= end && isFootball(ev) && !(ev.x && now - ev.x.at < S.extraFreshH * 3600000)) list.push({ key: k, ev: ev, t: t });
+      });
     });
-    list.sort(function (a, b) { return a.t - b.t; });
+    var mine = {}; BETS().forEach(function (b) { if (b.status === "open") mine[b.evId] = 1; });
+    list.sort(function (a, b) { return (mine[b.ev.id] ? 1 : 0) - (mine[a.ev.id] ? 1 : 0) || a.t - b.t; });
     return list.slice(0, S.extraMax);
   }
-  function extraEstimate() { return S.extras ? pickExtraTargets().length * extraMarkets().length : 0; }
+  function extraEstimate() {
+    if (!S.extras) return 0;
+    var known = S.selected.some(function (k) { return S.cache[k] && S.cache[k].events.length; });
+    return (known ? pickExtraTargets().length : S.extraMax) * extraMarkets().length;   /* before the first load, assume the most it could cost */
+  }
   function addExtra(x, resp) {
     (resp && resp.bookmakers || []).forEach(function (b) {
       (b.markets || []).forEach(function (m) {
@@ -1080,6 +1115,7 @@ details.acc .pcheck { margin-bottom: 12px; }
   }
   var balMap = {};
   function stakeFor(pick) {
+    var ls = lossState(); if (ls.on) return { amount: 0, kind: ls.kind };
     if (S.mode === "balanced" && S.tab === "all" && pick.pid && balMap[pick.pid]) return balMap[pick.pid];
     if (pick.pid && planMap[pick.pid]) return planMap[pick.pid];
     var st = baseStake(pick), left = weeklyLeft();
@@ -1154,12 +1190,162 @@ details.acc .pcheck { margin-bottom: 12px; }
       (db < 0 ? ". Shorter odds mean bookmakers now rate it likelier." : ". Longer odds mean bookmakers now rate it less likely.");
   }
 
+  /* ---------- Team news (API-Football, optional, warning only) ---------- */
+  var AF = "https://v3.football.api-sports.io";
+  var AF_LEAGUE = { soccer_epl: 39, soccer_efl_champ: 40, soccer_england_league1: 41, soccer_england_league2: 42, soccer_fa_cup: 45, soccer_england_efl_cup: 48,
+                    soccer_uefa_champs_league: 2, soccer_uefa_europa_league: 3, soccer_uefa_europa_conf_league: 848 };
+  var ALIAS = { "wolverhampton wanderers": "wolves", "tottenham hotspur": "tottenham", "newcastle united": "newcastle", "brighton hove albion": "brighton", "west ham united": "west ham",
+                "leicester city": "leicester", "manchester united": "man united", "manchester city": "man city", "sheffield united": "sheffield utd", "sheffield wednesday": "sheffield wed" };
+  function normName(n) {
+    var t = String(n).toLowerCase(); try { t = t.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); } catch (e) {}
+    t = t.replace(/&/g, " and ").replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter(function (w) { return w && ["fc", "afc", "cf", "sc", "the", "and"].indexOf(w) < 0; }).join(" ");
+    return ALIAS[t] || t;
+  }
+  function teamMatch(a, b) { var x = normName(a), y = normName(b); return !!x && !!y && (x === y || x.indexOf(y) > -1 || y.indexOf(x) > -1); }
+  function afSeason() {
+    var d = new Date(), f = function (o) { return +new Intl.DateTimeFormat("en-GB", o).format(d); };
+    var y = f({ year: "numeric", timeZone: "Europe/London" }), m = f({ month: "numeric", timeZone: "Europe/London" }); return m >= 7 ? y : y - 1;
+  }
+  function dayOf(t) {
+    var p = {}; new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(t)).forEach(function (x) { p[x.type] = x.value; });
+    return p.year + "-" + p.month + "-" + p.day;
+  }
+  function afCall(path) {
+    var day = dayOf(Date.now()); if (!S.afUse || S.afUse.d !== day) S.afUse = { d: day, n: 0 };
+    if (S.afUse.n >= 80) { var le = new Error("limit"); le.code = "limit"; return Promise.reject(le); }
+    S.afUse.n++;
+    return fetch(AF + path, { headers: { "x-apisports-key": S.afKey } }).then(function (res) {
+      if (!res.ok) { var e = new Error("http"); e.code = "http"; e.status = res.status; throw e; }
+      return res.json();
+    }, function () { var e = new Error("network"); e.code = "network"; throw e; }).then(function (j) {
+      var er = j && j.errors, msgs = !er ? [] : Array.isArray(er) ? er : Object.keys(er).map(function (k) { return er[k]; });
+      if (msgs.length) { var e2 = new Error("api"); e2.code = "api"; e2.msg = String(msgs[0]); throw e2; }
+      return j;
+    });
+  }
+  function afErrText(e) {
+    if (e.code === "network") return "Could not reach API-Football from the browser. Some browsers or the service itself may block this, in which case team news cannot be used here.";
+    if (e.code === "limit") return "Daily team-news limit reached. It resets tomorrow.";
+    if (e.code === "api") return "API-Football said: " + e.msg + (/plan|season|access/i.test(e.msg) ? " This usually means the free plan does not include the current season, so team news is not available on it." : "");
+    return "API-Football returned an error (" + (e.status || "unknown") + "). Check the key.";
+  }
+  function renderAfMsg() { var m = $("afMsg"); m.textContent = ""; if (S.afStatus) m.appendChild(el("div", S.afStatus.indexOf("Works") === 0 ? "msg info" : "msg", S.afStatus)); }
+  function testNews() {
+    if (!S.afKey) { S.afStatus = "Paste your API-Football key first."; renderAfMsg(); return; }
+    S.afStatus = "Testing…"; renderAfMsg();
+    afCall("/injuries?league=39&season=" + afSeason() + "&date=" + dayOf(Date.now() + 86400000)).then(function (j) {
+      S.afStatus = "Works. Your key can read team news" + ((j.response || []).length ? "" : " (none listed for tomorrow's Premier League matches, which can be normal)") + "."; save(); renderAfMsg();
+    }, function (e) { S.afStatus = afErrText(e); save(); renderAfMsg(); });
+  }
+  function loadNews() {
+    if (!S.newsOn || !S.afKey || (S.afStatus && S.afStatus.indexOf("API-Football said") === 0)) return Promise.resolve();
+    var now = Date.now(), groups = {};
+    pickNewsTargets().forEach(function (t) { var id = AF_LEAGUE[t.key]; if (!id) return; var g = id + "|" + dayOf(t.t); (groups[g] = groups[g] || { id: id, day: dayOf(t.t), evs: [] }).evs.push(t.ev); });
+    var list = Object.keys(groups).map(function (k) { return groups[k]; }).slice(0, 6);
+    return list.reduce(function (p, g) {
+      return p.then(function () {
+        return afCall("/injuries?league=" + g.id + "&season=" + afSeason() + "&date=" + g.day).then(function (j) {
+          var rows = j.response || [];
+          g.evs.forEach(function (ev) {
+            function mine(team) { return rows.filter(function (r) { return r.team && teamMatch(r.team.name, team); }).slice(0, 10).map(function (r) { return { n: r.player && r.player.name, r: r.player && r.player.reason, t: r.player && r.player.type }; }); }
+            S.news[ev.id] = { at: now, h: mine(ev.h), a: mine(ev.a) };
+          });
+        });
+      });
+    }, Promise.resolve()).then(null, function (e) {
+      if (e.code === "api" || e.code === "network" || e.code === "http") { S.afStatus = afErrText(e); }
+    });
+  }
+  function pickNewsTargets() {
+    var now = Date.now(), end = now + S.windowH * 3600000, out = [];
+    S.selected.forEach(function (k) {
+      var c = S.cache[k]; if (!c || !AF_LEAGUE[k]) return;
+      c.events.forEach(function (ev) { var t = Date.parse(ev.c); var n = S.news[ev.id]; if (t > now && t <= end && isFootball(ev) && !(n && now - n.at < 6 * 3600000)) out.push({ key: k, ev: ev, t: t }); });
+    });
+    return out;
+  }
+  function relevantSides(p) {
+    var nm = (p.pick.name || "").toLowerCase(), sides = [];
+    if (nm.indexOf(p.ev.h.toLowerCase()) > -1) sides.push("h");
+    if (nm.indexOf(p.ev.a.toLowerCase()) > -1) sides.push("a");
+    return sides.length ? sides : ["h", "a"];
+  }
+  function newsOut(list) { return (list || []).filter(function (x) { return !/question|doubt/i.test(x.t || ""); }); }
+  function newsFlag(p) {
+    if (!S.newsOn) return false;
+    var n = S.news[p.ev.id]; if (!n || Date.now() - n.at > 24 * 3600000) return false;
+    return relevantSides(p).some(function (sd) { return newsOut(n[sd]).length >= 3; });
+  }
+  function newsBox(p) {
+    var n = S.newsOn ? S.news[p.ev.id] : null; if (!n || Date.now() - n.at > 24 * 3600000) return null;
+    var box = el("div", "plain"); box.appendChild(el("b", null, "Team news: check before betting"));
+    [["h", p.ev.h], ["a", p.ev.a]].forEach(function (x) {
+      var out = newsOut(n[x[0]]), dbt = (n[x[0]] || []).filter(function (z) { return out.indexOf(z) < 0; });
+      var txt = out.length || dbt.length
+        ? (out.length ? "out: " + out.map(function (z) { return z.n + (z.r ? " (" + z.r + ")" : ""); }).join(", ") : "") + (dbt.length ? (out.length ? ". " : "") + "doubtful: " + dbt.map(function (z) { return z.n; }).join(", ") : "")
+        : "no one listed";
+      var line = el("div", null); line.appendChild(el("b", null, x[1] + ": ")); line.appendChild(document.createTextNode(txt)); box.appendChild(line);
+    });
+    box.appendChild(el("div", "subnote", "From API-Football. Lists can be late or incomplete, and we cannot tell how important each player is. This never changes the numbers."));
+    return box;
+  }
+
+  /* ---------- Closing prices ---------- */
+  function currentRow(ev, bet) {
+    var a = analyse(ev); if (!a) return null;
+    if (!bet.mkt) { var sl = a.sels.filter(function (x) { return x.name === bet.sel; })[0]; return sl ? { fair: sl.fair, refund: 0 } : null; }
+    var rows = bet.mkt === "totals" ? analyseTotals(ev, " goals") : analyseExtras(ev).concat(derivedMarkets(a, ev));
+    var r = rows.filter(function (x) { return x.label === bet.sel; })[0];
+    return r ? { fair: r.fair, refund: r.refund || 0 } : null;
+  }
+  /* After any refresh, remember the latest market price for every bet that has not kicked off yet. The last one before kick-off is the closing price. */
+  function captureClosings() {
+    var now = Date.now();
+    S.bets.concat(S.pbets).forEach(function (b) {
+      if (b.status !== "open" || b.time <= now) return;
+      var c = S.cache[b.key]; if (!c || now - c.at > 20 * 60000) return;
+      var ev = c.events.filter(function (e) { return e.id === b.evId; })[0]; if (!ev) return;
+      var r = currentRow(ev, b); if (r) b.close = { f: r.fair, r: r.refund, at: now };
+    });
+  }
+  /* How much better your odds were than the final fair market price. Only trusted when captured within 3 hours of kick-off. */
+  function clvOf(b) {
+    if (!b.close || (b.time - b.close.at) / 3600000 > 3) return null;
+    return b.odds * b.close.f - 1 + (b.close.r || 0);
+  }
+  function soonBets() { var now = Date.now(); return BETS().filter(function (b) { return b.status === "open" && b.time > now && b.time - now <= 3 * 3600000; }); }
+  function captureNow() {
+    var keys = []; soonBets().forEach(function (b) { if (keys.indexOf(b.key) < 0) keys.push(b.key); });
+    if (!keys.length || busy) return;
+    busy = true; busyMsg = "Getting closing prices…"; renderStatus();
+    var errors = [], before = S.remaining, startCount = spentCounter;
+    Promise.all(keys.map(function (k) { return loadLeague(k, errors); })).then(function () {
+      busy = false; busyMsg = ""; captureClosings(); logCredits(before, startCount, "Closing prices"); save(); renderAll();
+      showAlert(errors[0] ? errText(errors[0]) : "Closing prices saved for your bets starting soon.", !errors[0]);
+    });
+  }
+
+  /* ---------- Loss limits ---------- */
+  function lossState() {
+    if (S.practice) return { on: false };
+    var w = weekStart(), net = 0;
+    S.bets.forEach(function (b) { if (b.status !== "open" && (b.settledAt || 0) >= w) net += b.profit || 0; });
+    if (S.lossLimit > 0 && net <= -S.lossLimit)
+      return { on: true, kind: "Paused: weekly loss limit", reason: "You have lost " + gbp(-net) + " this week, which reaches your weekly loss limit of " + gbp(S.lossLimit) + ". Suggestions are paused until Monday. You can change the limit in More, but pausing is the point." };
+    var done = S.bets.filter(function (b) { return b.status === "won" || b.status === "lost"; }).sort(function (a, b) { return (b.settledAt || 0) - (a.settledAt || 0); });
+    if (S.lossStreak > 0 && done.length >= S.lossStreak && done.slice(0, S.lossStreak).every(function (b) { return b.status === "lost"; })) {
+      var until = (done[0].settledAt || 0) + 24 * 3600000;
+      if (Date.now() < until) return { on: true, kind: "Paused: losing run", reason: S.lossStreak + " losing bets in a row. Take a break: suggestions are paused until " + TF.format(new Date(until)) + ". Runs of losses are normal, and chasing them is how money goes." };
+    }
+    return { on: false };
+  }
+
   /* ---------- Bets ---------- */
   function findBet(id) { return BETS().filter(function (b) { return b.pid === id; })[0]; }
   function logBet(p) {
     if (findBet(p.id)) return;
     var st = stakeFor(p.pick);
-    if (st.amount < 0.5) { showAlert("Your weekly budget is used up, so no stake is suggested. Raise it in Settings if you want to log this bet.", false); return; }
+    if (st.amount < 0.5) { var lsx = lossState(); showAlert(lsx.on ? lsx.reason : "Your weekly budget is used up, so no stake is suggested. Raise it in Settings if you want to log this bet.", false); return; }
     BETS().push({ pid: p.id, evId: p.ev.id, key: p.key, league: p.league, h: p.ev.h, a: p.ev.a, sel: p.pick.name,
       odds: p.pick.best, book: p.pick.bestBook, stake: st.amount, fair: p.pick.fair, time: p.time, at: Date.now(),
       mkt: p.pick.market || "", point: p.pick.point, side: p.pick.side, rule: p.pick.rule,
@@ -1264,7 +1450,7 @@ details.acc .pcheck { margin-bottom: 12px; }
     var rb = $("refreshBtn");
     rb.disabled = busy || !S.selected.length;
     var cost = S.selected.length * (S.totals ? 2 : 1), xe = extraEstimate();
-    rb.textContent = busy ? "Working…" : "Refresh · " + (xe ? "about " + (cost + xe) : cost) + " credits";
+    rb.textContent = busy ? "Working…" : "Refresh · " + (xe ? "about " + (cost + xe) + " credits" : cost + (cost === 1 ? " credit" : " credits"));
   }
   function renderChips() {
     var box = $("groupChips"); box.textContent = "";
@@ -1449,6 +1635,8 @@ details.acc .pcheck { margin-bottom: 12px; }
       var off = el("button", "btn small", "Switch to real bets"); off.type = "button"; off.addEventListener("click", function () { S.practice = false; save(); renderAll(); });
       pb.appendChild(off); box.appendChild(pb);
     }
+    var lsb = lossState();
+    if (lsb.on) { var lb0 = el("div", "lossbar"); lb0.appendChild(el("b", null, "Take a break")); lb0.appendChild(document.createTextNode(" " + lsb.reason)); box.appendChild(lb0); }
     if (!S.booksSet && !S.bets.length && !S.pbets.length) {
       var nb = el("button", "tile nudge wide"); nb.type = "button";
       nb.appendChild(el("b", null, "Which bookmakers do you use?"));
@@ -1601,6 +1789,7 @@ details.acc .pcheck { margin-bottom: 12px; }
     if (p.isValue) host.appendChild(el("span", "badge value", "VALUE"));
     if (p.suspect) host.appendChild(el("span", "badge warn", "CHECK PRICE"));
     if (moveInfo(p)) host.appendChild(el("span", "badge move", "PRICE MOVED"));
+    if (newsFlag(p)) host.appendChild(el("span", "badge warn", "TEAM NEWS"));
   }
   function slipFor(p, st) {
     var s = p.pick, slip = el("span", "slip");
@@ -1632,6 +1821,7 @@ details.acc .pcheck { margin-bottom: 12px; }
     ht.appendChild(el("div", "dsub", likeWord(s.fair) + " · " + inN(s.fair)));
     head.appendChild(ht); root.appendChild(head);
     var mv = moveInfo(p); if (mv) root.appendChild(el("div", "msg", "Price moved. " + mv.text));
+    var nb2 = newsBox(p); if (nb2) root.appendChild(nb2);
     root.appendChild(trio(p)); root.appendChild(legend());
 
     var pt = plainText(p, st); if (pt) { var pe = el("div", "plain"); pe.appendChild(el("b", null, "In plain English")); pe.appendChild(document.createTextNode(pt)); root.appendChild(pe); }
@@ -1866,7 +2056,17 @@ details.acc .pcheck { margin-bottom: 12px; }
     g.appendChild(statBox("Return", staked ? signed(profit / staked) : "–", "on " + gbp(staked) + " staked", profit >= 0 ? "pos" : "neg"));
     g.appendChild(statBox("Expected", sgbp(exp), "what the prices implied"));
     g.appendChild(statBox("Budget now", gbp(budget()), "start " + gbp(S.bankroll || 100)));
+    var clvs = []; BETS().forEach(function (b) { var c = clvOf(b); if (c !== null) clvs.push(c); });
+    if (clvs.length) { var av = clvs.reduce(function (a, c) { return a + c; }, 0) / clvs.length; g.appendChild(statBox("Closing-price score", signed(av), clvs.length + (clvs.length === 1 ? " bet" : " bets") + " measured", av >= 0 ? "pos" : "neg")); }
     body.appendChild(g);
+    if (clvs.length) body.appendChild(el("p", "subnote", "Closing-price score: how much better your odds were than the final fair market price just before kick-off. Positive means you usually took better prices than the market settled at. It is the best sign your bets are good, but it only means something after 30 or more bets."));
+    var soon = soonBets();
+    if (soon.length) {
+      var ks = []; soon.forEach(function (b) { if (ks.indexOf(b.key) < 0) ks.push(b.key); });
+      var cb2 = el("button", "btn", "Save closing prices · " + ks.length + (ks.length === 1 ? " credit" : " credits")); cb2.type = "button"; cb2.disabled = busy;
+      cb2.addEventListener("click", captureNow); body.appendChild(cb2);
+      body.appendChild(el("p", "subnote", "You have bets starting within 3 hours. Tap this just before kick-off to record the final market price for them."));
+    }
 
     if (done.length >= 2) body.appendChild(chartFor(done));
     if (done.length) {
@@ -1887,6 +2087,9 @@ details.acc .pcheck { margin-bottom: 12px; }
       var row = el("div", "bet");
       row.appendChild(el("div", "nm", b.sel));
       row.appendChild(el("div", "sub", b.h + " v " + b.a + " · " + b.book + " · " + TF.format(new Date(b.time))));
+      var cv = clvOf(b);
+      if (cv !== null) row.appendChild(el("div", "sub", "Closing-price check: " + signed(cv) + " against the final market price"));
+      else if (b.close) row.appendChild(el("div", "sub", "Price saved " + Math.round((b.time - b.close.at) / 3600000) + " h before kick-off, too early to count. Refresh nearer the start."));
       if (b.status === "open") {
         var edit = el("div", "row");
         var l1 = el("label", null, "Stake £"), i1 = el("input"); i1.type = "number"; i1.step = "0.5"; i1.min = "0.1"; i1.value = b.stake.toFixed(2); i1.setAttribute("inputmode", "decimal");
@@ -1940,7 +2143,9 @@ details.acc .pcheck { margin-bottom: 12px; }
     });
     if (!order.length) box.appendChild(el("p", null, "No leagues loaded yet. Press Reload leagues."));
     $("autoOn").checked = !!S.auto; $("autoHours").value = String(S.autoHours); $("totalsOn").checked = !!S.totals;
-    $("extrasOn").checked = !!S.extras; $("extraMax").value = String(S.extraMax);
+    $("extrasOn").checked = !!S.extras; $("extraMax").value = String(S.extraMax); $("extraFresh").value = String(S.extraFreshH);
+    $("lossLimit").value = S.lossLimit ? String(S.lossLimit) : ""; $("lossStreak").value = String(S.lossStreak);
+    $("newsOn").checked = !!S.newsOn; $("afKey").value = S.afKey || ""; renderAfMsg();
     renderCost(); renderBooks(); renderMkCheck(); renderCreditLog();
   }
   function renderCreditLog() {
@@ -1949,6 +2154,13 @@ details.acc .pcheck { margin-bottom: 12px; }
     var tot = 0; S.clog.forEach(function (c) { tot += c.used; });
     S.clog.slice(0, 8).forEach(function (c) { box.appendChild(el("div", "typerow", ago(c.at) + " · " + c.label + " · " + c.used + (c.used === 1 ? " credit" : " credits"))); });
     box.appendChild(el("p", "subnote", "Last " + S.clog.length + " refreshes: " + tot + " credits. " + (S.remaining !== null ? S.remaining + " left this month." : "")));
+    if (S.clog.length >= 2) {
+      var span = S.clog[0].at - S.clog[S.clog.length - 1].at, used = tot - S.clog[S.clog.length - 1].used;
+      if (span >= 6 * 3600000 && used > 0) {
+        var perDay = used / (span / 86400000);
+        box.appendChild(el("p", "subnote", "Pace: about " + Math.round(perDay) + " credits a day." + (S.remaining !== null ? " At that rate your " + S.remaining + " would last about " + Math.max(0, Math.floor(S.remaining / perDay)) + " days." : "")));
+      }
+    }
   }
   function renderMkCheck() {
     var box = $("mkCheck"); box.textContent = "";
@@ -2069,10 +2281,23 @@ details.acc .pcheck { margin-bottom: 12px; }
   $("practiceOn").addEventListener("change", function (e) { S.practice = e.target.checked; S.pracAsked = true; save(); renderAll(); });
   $("extrasOn").addEventListener("change", function (e) { S.extras = e.target.checked; save(); renderCost(); renderStatus(); renderView(); });
   $("extraMax").addEventListener("change", function (e) { S.extraMax = +e.target.value; save(); renderCost(); renderStatus(); });
+  $("extraFresh").addEventListener("change", function (e) { S.extraFreshH = +e.target.value; save(); renderCost(); renderStatus(); });
+  $("lossLimit").addEventListener("change", function (e) { var v = parseFloat(e.target.value); S.lossLimit = (isFinite(v) && v > 0) ? Math.round(v) : 0; e.target.value = S.lossLimit ? String(S.lossLimit) : ""; save(); renderAll(); });
+  $("lossStreak").addEventListener("change", function (e) { S.lossStreak = +e.target.value; save(); renderAll(); });
+  $("newsOn").addEventListener("change", function (e) { S.newsOn = e.target.checked; save(); renderView(); });
+  $("afKey").addEventListener("change", function (e) { S.afKey = e.target.value.trim(); S.afStatus = ""; save(); renderAfMsg(); });
+  $("afTest").addEventListener("click", testNews);
+  $("tourAgain").addEventListener("click", function () { openTour(); });
   $("autoOn").addEventListener("change", function (e) { S.auto = e.target.checked; save(); });
   $("totalsOn").addEventListener("change", function (e) { S.totals = e.target.checked; save(); renderCost(); renderStatus(); });
   $("autoHours").addEventListener("change", function (e) { S.autoHours = +e.target.value; save(); });
-  $("refreshBtn").addEventListener("click", function () { showAlert(""); refreshAll(); });
+  $("refreshBtn").addEventListener("click", function () {
+    showAlert("");
+    var est = S.selected.length * (S.totals ? 2 : 1) + extraEstimate();
+    if ((est >= 40 || (S.remaining !== null && est >= S.remaining * 0.15)) &&
+        !window.confirm("This refresh will use about " + est + " credits" + (S.remaining !== null ? " and you have " + S.remaining + " left" : "") + ". Continue?")) return;
+    refreshAll();
+  });
   $("settingsDone").addEventListener("click", function () {
     setTab("today"); renderAll();
     var any = S.selected.some(function (k) { return S.cache[k]; });
@@ -2122,6 +2347,39 @@ details.acc .pcheck { margin-bottom: 12px; }
     calc();
   }
 
+  /* ---------- Guided tour ---------- */
+  var tourStep = 0;
+  function tourSteps() {
+    return [
+      { h: "Welcome", t: "BetIQ Lite compares prices from UK bookmakers and ranks the bets. It does not predict results, and nothing here is a tip or a promise of profit. Most prices have no edge, and skipping a day is a perfectly good choice.", img: null },
+      { h: "Choose your bookmakers", t: "Bets are picked from the bookmakers you tick, so you only see prices you can actually use. Exchanges like Betfair and Smarkets need their own accounts.", btn: ["Choose my bookmakers", function () { setTab("more"); }] },
+      { h: "Practise first", t: "Practice mode logs pretend bets with no real money, and tracks how you would have done. Try it for a few weeks before risking anything.", btn: ["Turn on practice mode", function () { S.practice = true; S.pracAsked = true; save(); renderAll(); }] },
+      { h: "How to read a bet", t: "Every bet shows three numbers. Chance: how likely it is to win. Reward: profit as a % of your stake if it wins. Value: how much better the price is than the market average. The money on the right is the profit if it wins. This is an example, not a real bet.", example: true },
+      { h: "Stay in control", t: "Before you bet, tap the bet and use the price check: odds change fast, and below the minimum shown it is no longer worth it. Set a weekly budget and a loss limit in More. The app pauses suggestions after a bad run. Bet only what you can afford to lose. 18+. BeGambleAware.org." }
+    ];
+  }
+  function renderTour() {
+    var steps = tourSteps(), st = steps[tourStep], box = $("tourPanel"); box.textContent = "";
+    box.appendChild(el("div", "dsub", "Step " + (tourStep + 1) + " of " + steps.length));
+    box.appendChild(el("div", "dname", st.h));
+    if (st.example) {
+      var ex = { pick: { fair: 0.5, best: 2.13, ev: 0.05 }, suspect: false }, w = el("div", "brow"), m = el("div", "bmain"), top = el("span", "btop");
+      top.appendChild(el("span", "bbadge", "1")); var tx = el("span", "btxt"); tx.appendChild(el("span", "bn1", "Example team")); tx.appendChild(el("span", "bsub", "Example v Opponent · Sat 15:00")); top.appendChild(tx);
+      var pr = el("span", "bprofit"); pr.appendChild(el("b", null, "+£6.00")); pr.appendChild(el("small", null, "if it wins")); top.appendChild(pr); m.appendChild(top); m.appendChild(trio(ex)); w.appendChild(m); box.appendChild(w);
+    }
+    box.appendChild(el("p", null, st.t));
+    if (st.btn) { var ab = el("button", "btn primary", st.btn[0]); ab.type = "button"; ab.addEventListener("click", function () { st.btn[1](); closeTour(); }); box.appendChild(ab); }
+    var row = el("div", "actions");
+    if (tourStep > 0) { var bk = el("button", "btn", "Back"); bk.type = "button"; bk.addEventListener("click", function () { tourStep--; renderTour(); }); row.appendChild(bk); }
+    var last = tourStep === steps.length - 1, nx = el("button", "btn" + (st.btn ? "" : " primary"), last ? "Done" : "Next"); nx.type = "button";
+    nx.addEventListener("click", function () { if (last) closeTour(); else { tourStep++; renderTour(); } }); row.appendChild(nx);
+    if (!last) { var sk = el("button", "btn", "Skip tour"); sk.type = "button"; sk.addEventListener("click", closeTour); row.appendChild(sk); }
+    box.appendChild(row);
+  }
+  function openTour() { tourStep = 0; renderTour(); $("tour").hidden = false; document.body.classList.add("lock"); }
+  function closeTour() { S.tour = true; save(); $("tour").hidden = true; if ($("sheet").hidden) document.body.classList.remove("lock"); }
+  $("tourBack").addEventListener("click", closeTour);
+
   /* ---------- Backup, navigation ---------- */
   $("bkCopy").addEventListener("click", function () {
     var data = { app: "betiqlite", v: 2, bets: S.bets, pbets: S.pbets, bankroll: S.bankroll, weekly: S.weekly, myBooks: S.myBooks, totals: S.totals, minOdds: S.minOdds, windowH: S.windowH };
@@ -2148,12 +2406,13 @@ details.acc .pcheck { margin-bottom: 12px; }
   });
   $("sheetClose").addEventListener("click", closeSheet);
   $("sheetBack").addEventListener("click", closeSheet);
-  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && sheetId) closeSheet(); });
+  document.addEventListener("keydown", function (e) { if (e.key !== "Escape") return; if (!$("tour").hidden) closeTour(); else if (sheetId) closeSheet(); });
 
   /* ---------- Start ---------- */
   initCalc();
   renderAll();
   if (S.key) renderSettings();
+  if (S.key && !S.tour && !S.booksSet && !S.bets.length && !S.pbets.length) openTour();
   if (S.key) {
     var boot = S.sports.length ? Promise.resolve() : fetchSports();
     boot.then(function () { renderAll(); return autoRun(); }, function (e) { showAlert(errText(e), false); });
