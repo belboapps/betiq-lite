@@ -76,7 +76,7 @@ input[type="number"] { flex: 0 0 84px; padding: 6px 8px; background: var(--surfa
 .btn[disabled] { opacity: .55; cursor: default; }
 
 .controls { display: flex; flex-direction: column; gap: 10px; }
-.seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
 .seg button { border: 0; background: transparent; padding: 11px 8px; font: 700 18px/1 var(--display); text-transform: uppercase; letter-spacing: .03em; color: var(--muted); min-height: 46px; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .filters { display: flex; flex-wrap: wrap; gap: 8px 14px; }
@@ -398,6 +398,10 @@ details.acc .pcheck { margin-bottom: 12px; }
 .legend, .legendli { font-size: 13px; color: var(--muted); list-style: none; margin: 0; }
 .panel p.legend { color: var(--muted); }
 .trio + .legend { margin-top: 4px; }
+
+.balsum { list-style: none; background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); padding: 12px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
+.lgsec > .subnote { margin: -2px 2px 8px; }
+.seg button { font-size: 15px; padding: 11px 4px; }
 @media (prefers-reduced-motion: no-preference) { details.pick { transition: border-color .15s; } }
 </style>
 </head>
@@ -444,6 +448,7 @@ details.acc .pcheck { margin-bottom: 12px; }
       <div class="seg" role="group" aria-label="Ranking">
         <button id="modeValue" aria-pressed="true">Best bets</button>
         <button id="modeLikely" aria-pressed="false">Most likely</button>
+        <button id="modeBal" aria-pressed="false">Balanced 10</button>
       </div>
       <p class="hint" id="modeHint"></p>
       <details class="learn" id="filterBox">
@@ -880,7 +885,9 @@ details.acc .pcheck { margin-bottom: 12px; }
       planMap[p.id] = q >= 0.5 ? { amount: q, kind: "Share of your weekly budget" } : { amount: 0, kind: R < 0.5 ? "Weekly budget used up" : "Too small to bet" };
     });
   }
+  var balMap = {};
   function stakeFor(pick) {
+    if (S.mode === "balanced" && S.tab === "all" && pick.pid && balMap[pick.pid]) return balMap[pick.pid];
     if (pick.pid && planMap[pick.pid]) return planMap[pick.pid];
     var st = baseStake(pick), left = weeklyLeft();
     if (st.amount > left) { var q = Math.floor(left * 2) / 2; st = q >= 0.5 ? { amount: q, kind: "Capped by weekly budget" } : { amount: 0, kind: "Weekly budget used up" }; }
@@ -1457,8 +1464,76 @@ details.acc .pcheck { margin-bottom: 12px; }
     if (sheetFrom && document.body.contains(sheetFrom)) sheetFrom.focus(); sheetFrom = null;
   }
 
+  /* Balanced 10: a spread of risk levels, best value first within each, one bet per match. */
+  var TIERS = [
+    { key: "safer", name: "Safer bets", note: "50% or better chance of winning. Wins often, pays less.", min: 0.5, max: 1.01, n: 4 },
+    { key: "mid", name: "Middle bets", note: "30% to 50% chance. A fair balance of chance and reward.", min: 0.3, max: 0.5, n: 4 },
+    { key: "long", name: "Longer shots", note: "Under 30% chance. Wins less often but pays more.", min: 0, max: 0.3, n: 2 }
+  ];
+  function buildBalanced() {
+    var cands = buildPicks("value").filter(function (p) { return !p.suspect && p.pick.ev >= 0.01; });
+    var used = {}, out = [];
+    function tierOf(p) { var f = p.pick.fair; return TIERS.filter(function (t) { return f >= t.min && f < t.max; })[0]; }
+    TIERS.forEach(function (t) {
+      var n = 0;
+      cands.forEach(function (p) { if (n < t.n && !used[p.ev.id] && tierOf(p) === t) { used[p.ev.id] = 1; p.tier = t; out.push(p); n++; } });
+    });
+    /* Top up towards ten, but never let one risk level dominate: at most 5 safer, 5 middle, 3 longer. */
+    var cap = { safer: 5, mid: 5, long: 3 }, cnt = { safer: 0, mid: 0, long: 0 };
+    out.forEach(function (p) { cnt[p.tier.key]++; });
+    cands.forEach(function (p) {
+      var t = tierOf(p);
+      if (out.length < 10 && !used[p.ev.id] && cnt[t.key] < cap[t.key]) { used[p.ev.id] = 1; p.tier = t; cnt[t.key]++; out.push(p); }
+    });
+    out.sort(function (a, b) { return TIERS.indexOf(a.tier) - TIERS.indexOf(b.tier); });
+    return out;
+  }
+  function allocateBalanced(picks) {
+    balMap = {};
+    var raw = picks.map(function (p) { return baseStake(p.pick).amount; }), tot = raw.reduce(function (a, b) { return a + b; }, 0), left = weeklyLeft();
+    var k = (S.weekly > 0 && tot > left) ? left / tot : 1;
+    picks.forEach(function (p, i) {
+      var q = Math.floor(raw[i] * k * 2) / 2;
+      balMap[p.id] = q >= 0.5 ? { amount: q, kind: k < 1 ? "Scaled to fit your weekly budget" : "Sized to the edge and your budget" } : { amount: 0, kind: "Too small to bet" };
+    });
+  }
+  function renderBalanced(list) {
+    var picks = buildBalanced();
+    $("picksHead").hidden = false; $("picksHead").textContent = "Your balanced " + (picks.length === 10 ? "10" : picks.length);
+    if (!picks.length) {
+      var li = el("li", "empty"); li.appendChild(el("b", null, "No balanced set right now"));
+      li.appendChild(document.createTextNode("Not enough prices beat the market average to build a spread. I would rather show nothing than pad it with bad prices. Try a longer kick-off window or more leagues."));
+      list.appendChild(li); return;
+    }
+    allocateBalanced(picks);
+    var legs = picks.map(function (p) { return { p: p.pick.fair, o: p.pick.best, s: balMap[p.id].amount }; }).filter(function (l) { return l.s > 0; });
+    var sim = simulate(legs), sum = el("li", "balsum");
+    var g = el("div", "stats");
+    g.appendChild(statBox("Total stake", gbp(sim.total), picks.length + " bets"));
+    g.appendChild(statBox("Chance of profit", pct(sim.chance), "across the whole set"));
+    g.appendChild(statBox("Average result", sgbp(sim.exp), "if repeated many times", sim.exp > 0 ? "pos" : "neg"));
+    g.appendChild(statBox("Best case", sgbp(sim.best), "every bet wins", "pos"));
+    g.appendChild(statBox("Worst case", sgbp(sim.worst), "every bet loses", "neg"));
+    sum.appendChild(g);
+    var msg = "Spreading across risk levels smooths the ups and downs. It does not raise the average result, which still depends on each price being above the market." +
+      (picks.length < 10 ? " Only " + picks.length + " bets have a good enough price and keep the mix balanced right now, so that is all I am showing." : "");
+    if (S.weekly > 0 && weeklyLeft() < legs.reduce(function (t, l) { return t + l.s; }, 0) + 0.01 && weeklyLeft() !== Infinity) msg += " Stakes are scaled to fit your weekly budget.";
+    sum.appendChild(el("p", "subnote", msg));
+    list.appendChild(sum);
+    var idx = 0;
+    TIERS.forEach(function (t) {
+      var items = picks.filter(function (p) { return p.tier === t; }); if (!items.length) return;
+      var sec = el("li", "lgsec"), h = el("div", "lghead");
+      h.appendChild(el("b", null, t.name)); h.appendChild(el("span", null, items.length + (items.length === 1 ? " bet" : " bets"))); sec.appendChild(h);
+      sec.appendChild(el("p", "subnote", t.note));
+      var inner = el("div", "board"); items.forEach(function (p) { idx++; inner.appendChild(boardRow(p, idx, 0, false)); });
+      sec.appendChild(inner); list.appendChild(sec);
+    });
+  }
+
   function renderList() {
     var list = $("list"); list.textContent = "";
+    if (S.mode === "balanced") { renderBalanced(list); return; }
     var picks = buildPicks(S.mode).slice(0, 60);
     $("picksHead").hidden = !picks.length;
     $("picksHead").textContent = S.mode === "value" ? "All bets, best first" : "All bets, most likely first";
@@ -1676,12 +1751,15 @@ details.acc .pcheck { margin-bottom: 12px; }
     if (!S.key) return;
     $("modeLikely").setAttribute("aria-pressed", String(S.mode === "likely"));
     $("modeValue").setAttribute("aria-pressed", String(S.mode === "value"));
+    $("modeBal").setAttribute("aria-pressed", String(S.mode === "balanced"));
     $("minOdds").value = String(S.minOdds);
     $("windowH").value = String(S.windowH);
     $("bankroll").value = String(S.bankroll);
     $("weeklyIn").value = S.weekly ? String(S.weekly) : "";
     $("practiceOn").checked = !!S.practice; $("pracPill").hidden = !S.practice;
-    $("modeHint").textContent = S.mode === "value"
+    $("modeHint").textContent = S.mode === "balanced"
+      ? "Ten bets picked to balance risk: some safer, some middling, a couple of longer shots, one per match, so one bad result does not sink the lot."
+      : S.mode === "value"
       ? "Best bet first, ranked by profit for each £1 staked. Any outcome counts, not just the winner." + (S.totals ? "" : " Turn on goals prices in Settings to include over/under bets.")
       : "Sorted by chance of winning. Favourites win often but pay little.";
     var wl = { 12: "12 hours", 24: "24 hours", 48: "2 days", 72: "3 days", 168: "7 days" }[S.windowH] || (S.windowH + " hours");
@@ -1720,6 +1798,7 @@ details.acc .pcheck { margin-bottom: 12px; }
   });
   $("keyInput").addEventListener("keydown", function (e) { if (e.key === "Enter") $("keySave").click(); });
   $("modeLikely").addEventListener("click", function () { S.mode = "likely"; save(); renderAll(); });
+  $("modeBal").addEventListener("click", function () { S.mode = "balanced"; save(); renderAll(); });
   $("modeValue").addEventListener("click", function () { S.mode = "value"; save(); renderAll(); });
   $("minOdds").addEventListener("change", function (e) { S.minOdds = +e.target.value; save(); renderView(); });
   $("windowH").addEventListener("change", function (e) { S.windowH = +e.target.value; save(); renderView(); });
