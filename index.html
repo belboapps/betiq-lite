@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0f7a4f">
+<meta name="color-scheme" content="light">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="BetIQ Lite">
@@ -13,11 +14,11 @@
 <title>BetIQ Lite</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&display=swap">
 <style>
 /* Layout: one narrow column, a betting-slip stack. Today's plan first, then every pick, then your bet log. */
 :root {
-  --bg: #f1f4f0;
+  --bg: #f5f6f4;
   --surface: #ffffff;
   --ink: #101713;
   --muted: #5a665e;
@@ -29,23 +30,10 @@
   --value-bg: #fdecc8;
   --warn: #a4261b;
   --warn-bg: #fde4e0;
-  --display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --display: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --shadow: 0 1px 2px rgba(16,23,19,.06), 0 6px 18px rgba(16,23,19,.07);
   --body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
   color-scheme: light;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0c110e; --surface: #141b17; --ink: #e8efe9; --muted: #99a59d; --line: #25312a;
-    --accent: #3ddc97; --accent-ink: #06140d; --accent-soft: #14301f;
-    --value: #f5c15a; --value-bg: #2c2310; --warn: #ff9a8b; --warn-bg: #351a16;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #0c110e; --surface: #141b17; --ink: #e8efe9; --muted: #99a59d; --line: #25312a;
-  --accent: #3ddc97; --accent-ink: #06140d; --accent-soft: #14301f;
-  --value: #f5c15a; --value-bg: #2c2310; --warn: #ff9a8b; --warn-bg: #351a16;
-  color-scheme: dark;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
@@ -310,6 +298,63 @@ body.lock { overflow: hidden; }
 .chart text { fill: var(--muted); font: 600 11px var(--body); }
 textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); font-size: 13px; }
 .typerow { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; border-top: 1px solid var(--line); padding-top: 6px; }
+
+/* ===== Calmer light design ===== */
+.sel, .dname, .hname, .ptile .pn, .mkname, .bet .nm, .planrow .nm, .scen h3, .panel h2, h2.section, .reco b, .empty b,
+details.learn > summary, .seg button, h1, .slip b, .timing b, .pcheck > b, .plain b, .tabbar, .tile b, .stat b, .badge, .kick, .pill, .mk > b, .hbox b {
+  text-transform: none; letter-spacing: 0; }
+h1 { font: 700 30px/1 var(--display); }
+.panel h2, h2.section { font: 700 22px/1.15 var(--display); }
+.panel h3, .stat span, .tile span, .hbox span, .meta { text-transform: none; letter-spacing: 0; font-size: 13px; }
+.ring b, .tile b, .stat b, .mkr b, .chance b { font-family: var(--display); }
+.panel, .tile, .ptile, .pcard, .hero2, details.learn { box-shadow: var(--shadow); border-color: transparent; }
+.sel { font: 700 22px/1.15 var(--display); }
+.dname { font: 700 26px/1.1 var(--display); }
+.seg button { font: 700 17px/1 var(--display); }
+details.learn > summary { font: 700 17px/1.2 var(--display); }
+.seg { box-shadow: var(--shadow); border-color: transparent; }
+.btn { font-weight: 600; }
+.badge { font: 700 11px/1.5 var(--display); letter-spacing: .04em; }
+.hero2 { background: var(--surface); border: 2px solid var(--accent); border-radius: 22px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.hero2 .htop { display: flex; align-items: center; gap: 8px; }
+.hero2 .kick { font: 700 13px/1 var(--display); text-transform: uppercase; letter-spacing: .1em; color: var(--accent); }
+.hero2 .hname { font: 700 32px/1.05 var(--display); overflow-wrap: anywhere; }
+.hero2 .hmatch { font-size: 14px; color: var(--muted); margin-top: -6px; }
+.hfacts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.hf { background: var(--bg); border-radius: 14px; padding: 10px 8px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
+.hf span { font-size: 13px; color: var(--muted); }
+.hf b { font: 700 26px/1.1 var(--display); font-variant-numeric: tabular-nums; }
+.hf b.pos { color: var(--accent); }
+.hf small { font-size: 12px; color: var(--muted); line-height: 1.2; }
+.hf .ring b { font: 700 17px/1 var(--display); }
+.hf b { white-space: nowrap; font-size: 23px; }
+.hf .ring { --s: 60px; }
+.havg { font-size: 14px; color: var(--muted); }
+.hero2 .actions .go { flex: 1 1 100%; min-height: 52px; font-size: 17px; }
+details.acc { border-top: 1px solid var(--line); }
+details.acc > summary { list-style: none; cursor: pointer; padding: 12px 2px; min-height: 48px; display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
+details.acc > summary::-webkit-details-marker { display: none; }
+details.acc > summary::after { content: "+"; font: 700 22px/1 var(--display); color: var(--accent); }
+details.acc[open] > summary::after { content: "\2212"; }
+.accbody { padding: 0 2px 12px; font-size: 14px; line-height: 1.45; color: var(--ink); }
+details.acc .pcheck { margin-bottom: 12px; }
+.accbtn { border: 0; border-top: 1px solid var(--line); background: transparent; text-align: left; padding: 12px 2px; min-height: 48px; font-weight: 600; color: var(--accent); }
+.pgrid { grid-template-columns: 1fr; gap: 8px; }
+.ptile { display: grid; grid-template-columns: auto 1fr auto; column-gap: 12px; row-gap: 2px; align-items: center; padding: 12px; }
+.ptile .ring { grid-row: 1 / span 2; }
+.ptile .pn { font: 700 18px/1.15 var(--display); grid-column: 2; }
+.ptile .pm { grid-column: 2; }
+.ptile .ps { grid-column: 3; grid-row: 1 / span 2; margin: 0; text-align: right; background: transparent; padding: 0; font-size: 12px; color: var(--muted); }
+.ptile .ps b { font: 700 17px/1.2 var(--display); text-transform: none; color: var(--ink); }
+.mkrow { cursor: pointer; background: var(--bg); border: 1px solid var(--line); }
+.mkrow:active { background: var(--accent-soft); }
+.mkrow::after { content: "\203A"; font: 700 24px/1 var(--display); color: var(--accent); margin-left: 6px; flex: none; }
+.mkname { font: 700 17px/1.2 var(--display); }
+.subnote { font-size: 13px; color: var(--muted); }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.field input, .field select { flex: none; width: 100%; min-height: 46px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: 17px; }
+.backbtn { align-self: flex-start; }
+.stats .stat { background: var(--bg); }
 @media (prefers-reduced-motion: no-preference) { details.pick { transition: border-color .15s; } }
 </style>
 </head>
@@ -705,14 +750,14 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
     a.sels.forEach(function (s) { if (s.name === ev.h) h = s.fair; else if (s.name === ev.a) w = s.fair; else if (s.name === "Draw") d = s.fair; });
     if (!(h > 0 && d > 0 && w > 0)) return [];
     var t = h + d + w; h /= t; d /= t; w /= t;
-    function row(label, p, sub, text, desc) { return { label: label, fair: p, fairOdds: 1 / p, need: 1.03 / p, sub: sub, chanceText: text, desc: desc }; }
+    function row(label, p, sub, text, desc, rule) { return { label: label, fair: p, fairOdds: 1 / p, need: 1.03 / p, sub: sub, chanceText: text, desc: desc, rule: rule }; }
     var dnb = "Stake back if it is a draw";
     return [
-      row(ev.h + " or draw", h + d, "Double chance", null, "Wins if " + ev.h + " win or the match is a draw."),
-      row("Draw or " + ev.a, d + w, "Double chance", null, "Wins if " + ev.a + " win or the match is a draw."),
-      row(ev.h + " or " + ev.a, h + w, "Double chance, no draw", null, "Wins if either team wins. Loses on a draw."),
-      row(ev.h + " draw no bet", h / (h + w), dnb, pct(h / (h + w)), "Wins if " + ev.h + " win. Your stake comes back if it is a draw."),
-      row(ev.a + " draw no bet", w / (h + w), dnb, pct(w / (h + w)), "Wins if " + ev.a + " win. Your stake comes back if it is a draw.")
+      row(ev.h + " or draw", h + d, "Double chance", null, "Wins if " + ev.h + " win or the match is a draw.", { t: "dc", set: [ev.h, "Draw"] }),
+      row("Draw or " + ev.a, d + w, "Double chance", null, "Wins if " + ev.a + " win or the match is a draw.", { t: "dc", set: ["Draw", ev.a] }),
+      row(ev.h + " or " + ev.a, h + w, "Double chance, no draw", null, "Wins if either team wins. Loses on a draw.", { t: "dc", set: [ev.h, ev.a] }),
+      row(ev.h + " draw no bet", h / (h + w), dnb, pct(h / (h + w)), "Wins if " + ev.h + " win. Your stake comes back if it is a draw.", { t: "dnb", team: ev.h }),
+      row(ev.a + " draw no bet", w / (h + w), dnb, pct(w / (h + w)), "Wins if " + ev.a + " win. Your stake comes back if it is a draw.", { t: "dnb", team: ev.a })
     ];
   }
 
@@ -889,6 +934,8 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
             if (bt.mkt === "totals") {
               var tot = a + b;
               settle(bt, tot === bt.point ? "void" : ((tot > bt.point) === (bt.side === "Over")) ? "won" : "lost");
+            } else if (bt.mkt === "derived" && bt.rule) {
+              settle(bt, bt.rule.t === "dc" ? (bt.rule.set.indexOf(winner) > -1 ? "won" : "lost") : (winner === "Draw" ? "void" : winner === bt.rule.team ? "won" : "lost"));
             } else settle(bt, bt.sel === winner ? "won" : "lost");
             settled++;
           });
@@ -1035,6 +1082,13 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
   }
   /* Lowest odds at which the bet is still worth it, plus a box to type the odds you actually see. */
   function minRaw(s) { var need = (1 + VALUE_MIN) / s.fair, c = s.bestComm || 0; return c ? 1 + (need - 1) / (1 - c) : need; }
+  function verdictFor(e) {
+    if (e > VALUE_MAX) return { k: "warn", t: "That is unusually high. Double-check it is the right match and the right result before betting." };
+    if (e >= VALUE_MIN) return { k: "good", t: "Still good value. Go ahead if you want the bet." };
+    if (e >= 0.005) return { k: "ok", t: "A small edge only. Fine if you still fancy it, but it is thinner than before." };
+    if (e >= -0.01) return { k: "warn", t: "About a fair price, so no edge. Skipping is better." };
+    return { k: "bad", t: "Too low. Skip this bet or wait for a better price." };
+  }
   function priceCheck(p) {
     var s = p.pick, box = el("div", "pcheck"), c = s.bestComm || 0;
     box.appendChild(el("b", null, "Check the price before you bet"));
@@ -1046,13 +1100,8 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
     inp.addEventListener("input", function () {
       var v = parseFloat(inp.value); res.textContent = ""; res.className = "pcres";
       if (!(v > 1)) return;
-      var e = s.fair * (c ? 1 + (v - 1) * (1 - c) : v) - 1, t, k;
-      if (e > VALUE_MAX) { t = "That is unusually high. Double-check it is the right match and the right result before betting."; k = "warn"; }
-      else if (e >= VALUE_MIN) { t = "Still good value. Go ahead if you want the bet."; k = "good"; }
-      else if (e >= 0.005) { t = "A small edge only. Fine if you still fancy it, but it is thinner than before."; k = "ok"; }
-      else if (e >= -0.01) { t = "About a fair price, so no edge. Skipping is better."; k = "warn"; }
-      else { t = "Too low. Skip this bet or wait for a better price."; k = "bad"; }
-      res.className = "pcres " + k; res.textContent = t;
+      var vd = verdictFor(s.fair * (c ? 1 + (v - 1) * (1 - c) : v) - 1);
+      res.className = "pcres " + vd.k; res.textContent = vd.t;
     });
     return box;
   }
@@ -1094,23 +1143,21 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
     }
     if (d.value.length) {
       var p0 = d.value[0], s0 = p0.pick, st0 = stakeFor(s0);
-      var hero = el("div", "hero");
-      hero.appendChild(el("div", "kick", "Best bet right now"));
+      var hero = el("div", "hero2");
+      var ht0 = el("div", "htop"); ht0.appendChild(el("span", "kick", "Best bet right now")); badgesFor(p0, ht0); hero.appendChild(ht0);
       hero.appendChild(el("div", "hname", s0.name));
       hero.appendChild(el("div", "hmatch", p0.ev.h + " v " + p0.ev.a + " · " + p0.league + " · " + TF.format(new Date(p0.time))));
-      var hg = el("div", "hgrid");
-      var c1 = el("div", "hbox"); c1.appendChild(el("span", null, "Chance of winning")); c1.appendChild(el("b", null, pct(s0.fair))); c1.appendChild(el("small", null, inN(s0.fair) + " · " + likeWord(s0.fair)));
-      var c2 = el("div", "hbox"); c2.appendChild(el("span", null, "Your bet")); c2.appendChild(el("b", null, st0.amount >= 0.5 ? gbp(st0.amount) : "–"));
-      c2.appendChild(el("small", null, st0.amount >= 0.5 ? "at odds of " + s0.best.toFixed(2) + " with " + s0.bestBook : st0.kind));
-      var c3 = el("div", "hbox"); c3.appendChild(el("span", null, "If it wins")); c3.appendChild(el("b", "pos", st0.amount >= 0.5 ? sgbp(st0.amount * (s0.best - 1)) : "–")); c3.appendChild(el("small", null, "profit · lose it and you lose the stake"));
-      var c4 = el("div", "hbox"); c4.appendChild(el("span", null, "Average result")); c4.appendChild(el("b", st0.amount * s0.ev > 0 ? "pos" : "neg", sgbp(st0.amount * s0.ev))); c4.appendChild(el("small", null, signed(s0.ev) + " better than the market"));
-      [c1, c2, c3, c4].forEach(function (x) { hg.appendChild(x); });
-      hero.appendChild(hg);
-      hero.appendChild(priceCheck(p0));
+      var hf = el("div", "hfacts");
+      var f1 = el("div", "hf"); f1.appendChild(el("span", null, "Chance")); f1.appendChild(ring(s0.fair)); f1.appendChild(el("small", null, inN(s0.fair)));
+      var f2 = el("div", "hf"); f2.appendChild(el("span", null, "Your bet")); f2.appendChild(el("b", null, st0.amount >= 0.5 ? gbp(st0.amount) : "–")); f2.appendChild(el("small", null, st0.amount >= 0.5 ? "at odds " + s0.best.toFixed(2) : st0.kind));
+      var f3 = el("div", "hf"); f3.appendChild(el("span", null, "If it wins")); f3.appendChild(el("b", "pos", st0.amount >= 0.5 ? "+" + gbp(st0.amount * (s0.best - 1)) : "–")); f3.appendChild(el("small", null, "profit"));
+      [f1, f2, f3].forEach(function (x) { hf.appendChild(x); }); hero.appendChild(hf);
+      hero.appendChild(el("div", "havg", "Bet with " + s0.bestBook + ". Over many bets like this, the average result is " + sgbp(st0.amount * s0.ev) + "."));
       hero.appendChild(actionsFor(p0, st0));
+      var pcw = el("details", "acc"); pcw.appendChild(el("summary", null, "Check the price first")); pcw.appendChild(priceCheck(p0)); hero.appendChild(pcw);
       var pt = plainText(p0, st0);
-      if (pt) { var wm = el("details", "hplain"); wm.appendChild(el("summary", null, "What does this mean?")); wm.appendChild(el("div", null, pt)); hero.appendChild(wm); }
-      var dt = el("button", "btn linkbtn", "Full details"); dt.type = "button"; dt.addEventListener("click", function () { openSheet(p0, dt); }); hero.appendChild(dt);
+      if (pt) { var wm = el("details", "acc"); wm.appendChild(el("summary", null, "What does this mean?")); wm.appendChild(el("div", "accbody", pt)); hero.appendChild(wm); }
+      var dt = el("button", "accbtn", "Full details and other ways to bet this match"); dt.type = "button"; dt.addEventListener("click", function () { openSheet(p0, dt); }); hero.appendChild(dt);
       box.appendChild(hero);
       if (wk) box.appendChild(wk);
       var rest = d.ranked.filter(function (p) { return p !== p0 && p.id !== p0.id; }).slice(0, 8);
@@ -1168,13 +1215,71 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
     body.appendChild(el("p", null, "Chances use the market's own estimate, so treat them as rough."));
   }
 
-  function marketsBox(p) {
+  function otherRows(p) {
     var foot = p.a.sels.some(function (x) { return x.name === "Draw"; });
-    var rows = analyseTotals(p.ev, foot ? " goals" : "").concat(foot ? derivedMarkets(p.a, p.ev) : []);
+    return analyseTotals(p.ev, foot ? " goals" : "").concat(foot ? derivedMarkets(p.a, p.ev) : []);
+  }
+  function subPick(p, r) {
+    var pk = { name: r.label, fair: r.fair, fairOdds: r.fairOdds, best: r.best, bestBook: r.book, bestEx: r.ex, bestComm: r.comm, bestLink: "",
+               prices: r.prices, ev: r.ev, market: "totals", point: r.point, side: r.side, pid: p.ev.id + "|" + r.label };
+    var sp = { ev: p.ev, key: p.key, league: p.league, group: p.group, time: p.time, pick: pk, nBooks: r.n, a: p.a, id: pk.pid, sub: true };
+    sp.isValue = pk.ev >= VALUE_MIN && pk.ev <= VALUE_MAX && r.n >= 4 && pk.best <= LONGSHOT; sp.suspect = pk.ev > VALUE_MAX;
+    return sp;
+  }
+  /* A bet with no live price: you type in the odds your bookmaker shows and it works out the rest. */
+  function buildDerived(p, r) {
+    var root = el("div", "detail"), pid = p.ev.id + "|" + r.label;
+    var head = el("div", "dhead"); head.appendChild(ring(r.fair));
+    var ht = el("div"); ht.appendChild(el("div", "dname", r.label)); ht.appendChild(el("div", "dsub", p.ev.h + " v " + p.ev.a + " · " + p.league + " · " + TF.format(new Date(p.time))));
+    ht.appendChild(el("div", "dsub", likeWord(r.fair) + " · " + inN(r.fair))); head.appendChild(ht); root.appendChild(head);
+    var pe = el("div", "plain"); pe.appendChild(el("b", null, "In plain English"));
+    pe.appendChild(document.createTextNode(r.desc + " We have no live price for this one. Open your bookmaker, find this bet, and type the odds it shows below. It then tells you if it is worth it and how much to bet. Anything at " + r.need.toFixed(2) + " or higher is good value."));
+    root.appendChild(pe);
+    var names = seenBooks().filter(allowed), logged = findBet(pid);
+    var f1 = el("label", "field", "Odds your bookmaker shows"), inp = document.createElement("input");
+    inp.type = "number"; inp.step = "0.01"; inp.min = "1.01"; inp.setAttribute("inputmode", "decimal"); inp.placeholder = r.need.toFixed(2); f1.appendChild(inp); root.appendChild(f1);
+    var f2 = el("label", "field", "Which bookmaker"), sel = document.createElement("select");
+    (names.length ? names : ["My bookmaker"]).forEach(function (n) { var o = el("option", null, n); o.value = n; sel.appendChild(o); }); f2.appendChild(sel); root.appendChild(f2);
+    var out = el("div", "detail"); out.setAttribute("aria-live", "polite"); root.appendChild(out);
+    function cur() { var v = parseFloat(inp.value); if (!(v > 1)) return null; var pk = { name: r.label, fair: r.fair, best: v, ev: r.fair * v - 1, bestBook: sel.value, market: "derived", pid: pid }; return { v: v, pk: pk, st: stakeFor(pk) }; }
+    function draw() {
+      out.textContent = ""; var c = cur(); if (!c) return;
+      var vd = verdictFor(c.pk.ev); out.appendChild(el("div", "pcres " + vd.k, vd.t));
+      var g = el("div", "stats"), a = c.st.amount;
+      g.appendChild(statBox("Suggested stake", a >= 0.5 ? gbp(a) : "–", c.st.kind));
+      g.appendChild(statBox("If it wins", sgbp(a * (c.v - 1)), "profit", "pos"));
+      g.appendChild(statBox("If it loses", sgbp(-a), "your stake", "neg"));
+      g.appendChild(statBox("Average result", sgbp(a * c.pk.ev), "if you made this bet many times", a * c.pk.ev > 0.004 ? "pos" : "neg"));
+      g.appendChild(statBox("Price vs market", signed(c.pk.ev), "compared with the market average", c.pk.ev > 0 ? "pos" : "neg"));
+      out.appendChild(g);
+      var acts = el("div", "actions");
+      var cp = el("button", "btn", "Copy bet"); cp.type = "button";
+      cp.addEventListener("click", function () { copyText(r.label + " · " + p.ev.h + " v " + p.ev.a + " · " + gbp(a) + " @ " + c.v.toFixed(2) + " · " + sel.value, cp); });
+      var lb = el("button", "btn" + (logged ? " done" : ""), logged ? (S.practice ? "Logged ✓ Undo" : "Placed ✓ Undo") : (S.practice ? "Log practice bet" : "I placed it")); lb.type = "button";
+      lb.addEventListener("click", function () {
+        if (logged) { setBets(BETS().filter(function (b) { return b.pid !== pid; })); save(); renderAll(); return; }
+        if (a < 0.5) { showAlert("No stake is suggested at these odds or your weekly budget is used up.", false); return; }
+        BETS().push({ pid: pid, evId: p.ev.id, key: p.key, league: p.league, h: p.ev.h, a: p.ev.a, sel: r.label, odds: c.v, book: sel.value, stake: a, fair: r.fair, time: p.time, at: Date.now(),
+          status: "open", profit: 0, mkt: "derived", rule: r.rule });
+        save(); renderAll();
+      });
+      acts.appendChild(cp); acts.appendChild(lb); out.appendChild(acts);
+    }
+    inp.addEventListener("input", draw); sel.addEventListener("change", draw);
+    if (logged) { inp.value = logged.odds.toFixed(2); sel.value = logged.book; inp.disabled = true; sel.disabled = true; draw(); }
+    return root;
+  }
+  function marketsBox(p) {
+    var rows = otherRows(p);
     if (!rows.length) return null;
     var box = el("div", "mk"); box.appendChild(el("b", null, "Other ways to bet this match"));
+    box.appendChild(el("p", "subnote", "Tap any of these for the same details as the main bet: stake, price check and a way to log it."));
     rows.forEach(function (r) {
       var row = el("div", "mkrow"), left = el("div", "mkl");
+      row.setAttribute("role", "button"); row.tabIndex = 0;
+      function go() { sheetSub = r.label; renderSheet(); var ps = document.querySelector(".panelsheet"); if (ps) ps.scrollTop = 0; }
+      row.addEventListener("click", go);
+      row.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
       var nm = el("span", "mkname", r.label);
       if (r.best && r.ev >= VALUE_MIN && r.ev <= VALUE_MAX && r.n >= 4) nm.appendChild(el("span", "badge value", "VALUE"));
       left.appendChild(nm);
@@ -1246,7 +1351,7 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
     tb.appendChild(el("p", null, tm.text));
     if (tm.move) tb.appendChild(el("p", null, tm.move));
     root.appendChild(tb);
-    var mkb = marketsBox(p); if (mkb) root.appendChild(mkb);
+    var mkb = p.sub ? null : marketsBox(p); if (mkb) root.appendChild(mkb);
 
     var bk = el("div", "books"), tbl = el("table");
     s.prices.forEach(function (x) {
@@ -1261,19 +1366,29 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
     root.appendChild(bk);
     return root;
   }
-  var sheetId = null, sheetFrom = null;
+  var sheetId = null, sheetFrom = null, sheetSub = null;
   function findPick(id) { return buildPicks("value").concat(buildPicks("likely")).filter(function (p) { return p.id === id; })[0]; }
   function renderSheet() {
     if (!sheetId) return;
     var p = findPick(sheetId); if (!p) { closeSheet(); return; }
-    var box = $("sheetBody"); box.textContent = ""; box.appendChild(buildDetail(p));
+    var box = $("sheetBody"); box.textContent = "";
+    if (sheetSub) {
+      var row = otherRows(p).filter(function (r) { return r.label === sheetSub; })[0];
+      if (row) {
+        var back = el("button", "btn small backbtn", "‹ Back to this match"); back.type = "button";
+        back.addEventListener("click", function () { sheetSub = null; renderSheet(); var ps = document.querySelector(".panelsheet"); if (ps) ps.scrollTop = 0; });
+        box.appendChild(back); box.appendChild(row.best ? buildDetail(subPick(p, row)) : buildDerived(p, row)); return;
+      }
+      sheetSub = null;
+    }
+    box.appendChild(buildDetail(p));
   }
   function openSheet(p, from) {
-    sheetId = p.id; sheetFrom = from || null; $("sheet").hidden = false; document.body.classList.add("lock");
+    sheetId = p.id; sheetSub = null; sheetFrom = from || null; $("sheet").hidden = false; document.body.classList.add("lock");
     renderSheet(); $("sheetClose").focus();
   }
   function closeSheet() {
-    sheetId = null; $("sheet").hidden = true; document.body.classList.remove("lock");
+    sheetId = null; sheetSub = null; $("sheet").hidden = true; document.body.classList.remove("lock");
     if (sheetFrom && document.body.contains(sheetFrom)) sheetFrom.focus(); sheetFrom = null;
   }
 
