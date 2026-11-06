@@ -139,6 +139,7 @@ details.pick > summary::-webkit-details-marker { display: none; }
 .scen .stats, .panel .stats { padding: 0; }
 .badge { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; font: 700 12px/1.4 var(--display); letter-spacing: .06em; vertical-align: middle; }
 .badge.value { background: var(--value-bg); color: var(--value); }
+.badge.move { background: #e7f0fb; color: #1f5a99; }
 .badge.warn { background: var(--warn-bg); color: var(--warn); }
 .pos { color: var(--accent); }
 .neg { color: var(--warn); }
@@ -944,6 +945,19 @@ details.acc .pcheck { margin-bottom: 12px; }
     }
     return { head: head, text: text, move: movement(p) };
   }
+  /* Has the market moved since the earlier snapshot? Returns null when there is no history or nothing notable. */
+  function moveInfo(p) {
+    var h = S.hist[p.ev.id];
+    if (!h || Date.now() - h.at < 15 * 60000) return null;
+    var o = h.s[p.pick.name]; if (!o) return null;
+    var dp = (p.pick.best - o.b) / o.b, df = p.pick.fair - o.f, when = ago(h.at);
+    var kind = null, text = "";
+    if (dp <= -0.05) { kind = "short"; text = "The best price shortened from " + o.b.toFixed(2) + " to " + p.pick.best.toFixed(2) + " since " + when + ". The good price may be gone, so check it first."; }
+    else if (df <= -0.04) { kind = "worse"; text = "The market now rates this less likely: chance down from " + pct(o.f) + " to " + pct(p.pick.fair) + " since " + when + ". That is often team news, so check before betting."; }
+    else if (df >= 0.04) { kind = "better"; text = "The market now rates this more likely: chance up from " + pct(o.f) + " to " + pct(p.pick.fair) + " since " + when + ". Check the price is still there."; }
+    else if (dp >= 0.05) { kind = "longer"; text = "The best price lengthened from " + o.b.toFixed(2) + " to " + p.pick.best.toFixed(2) + " since " + when + ". A big move like this can mean bad news, so check before betting."; }
+    return kind ? { kind: kind, text: text } : null;
+  }
   function movement(p) {
     var h = S.hist[p.ev.id];
     if (!h || Date.now() - h.at < 15 * 60000) return "";
@@ -1380,6 +1394,7 @@ details.acc .pcheck { margin-bottom: 12px; }
   function badgesFor(p, host) {
     if (p.isValue) host.appendChild(el("span", "badge value", "VALUE"));
     if (p.suspect) host.appendChild(el("span", "badge warn", "CHECK PRICE"));
+    if (moveInfo(p)) host.appendChild(el("span", "badge move", "PRICE MOVED"));
   }
   function slipFor(p, st) {
     var s = p.pick, slip = el("span", "slip");
@@ -1410,6 +1425,7 @@ details.acc .pcheck { margin-bottom: 12px; }
     ht.appendChild(el("div", "dsub", p.ev.h + " v " + p.ev.a + " · " + p.league + " · " + TF.format(new Date(p.time))));
     ht.appendChild(el("div", "dsub", likeWord(s.fair) + " · " + inN(s.fair)));
     head.appendChild(ht); root.appendChild(head);
+    var mv = moveInfo(p); if (mv) root.appendChild(el("div", "msg", "Price moved. " + mv.text));
     root.appendChild(trio(p)); root.appendChild(legend());
 
     var pt = plainText(p, st); if (pt) { var pe = el("div", "plain"); pe.appendChild(el("b", null, "In plain English")); pe.appendChild(document.createTextNode(pt)); root.appendChild(pe); }
