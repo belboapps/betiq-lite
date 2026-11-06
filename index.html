@@ -251,10 +251,25 @@ body { padding-bottom: 0; }
 .tile .bar { margin-top: auto; }
 .pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .ptile { text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pill { font: 700 12px/1 var(--display); font-style: normal; letter-spacing: .08em; text-transform: uppercase; background: var(--value-bg); color: var(--value); padding: 4px 8px; border-radius: 999px; vertical-align: middle; }
+.pracbar { background: var(--value-bg); color: var(--value); border-radius: 12px; padding: 10px 12px; font-size: 14px; display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
+.tile.wide { grid-column: 1 / -1; }
+.pcheck { background: var(--bg); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.pcheck > b { font: 700 15px/1.2 var(--display); text-transform: uppercase; letter-spacing: .06em; }
+.pcrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 14px; }
+.pcrow input { flex: 0 0 96px; min-height: 40px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-variant-numeric: tabular-nums; }
+.pcres { font-weight: 600; }
+.pcres.good { color: var(--accent); }
+.pcres.ok { color: var(--ink); }
+.pcres.warn, .pcres.bad { color: var(--warn); }
+.hero .pcheck { background: rgba(255,255,255,.16); color: inherit; }
+.hero .pcres { color: inherit; }
 .nudge { min-height: 0; border-color: var(--accent); background: var(--accent-soft); }
 .nudge b { font-size: 22px; }
 .nudge small { color: var(--ink); }
 .hplain { font-size: 14px; line-height: 1.4; background: rgba(255,255,255,.16); border-radius: 8px; padding: 9px 10px; }
+.hplain summary { cursor: pointer; font-weight: 600; min-height: 24px; }
+.hplain div { margin-top: 6px; }
 .plain { background: var(--accent-soft); border-radius: 10px; padding: 10px 12px; font-size: 15px; line-height: 1.45; }
 .plain b { display: block; font: 700 15px/1.2 var(--display); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 2px; }
 .mk .mkl small + small { margin-top: 2px; }
@@ -301,7 +316,7 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
 <body>
 <div class="wrap">
   <header>
-    <div class="brand"><h1>BetIQ <span>Lite</span></h1><p class="tag">Compare prices. Find the best deal.</p></div>
+    <div class="brand"><h1>BetIQ <span>Lite</span> <em class="pill" id="pracPill" hidden>Practice</em></h1><p class="tag">Compare prices. Find the best deal.</p></div>
     <div class="credits" id="credits" aria-live="polite"></div>
   </header>
 
@@ -392,6 +407,9 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
       <h2>My bookmakers</h2>
       <p>Tick the ones you have accounts with. Suggested bets only use these. Load odds once to see the list.</p>
       <div class="chips" id="bookChips"></div>
+      <h2>Practice mode</h2>
+      <p>Logs pretend bets instead of real ones, kept completely separate from your real record. Good for learning how this works before spending anything.</p>
+      <label class="check"><input type="checkbox" id="practiceOn"> Practice mode (no real money)</label>
       <h2>Weekly budget</h2>
       <p>The most you want to spend in a week (Monday to Sunday). Stakes are shared across the best bets and never go over it. Leave empty for no limit. You do not have to spend it all: if few bets have an edge, the rest stays in your pocket.</p>
       <label class="check" for="weeklyIn">Weekly budget £ <input id="weeklyIn" type="number" inputmode="decimal" min="0" step="1" placeholder="no limit"></label>
@@ -471,7 +489,7 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
   var API = "https://api.the-odds-api.com/v4";
   var DEFAULTS = { key: "", selected: [], mode: "value", minOdds: 1.3, windowH: 72, group: "all",
                    sports: [], sportsAt: 0, cache: {}, remaining: null, used: null, picked: false,
-                   bankroll: 100, weekly: 0, tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], auto: true, autoHours: 4, noLinks: false, totals: false };
+                   bankroll: 100, weekly: 0, tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
   var GROUPS = { "Soccer": "Football", "American Football": "US football", "Ice Hockey": "Ice hockey",
                  "Mixed Martial Arts": "MMA", "Rugby League": "Rugby", "Rugby Union": "Rugby", "Aussie Rules": "Aussie rules" };
   var DEFAULT_FOOTBALL = ["soccer_epl", "soccer_efl_champ", "soccer_uefa_champs_league", "soccer_uefa_europa_league"];
@@ -497,6 +515,7 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
       var o = raw ? JSON.parse(raw) : {};
       var s = {}; for (var k in DEFAULTS) s[k] = (o && o[k] !== undefined) ? o[k] : DEFAULTS[k];
       if (!Array.isArray(s.bets)) s.bets = [];
+      if (!Array.isArray(s.pbets)) s.pbets = [];
       if (!o || !o.ver || o.ver < 2) s.mode = "value";   /* v2: Best bets is the default view */
       s.ver = 2;
       return s;
@@ -631,7 +650,7 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
         var n = x[0];
         if (!map[n]) { map[n] = { name: n, fair: [], prices: [] }; order.push(n); }
         map[n].fair.push(inv[i] / sum);
-        map[n].prices.push({ book: b.t, raw: x[1], price: eff(x[1], b.k), ex: !!EXCH[b.k], ok: allowed(b.t), link: x[2] || "" });
+        map[n].prices.push({ book: b.t, raw: x[1], price: eff(x[1], b.k), ex: !!EXCH[b.k], comm: EXCH[b.k] || 0, ok: allowed(b.t), link: x[2] || "" });
       });
     });
     if (nBooks < 2) return null;
@@ -645,7 +664,7 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
       var best = null;
       for (var i = 0; i < s.prices.length; i++) { if (s.prices[i].ok) { best = s.prices[i]; break; } }
       if (!best) return;
-      sels.push({ name: s.name, fair: fair, fairOdds: 1 / fair, best: best.price, bestBook: best.book, bestEx: best.ex, bestLink: best.link,
+      sels.push({ name: s.name, fair: fair, fairOdds: 1 / fair, best: best.price, bestBook: best.book, bestEx: best.ex, bestComm: best.comm, bestLink: best.link,
                   prices: s.prices, ev: fair * best.price - 1 });
     });
     return sels.length >= 2 ? { sels: sels, nBooks: nBooks } : null;
@@ -659,8 +678,8 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
         var o = b.p[k][0], u = b.p[k][1], io = 1 / o, iu = 1 / u, t = io + iu;
         var L = lines[k] || (lines[k] = { point: +k, fo: [], ov: [], un: [] });
         L.fo.push(io / t);
-        L.ov.push({ book: b.t, price: eff(o, b.k), ex: !!EXCH[b.k], ok: allowed(b.t) });
-        L.un.push({ book: b.t, price: eff(u, b.k), ex: !!EXCH[b.k], ok: allowed(b.t) });
+        L.ov.push({ book: b.t, price: eff(o, b.k), ex: !!EXCH[b.k], comm: EXCH[b.k] || 0, ok: allowed(b.t) });
+        L.un.push({ book: b.t, price: eff(u, b.k), ex: !!EXCH[b.k], comm: EXCH[b.k] || 0, ok: allowed(b.t) });
       });
     });
     var arr = Object.keys(lines).map(function (k) { return lines[k]; }).filter(function (L) { return L.fo.length >= 3; });
@@ -674,7 +693,7 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
         x[2].forEach(function (q) { if (q.ok && (!best || q.price > best.price)) best = q; });
         if (!best) return;
         rows.push({ label: x[0] + " " + L.point + (unit || ""), fair: x[1], fairOdds: 1 / x[1], best: best.price, book: best.book,
-                    ex: best.ex, ev: x[1] * best.price - 1, n: L.fo.length, prices: x[2].slice().sort(function (a, b) { return b.price - a.price; }),
+                    ex: best.ex, comm: best.comm, ev: x[1] * best.price - 1, n: L.fo.length, prices: x[2].slice().sort(function (a, b) { return b.price - a.price; }),
                     point: L.point, side: x[0] });
       });
     });
@@ -728,7 +747,7 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
         if (mode === "value" && S.totals && a.sels.some(function (x) { return x.name === "Draw"; })) {
           analyseTotals(ev, " goals").forEach(function (r) {
             if (r.best > LONGSHOT) return;
-            add({ name: r.label, fair: r.fair, fairOdds: r.fairOdds, best: r.best, bestBook: r.book, bestEx: r.ex, bestLink: "",
+            add({ name: r.label, fair: r.fair, fairOdds: r.fairOdds, best: r.best, bestBook: r.book, bestEx: r.ex, bestComm: r.comm, bestLink: "",
                   prices: r.prices, ev: r.ev, market: "totals", point: r.point, side: r.side }, r.n);
           });
         }
@@ -744,9 +763,11 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
   }
 
   /* Budget = starting budget plus settled profit or loss. */
+  function BETS() { return S.practice ? S.pbets : S.bets; }
+  function setBets(a) { if (S.practice) S.pbets = a; else S.bets = a; }
   function budget() {
     var p = 0;
-    S.bets.forEach(function (b) { if (b.status !== "open") p += b.profit || 0; });
+    BETS().forEach(function (b) { if (b.status !== "open") p += b.profit || 0; });
     return Math.max(1, (S.bankroll || 100) + p);
   }
   function round50(x) { return Math.max(0.5, Math.round(x * 2) / 2); }
@@ -757,7 +778,7 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
     var dow = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(parts.weekday);
     return Date.now() - (((dow * 24 + (+parts.hour)) * 60 + (+parts.minute)) * 60 + (+parts.second)) * 1000;
   }
-  function spentWeek() { var w = weekStart(), t = 0; S.bets.forEach(function (b) { if (b.at >= w) t += b.stake; }); return t; }
+  function spentWeek() { var w = weekStart(), t = 0; BETS().forEach(function (b) { if (b.at >= w) t += b.stake; }); return t; }
   function weeklyLeft() { return S.weekly > 0 ? Math.max(0, S.weekly - spentWeek()) : Infinity; }
   var planMap = {};
   /* Shares what is left of the week across the best bets, in proportion to their Kelly size, no single bet above 25% of the week. */
@@ -833,12 +854,12 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
   }
 
   /* ---------- Bets ---------- */
-  function findBet(id) { return S.bets.filter(function (b) { return b.pid === id; })[0]; }
+  function findBet(id) { return BETS().filter(function (b) { return b.pid === id; })[0]; }
   function logBet(p) {
     if (findBet(p.id)) return;
     var st = stakeFor(p.pick);
     if (st.amount < 0.5) { showAlert("Your weekly budget is used up, so no stake is suggested. Raise it in Settings if you want to log this bet.", false); return; }
-    S.bets.push({ pid: p.id, evId: p.ev.id, key: p.key, league: p.league, h: p.ev.h, a: p.ev.a, sel: p.pick.name,
+    BETS().push({ pid: p.id, evId: p.ev.id, key: p.key, league: p.league, h: p.ev.h, a: p.ev.a, sel: p.pick.name,
       odds: p.pick.best, book: p.pick.bestBook, stake: st.amount, fair: p.pick.fair, time: p.time, at: Date.now(),
       mkt: p.pick.market || "", point: p.pick.point, side: p.pick.side,
       status: "open", profit: 0 });
@@ -849,7 +870,7 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
     b.profit = status === "won" ? b.stake * (b.odds - 1) : status === "lost" ? -b.stake : 0;
     b.settledAt = Date.now();
   }
-  function dueBets() { return S.bets.filter(function (b) { return b.status === "open" && Date.now() > b.time + 2.5 * 3600000; }); }
+  function dueBets() { return BETS().filter(function (b) { return b.status === "open" && Date.now() > b.time + 2.5 * 3600000; }); }
   function dueKeys() { var k = []; dueBets().forEach(function (b) { if (k.indexOf(b.key) < 0) k.push(b.key); }); return k; }
   function checkResults() {
     var keys = dueKeys();
@@ -863,7 +884,7 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
           var a = parseFloat(r.scores[0].score), b = parseFloat(r.scores[1].score);
           if (isNaN(a) || isNaN(b)) return;
           var winner = a > b ? r.scores[0].name : b > a ? r.scores[1].name : "Draw";
-          S.bets.forEach(function (bt) {
+          S.bets.concat(S.pbets).forEach(function (bt) {
             if (bt.status !== "open" || bt.evId !== r.id) return;
             if (bt.mkt === "totals") {
               var tot = a + b;
@@ -964,9 +985,9 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
     });
     box.appendChild(cp);
     var logged = findBet(p.id);
-    var lb = el("button", "btn" + (logged ? " done" : ""), logged ? "Placed ✓ Undo" : "I placed it"); lb.type = "button";
+    var lb = el("button", "btn" + (logged ? " done" : ""), logged ? (S.practice ? "Logged ✓ Undo" : "Placed ✓ Undo") : (S.practice ? "Log practice bet" : "I placed it")); lb.type = "button";
     lb.addEventListener("click", function () {
-      if (logged) { S.bets = S.bets.filter(function (b) { return b.pid !== p.id; }); save(); renderAll(); }
+      if (logged) { setBets(BETS().filter(function (b) { return b.pid !== p.id; })); save(); renderAll(); }
       else logBet(p);
     });
     box.appendChild(lb);
@@ -975,7 +996,7 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
 
   function stakedToday() {
     var today = DF.format(new Date()), t = 0;
-    S.bets.forEach(function (b) { if (DF.format(new Date(b.at)) === today) t += b.stake; });
+    BETS().forEach(function (b) { if (DF.format(new Date(b.at)) === today) t += b.stake; });
     return t;
   }
 
@@ -1012,6 +1033,29 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
     d.appendChild(bar);
     return d;
   }
+  /* Lowest odds at which the bet is still worth it, plus a box to type the odds you actually see. */
+  function minRaw(s) { var need = (1 + VALUE_MIN) / s.fair, c = s.bestComm || 0; return c ? 1 + (need - 1) / (1 - c) : need; }
+  function priceCheck(p) {
+    var s = p.pick, box = el("div", "pcheck"), c = s.bestComm || 0;
+    box.appendChild(el("b", null, "Check the price before you bet"));
+    box.appendChild(el("div", "pcmin", "This bet is only worth taking at odds of " + minRaw(s).toFixed(2) + " or higher. Lower than that and you are paying too much."));
+    var lab = el("label", "pcrow", "Odds you can see now" + (c ? " (before commission)" : "")), inp = document.createElement("input");
+    inp.type = "number"; inp.step = "0.01"; inp.min = "1.01"; inp.setAttribute("inputmode", "decimal"); inp.placeholder = s.best.toFixed(2);
+    lab.appendChild(inp); box.appendChild(lab);
+    var res = el("div", "pcres"); res.setAttribute("aria-live", "polite"); box.appendChild(res);
+    inp.addEventListener("input", function () {
+      var v = parseFloat(inp.value); res.textContent = ""; res.className = "pcres";
+      if (!(v > 1)) return;
+      var e = s.fair * (c ? 1 + (v - 1) * (1 - c) : v) - 1, t, k;
+      if (e > VALUE_MAX) { t = "That is unusually high. Double-check it is the right match and the right result before betting."; k = "warn"; }
+      else if (e >= VALUE_MIN) { t = "Still good value. Go ahead if you want the bet."; k = "good"; }
+      else if (e >= 0.005) { t = "A small edge only. Fine if you still fancy it, but it is thinner than before."; k = "ok"; }
+      else if (e >= -0.01) { t = "About a fair price, so no edge. Skipping is better."; k = "warn"; }
+      else { t = "Too low. Skip this bet or wait for a better price."; k = "bad"; }
+      res.className = "pcres " + k; res.textContent = t;
+    });
+    return box;
+  }
   function betWords(p) {
     var s = p.pick;
     return s.market ? s.name + " in the match" : s.name === "Draw" ? "the match to end in a draw" : s.name + " to win";
@@ -1035,7 +1079,13 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
       return;
     }
     var wk = weeklyStrip();
-    if (!S.booksSet && !S.bets.length) {
+    if (S.practice) {
+      var pb = el("div", "pracbar"); pb.appendChild(el("b", null, "Practice mode"));
+      pb.appendChild(document.createTextNode(" Bets you log are pretend, with no real money. "));
+      var off = el("button", "btn small", "Switch to real bets"); off.type = "button"; off.addEventListener("click", function () { S.practice = false; save(); renderAll(); });
+      pb.appendChild(off); box.appendChild(pb);
+    }
+    if (!S.booksSet && !S.bets.length && !S.pbets.length) {
       var nb = el("button", "tile nudge"); nb.type = "button";
       nb.appendChild(el("b", null, "Which bookmakers do you use?"));
       nb.appendChild(el("small", null, "Bets are picked from every UK bookmaker and betting exchange, including ones you may not have an account with. Tap to choose yours."));
@@ -1056,8 +1106,10 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
       var c4 = el("div", "hbox"); c4.appendChild(el("span", null, "Average result")); c4.appendChild(el("b", st0.amount * s0.ev > 0 ? "pos" : "neg", sgbp(st0.amount * s0.ev))); c4.appendChild(el("small", null, signed(s0.ev) + " better than the market"));
       [c1, c2, c3, c4].forEach(function (x) { hg.appendChild(x); });
       hero.appendChild(hg);
-      var pt = plainText(p0, st0); if (pt) hero.appendChild(el("div", "hplain", pt));
+      hero.appendChild(priceCheck(p0));
       hero.appendChild(actionsFor(p0, st0));
+      var pt = plainText(p0, st0);
+      if (pt) { var wm = el("details", "hplain"); wm.appendChild(el("summary", null, "What does this mean?")); wm.appendChild(el("div", null, pt)); hero.appendChild(wm); }
       var dt = el("button", "btn linkbtn", "Full details"); dt.type = "button"; dt.addEventListener("click", function () { openSheet(p0, dt); }); hero.appendChild(dt);
       box.appendChild(hero);
       if (wk) box.appendChild(wk);
@@ -1178,6 +1230,7 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
     head.appendChild(ht); root.appendChild(head);
 
     var pt = plainText(p, st); if (pt) { var pe = el("div", "plain"); pe.appendChild(el("b", null, "In plain English")); pe.appendChild(document.createTextNode(pt)); root.appendChild(pe); }
+    root.appendChild(priceCheck(p));
     var pa = el("div", "pickactions"); pa.appendChild(actionsFor(p, st)); root.appendChild(pa);
     var grid = el("div", "stats");
     grid.appendChild(statBox("Bet with", s.bestBook, "odds " + s.best.toFixed(2) + (s.bestEx ? " after commission" : "")));
@@ -1269,17 +1322,24 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
   }
   function renderTiles(d) {
     var box = $("tiles"); box.textContent = "";
-    var open = S.bets.filter(function (b) { return b.status === "open"; }), done = S.bets.filter(function (b) { return b.status !== "open"; }), profit = 0;
+    var open = BETS().filter(function (b) { return b.status === "open"; }), done = BETS().filter(function (b) { return b.status !== "open"; }), profit = 0;
     done.forEach(function (b) { profit += b.profit; });
     if (S.weekly > 0) {
       var t = tile("Left this week", gbp(weeklyLeft()), "of " + gbp(S.weekly) + " · " + gbp(spentWeek()) + " staked", null, function () { setTab("more"); });
       var bar = el("div", "bar"), fill = el("i"); fill.style.width = Math.min(100, spentWeek() / S.weekly * 100) + "%"; bar.appendChild(fill); t.appendChild(bar);
       box.appendChild(t);
     } else box.appendChild(tile("Weekly budget", "Not set", "Tap to set a weekly limit", null, function () { setTab("more"); }));
-    box.appendChild(tile("Profit so far", done.length ? sgbp(profit) : "–", done.length ? done.length + " settled · budget " + gbp(budget()) : "No settled bets yet", profit >= 0 ? "pos" : "neg", function () { setTab("bets"); }));
+    box.appendChild(tile(S.practice ? "Practice profit" : "Profit so far", done.length ? sgbp(profit) : "–", done.length ? done.length + " settled · budget " + gbp(budget()) : "No settled bets yet", profit >= 0 ? "pos" : "neg", function () { setTab("bets"); }));
     var due = dueBets().length;
     box.appendChild(tile("Open bets", String(open.length), due ? due + " need a result" : open.length ? "waiting for results" : "none placed", null, function () { setTab("bets"); }));
     box.appendChild(tile("Value bets now", String(d.value.length), d.value.length ? "priced above the market" : "none, skipping is fine", null, function () { setTab("all"); }));
+    if (!S.practice && !S.pracAsked && !S.bets.length && !S.pbets.length) {
+      var pn = el("button", "tile nudge wide"); pn.type = "button";
+      pn.appendChild(el("b", null, "New to betting? Practise first"));
+      pn.appendChild(el("small", null, "Practice mode logs pretend bets so you can see how it would have gone before risking real money. Tap to start. You can switch back any time."));
+      pn.addEventListener("click", function () { S.practice = true; S.pracAsked = true; save(); renderAll(); });
+      box.appendChild(pn);
+    }
   }
 
   function chartFor(done) {
@@ -1300,13 +1360,14 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
   }
   function renderBets() {
     var body = $("betsBody"); body.textContent = "";
-    var open = S.bets.filter(function (b) { return b.status === "open"; });
-    var done = S.bets.filter(function (b) { return b.status !== "open"; });
+    var open = BETS().filter(function (b) { return b.status === "open"; });
+    var done = BETS().filter(function (b) { return b.status !== "open"; });
     var staked = 0, profit = 0, exp = 0;
     done.forEach(function (b) { staked += b.stake; profit += b.profit; exp += b.stake * (b.fair * b.odds - 1); });
-    $("betsSum").textContent = "My bets" + (S.bets.length ? " · " + open.length + " open · " + sgbp(profit) : "");
-    $("betsTabLbl").textContent = open.length ? "My bets (" + open.length + ")" : "My bets";
-    if (!S.bets.length) { body.appendChild(el("p", null, "Tap \"I placed it\" on a pick after you place it. It is logged here with the stake and price, and results are checked for you.")); return; }
+    $("betsSum").textContent = (S.practice ? "Practice bets" : "My bets") + (BETS().length ? " · " + open.length + " open · " + sgbp(profit) : "");
+    $("betsTabLbl").textContent = (S.practice ? "Practice" : "My bets") + (open.length ? " (" + open.length + ")" : "");
+    if (S.practice) body.appendChild(el("div", "msg info", "Practice mode: these bets are pretend. No real money, and none of it counts towards your real record."));
+    if (!BETS().length) { body.appendChild(el("p", null, S.practice ? "Tap \"Log practice bet\" on a pick to try it with pretend money. Results are checked for you, and you can see how you would have done." : "Tap \"I placed it\" on a pick after you place it. It is logged here with the stake and price, and results are checked for you.")); return; }
 
     var g = el("div", "stats");
     g.appendChild(statBox("Profit so far", sgbp(profit), done.length + " settled", profit >= 0 ? "pos" : "neg"));
@@ -1350,7 +1411,7 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
           });
         }
         var rm = el("button", "btn small", "Remove"); rm.type = "button";
-        rm.addEventListener("click", function () { S.bets = S.bets.filter(function (z) { return z !== b; }); save(); renderAll(); });
+        rm.addEventListener("click", function () { setBets(BETS().filter(function (z) { return z !== b; })); save(); renderAll(); });
         acts.appendChild(rm);
         row.appendChild(acts);
       } else {
@@ -1436,6 +1497,7 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
     $("windowH").value = String(S.windowH);
     $("bankroll").value = String(S.bankroll);
     $("weeklyIn").value = S.weekly ? String(S.weekly) : "";
+    $("practiceOn").checked = !!S.practice; $("pracPill").hidden = !S.practice;
     $("modeHint").textContent = S.mode === "value"
       ? "Best bet first, ranked by profit for each £1 staked. Any outcome counts, not just the winner." + (S.totals ? "" : " Turn on goals prices in Settings to include over/under bets.")
       : "Sorted by chance of winning. Favourites win often but pay little.";
@@ -1486,6 +1548,7 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
     S.bankroll = (isFinite(v) && v >= 1) ? v : 100; e.target.value = String(S.bankroll);
     save(); renderView();
   });
+  $("practiceOn").addEventListener("change", function (e) { S.practice = e.target.checked; S.pracAsked = true; save(); renderAll(); });
   $("autoOn").addEventListener("change", function (e) { S.auto = e.target.checked; save(); });
   $("totalsOn").addEventListener("change", function (e) { S.totals = e.target.checked; save(); renderCost(); renderStatus(); });
   $("autoHours").addEventListener("change", function (e) { S.autoHours = +e.target.value; save(); });
@@ -1541,7 +1604,7 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
 
   /* ---------- Backup, navigation ---------- */
   $("bkCopy").addEventListener("click", function () {
-    var data = { app: "betiqlite", v: 2, bets: S.bets, bankroll: S.bankroll, weekly: S.weekly, myBooks: S.myBooks, totals: S.totals, minOdds: S.minOdds, windowH: S.windowH };
+    var data = { app: "betiqlite", v: 2, bets: S.bets, pbets: S.pbets, bankroll: S.bankroll, weekly: S.weekly, myBooks: S.myBooks, totals: S.totals, minOdds: S.minOdds, windowH: S.windowH };
     copyText(JSON.stringify(data), $("bkCopy"));
   });
   $("bkRestore").addEventListener("click", function () {
@@ -1553,6 +1616,7 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
     if (!ok) return bad("Some bets in that backup look damaged, so nothing was changed.");
     if (!window.confirm("Replace your current " + S.bets.length + " bets with " + d.bets.length + " from the backup?")) return;
     S.bets = d.bets;
+    if (Array.isArray(d.pbets)) S.pbets = d.pbets;
     if (isFinite(d.bankroll) && d.bankroll >= 1) S.bankroll = d.bankroll;
     if (isFinite(d.weekly) && d.weekly >= 0) S.weekly = d.weekly;
     if (d.myBooks === null || Array.isArray(d.myBooks)) S.myBooks = d.myBooks;
