@@ -503,6 +503,12 @@ details.acc .pcheck { margin-bottom: 12px; }
       <p id="costNote"></p>
       <div class="leagues" id="leagues"></div>
       <label class="check"><input type="checkbox" id="totalsOn"> Include over/under goals prices (doubles the credit cost)</label>
+      <label class="check"><input type="checkbox" id="extrasOn"> Load extra markets: both teams to score, double chance, draw no bet and handicaps</label>
+      <label class="field">Matches to load extra markets for on each refresh
+        <select id="extraMax"><option value="6">6 matches</option><option value="12">12 matches</option><option value="20">20 matches</option></select>
+      </label>
+      <p>Extra markets are football only and cost about one credit per market per match. They load when you press Refresh, soonest kick-offs first, never when the page just opens.</p>
+      <div id="mkCheck"></div>
       <p>After changing this, press Refresh to load the extra prices.</p>
       <h2>My bookmakers</h2>
       <p>Tick the ones you have accounts with. Suggested bets only use these. Load odds once to see the list.</p>
@@ -533,6 +539,7 @@ details.acc .pcheck { margin-bottom: 12px; }
       </div>
     </section>
 
+      <section class="panel" id="creditBox"><h2>Credit use</h2><p>What your recent refreshes cost, so you can see how the 500 a month is going.</p><div id="creditLog"></div></section>
       <section class="panel" id="backupBox">
         <h2>Back up your bets</h2>
         <p>Your bet log lives only in this browser. If you clear site data or change phone it is gone, so copy a backup now and then and keep it in Notes. Your API key is not included.</p>
@@ -589,7 +596,7 @@ details.acc .pcheck { margin-bottom: 12px; }
   var API = "https://api.the-odds-api.com/v4";
   var DEFAULTS = { key: "", selected: [], mode: "value", minOdds: 1.3, windowH: 72, group: "all",
                    sports: [], sportsAt: 0, cache: {}, remaining: null, used: null, picked: false,
-                   bankroll: 100, weekly: 0, league: "all", tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
+                   bankroll: 100, weekly: 0, league: "all", extras: true, extraMax: 12, xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
   var GROUPS = { "Soccer": "Football", "American Football": "US football", "Ice Hockey": "Ice hockey",
                  "Mixed Martial Arts": "MMA", "Rugby League": "Rugby", "Rugby Union": "Rugby", "Aussie Rules": "Aussie rules" };
   var DEFAULT_FOOTBALL = ["soccer_epl", "soccer_efl_champ", "soccer_uefa_champs_league", "soccer_uefa_europa_league"];
@@ -616,6 +623,7 @@ details.acc .pcheck { margin-bottom: 12px; }
       var s = {}; for (var k in DEFAULTS) s[k] = (o && o[k] !== undefined) ? o[k] : DEFAULTS[k];
       if (!Array.isArray(s.bets)) s.bets = [];
       if (!Array.isArray(s.pbets)) s.pbets = [];
+      ['xmBad', 'xmOK', 'clog'].forEach(function (k) { if (!Array.isArray(s[k])) s[k] = []; });
       if (!o || !o.ver || o.ver < 2) s.mode = "value";   /* v2: Best bets is the default view */
       s.ver = 2;
       return s;
@@ -634,13 +642,15 @@ details.acc .pcheck { margin-bottom: 12px; }
   function eff(price, k) { var c = EXCH[k]; return c ? 1 + (price - 1) * (1 - c) : price; }
 
   /* ---------- API ---------- */
+  var spentCounter = 0;
   function api(path, params) {
     var url = new URL(API + path);
     url.searchParams.set("apiKey", S.key);
     Object.keys(params || {}).forEach(function (k) { url.searchParams.set(k, params[k]); });
     return fetch(url.toString()).then(function (res) {
       var rem = res.headers.get("x-requests-remaining");
-      var used = res.headers.get("x-requests-used");
+      var used = res.headers.get("x-requests-used"), lastCost = res.headers.get("x-requests-last");
+      if (lastCost !== null && !isNaN(+lastCost)) spentCounter += +lastCost;
       if (rem !== null && !isNaN(+rem)) S.remaining = +rem;
       if (used !== null && !isNaN(+used)) S.used = +used;
       if (!res.ok) {
@@ -696,25 +706,102 @@ details.acc .pcheck { margin-bottom: 12px; }
       throw e;
     });
   }
-  function refreshAll() {
+  var busyMsg = "";
+  function refreshAll(opts) {
     if (busy || !S.selected.length) return Promise.resolve();
-    busy = true; renderStatus();
+    var wantExtras = S.extras && !(opts && opts.extras === false), before = S.remaining, startCount = spentCounter;
+    busy = true; busyMsg = ""; renderStatus();
     var errors = [];
     var jobs = S.selected.map(function (key) {
       return fetchOdds(key).then(function (events) {
         var old = S.cache[key]; if (old) snapshot(old);
-        S.cache[key] = { at: Date.now(), events: events.map(slim) };
+        var oldX = {}; if (old) old.events.forEach(function (e) { if (e.x) oldX[e.id] = e.x; });
+        var evs = events.map(slim); evs.forEach(function (e) { if (oldX[e.id]) e.x = oldX[e.id]; });
+        S.cache[key] = { at: Date.now(), events: evs };
       }, function (e) { errors.push(e); });
     });
     return Promise.all(jobs).then(function () {
-      busy = false;
+      if (!wantExtras || errors.length) return null;
+      var targets = pickExtraTargets(), per = extraMarkets().length, skipped = false;
+      if (S.remaining !== null && per) {
+        var room = Math.max(0, Math.floor((S.remaining - 25) / per));
+        if (targets.length > room) { targets = targets.slice(0, room); skipped = true; }
+      }
+      if (!targets.length || !per) return skipped ? "credits" : null;
+      busyMsg = "Loading extra markets for " + targets.length + " matches…"; renderStatus();
+      return runPool(targets, 3, function (t) { return fetchExtraFor(t).then(function (x) { if (x) t.ev.x = x; }); }).then(function (errs) {
+        if (errs[0]) errors.push(errs[0]); return skipped ? "credits" : null;
+      });
+    }).then(function (note) {
+      busy = false; busyMsg = "";
+      logCredits(before, startCount, wantExtras ? "Refresh with extra markets" : "Refresh");
       var ids = {};
       S.selected.forEach(function (k) { (S.cache[k] ? S.cache[k].events : []).forEach(function (e) { ids[e.id] = 1; }); });
       Object.keys(S.hist).forEach(function (id) { if (!ids[id]) delete S.hist[id]; });
       save(); renderAll();
       if (errors[0]) showAlert(errText(errors[0]) + (errors.length > 1 ? " (" + errors.length + " leagues affected.)" : ""), false);
+      else if (note === "credits") showAlert("Some extra markets were skipped to keep a safety reserve of credits.", true);
     });
   }
+  /* ---------- Extra markets (loaded per match) ---------- */
+  var EXTRA_MKTS = ["btts", "double_chance", "draw_no_bet", "spreads"];
+  var EXTRA_NAMES = { btts: "Both teams to score", double_chance: "Double chance", draw_no_bet: "Draw no bet", spreads: "Handicap" };
+  function extraMarkets() { return EXTRA_MKTS.filter(function (m) { return S.xmBad.indexOf(m) < 0; }); }
+  function isFootball(ev) { return ev.books.some(function (b) { return b.o.some(function (o) { return o[0] === "Draw"; }); }); }
+  function pickExtraTargets() {
+    var now = Date.now(), end = now + S.windowH * 3600000, list = [];
+    S.selected.forEach(function (k) {
+      var c = S.cache[k]; if (!c) return;
+      c.events.forEach(function (ev) { var t = Date.parse(ev.c); if (t > now && t <= end && isFootball(ev)) list.push({ key: k, ev: ev, t: t }); });
+    });
+    list.sort(function (a, b) { return a.t - b.t; });
+    return list.slice(0, S.extraMax);
+  }
+  function extraEstimate() { return S.extras ? pickExtraTargets().length * extraMarkets().length : 0; }
+  function addExtra(x, resp) {
+    (resp && resp.bookmakers || []).forEach(function (b) {
+      (b.markets || []).forEach(function (m) {
+        if (EXTRA_MKTS.indexOf(m.key) < 0 || !m.outcomes) return;
+        var o = m.outcomes.filter(function (z) { return z.price > 1; }).map(function (z) { return [z.name, z.price, typeof z.point === "number" ? z.point : null]; });
+        if (o.length < 2) return;
+        (x.m[m.key] = x.m[m.key] || []).push({ t: b.title, k: b.key, o: o });
+        if (S.xmOK.indexOf(m.key) < 0) S.xmOK.push(m.key);
+      });
+    });
+  }
+  function fetchExtraFor(t) {
+    var x = { at: Date.now(), m: {} }, path = "/sports/" + t.key + "/events/" + t.ev.id + "/odds", list = extraMarkets();
+    if (!list.length) return Promise.resolve(null);
+    function call(l) { return api(path, { regions: "uk", markets: l.join(","), oddsFormat: "decimal" }); }
+    return call(list).then(function (r) { addExtra(x, r); return x; }, function (e) {
+      if (e.code !== "http" || list.length < 2) {
+        if (e.code === "http") { list.forEach(function (m) { if (S.xmBad.indexOf(m) < 0) S.xmBad.push(m); }); return null; }
+        throw e;
+      }
+      /* One market was refused. Try them one at a time so the good ones still load, and remember the refused one. */
+      return list.reduce(function (p, m) {
+        return p.then(function () {
+          return call([m]).then(function (r) { addExtra(x, r); }, function (e2) {
+            if (e2.code === "http") { if (S.xmBad.indexOf(m) < 0) S.xmBad.push(m); } else throw e2;
+          });
+        });
+      }, Promise.resolve()).then(function () { return x; });
+    });
+  }
+  function runPool(items, n, fn) {
+    var i = 0, errs = [];
+    function next() { if (i >= items.length) return Promise.resolve(); var it = items[i++]; return fn(it).then(null, function (e) { errs.push(e); }).then(next); }
+    var starters = []; for (var k = 0; k < Math.min(n, items.length); k++) starters.push(next());
+    return Promise.all(starters).then(function () { return errs; });
+  }
+  function logCredits(before, startCount, label) {
+    var used = spentCounter - startCount;
+    if (!(used > 0) && before !== null && S.remaining !== null && before >= S.remaining) used = before - S.remaining;
+    if (!(used >= 0)) return;
+    S.clog.unshift({ at: Date.now(), used: used, label: label });
+    if (S.clog.length > 15) S.clog.length = 15;
+  }
+
   function slim(ev) {
     var books = [], tb = [];
     (ev.bookmakers || []).forEach(function (b) {
@@ -799,20 +886,112 @@ details.acc .pcheck { margin-bottom: 12px; }
     });
     return rows;
   }
+  function avg(a) { return a.reduce(function (p, c) { return p + c; }, 0) / a.length; }
+  function dcKey(name, h, a) {
+    var n = String(name).toLowerCase(), hl = h.toLowerCase(), al = a.toLowerCase();
+    if (n === "1x" || n === "home/draw" || n === "home or draw") return "HD";
+    if (n === "x2" || n === "draw/away" || n === "draw or away") return "DA";
+    if (n === "12" || n === "home/away" || n === "home or away") return "HA";
+    var hh = n.indexOf(hl) > -1, aa = n.indexOf(al) > -1, dd = /draw/.test(n);
+    return hh && dd ? "HD" : aa && dd ? "DA" : hh && aa ? "HA" : null;
+  }
+  function priceBox(it, price) { return { book: it.t, price: eff(price, it.k), ex: !!EXCH[it.k], comm: EXCH[it.k] || 0, ok: allowed(it.t) }; }
+  function mkRow(spec, fair, prices, n, refund) {
+    var best = null; prices.forEach(function (q) { if (q.ok && (!best || q.price > best.price)) best = q; });
+    if (!best) return null;
+    prices.sort(function (a, b) { return b.price - a.price; });
+    var r = { label: spec.label, desc: spec.desc, rule: spec.rule, market: spec.market, point: spec.point, side: spec.side, fair: fair, fairOdds: 1 / fair, best: best.price, book: best.book,
+              ex: best.ex, comm: best.comm, n: n, prices: prices, refund: refund || 0 };
+    r.ev = fair * best.price - 1 + r.refund;
+    return r;
+  }
+  function twoWay(items, sa, sb, refundFor) {
+    var fa = [], pa = [], pb = [];
+    items.forEach(function (it) { var ia = 1 / it.a, ib = 1 / it.b; fa.push(ia / (ia + ib)); pa.push(priceBox(it, it.a)); pb.push(priceBox(it, it.b)); });
+    if (fa.length < 3) return [];
+    var A = avg(fa), ra = refundFor ? refundFor(A) : null;
+    return [mkRow(sa, ra ? ra.fa : A, pa, fa.length, ra ? ra.refund : 0), mkRow(sb, ra ? ra.fb : 1 - A, pb, fa.length, ra ? ra.refund : 0)].filter(Boolean);
+  }
+  /* Real prices for both teams to score, double chance, draw no bet and handicaps, when the extra markets have been loaded. */
+  function analyseExtras(ev) {
+    var x = ev.x; if (!x || !x.m || Date.now() - x.at > 8 * 3600000) return [];
+    var a = analyse(ev), hP = 0, dP = 0, wP = 0, out = [];
+    if (a) a.sels.forEach(function (s) { if (s.name === ev.h) hP = s.fair; else if (s.name === ev.a) wP = s.fair; else if (s.name === "Draw") dP = s.fair; });
+    var tt = hP + dP + wP; if (tt > 0) { hP /= tt; dP /= tt; wP /= tt; }
+    function find(o, name) { return o.filter(function (z) { return String(z[0]).toLowerCase() === name.toLowerCase(); })[0]; }
+    /* both teams to score */
+    var items = [];
+    (x.m.btts || []).forEach(function (b) { var y = find(b.o, "Yes"), n = find(b.o, "No"); if (y && n) items.push({ t: b.t, k: b.k, a: y[1], b: n[1] }); });
+    out = out.concat(twoWay(items,
+      { label: "Both teams to score: Yes", market: "btts", rule: { t: "btts", side: "Yes" }, desc: "Wins if both teams score at least once." },
+      { label: "Both teams to score: No", market: "btts", rule: { t: "btts", side: "No" }, desc: "Wins if at least one team fails to score." }));
+    /* draw no bet */
+    items = [];
+    (x.m.draw_no_bet || []).forEach(function (b) { var h = find(b.o, ev.h), w = find(b.o, ev.a); if (h && w) items.push({ t: b.t, k: b.k, a: h[1], b: w[1] }); });
+    if (items.length >= 3 && hP > 0) {
+      out = out.concat(twoWay(items,
+        { label: ev.h + " draw no bet", market: "dnb", rule: { t: "dnb", team: ev.h }, desc: "Wins if " + ev.h + " win. Your stake comes back if it is a draw." },
+        { label: ev.a + " draw no bet", market: "dnb", rule: { t: "dnb", team: ev.a }, desc: "Wins if " + ev.a + " win. Your stake comes back if it is a draw." },
+        function (A) { return { fa: A * (1 - dP), fb: (1 - A) * (1 - dP), refund: dP }; }));
+    }
+    /* double chance: three overlapping bets, so the chances add up to two */
+    var dc = { HD: [], DA: [], HA: [] }, dcItems = [];
+    (x.m.double_chance || []).forEach(function (b) {
+      var m = {}; b.o.forEach(function (z) { var k = dcKey(z[0], ev.h, ev.a); if (k) m[k] = z[1]; });
+      if (m.HD && m.DA && m.HA) {
+        var iv = { HD: 1 / m.HD, DA: 1 / m.DA, HA: 1 / m.HA }, sum = iv.HD + iv.DA + iv.HA;
+        ["HD", "DA", "HA"].forEach(function (k) { dc[k].push({ f: iv[k] / sum * 2, p: priceBox(b.t ? { t: b.t, k: b.k } : b, m[k]) }); });
+        dcItems.push(1);
+      }
+    });
+    if (dcItems.length >= 3) {
+      var spec = { HD: { label: ev.h + " or draw", desc: "Wins if " + ev.h + " win or the match is a draw.", rule: { t: "dc", set: [ev.h, "Draw"] } },
+                   DA: { label: "Draw or " + ev.a, desc: "Wins if " + ev.a + " win or the match is a draw.", rule: { t: "dc", set: ["Draw", ev.a] } },
+                   HA: { label: ev.h + " or " + ev.a, desc: "Wins if either team wins. Loses on a draw.", rule: { t: "dc", set: [ev.h, ev.a] } } };
+      ["HD", "DA", "HA"].forEach(function (k) {
+        spec[k].market = "dc";
+        var r = mkRow(spec[k], avg(dc[k].map(function (z) { return z.f; })), dc[k].map(function (z) { return z.p; }), dcItems.length, 0); if (r) out.push(r);
+      });
+    }
+    /* handicaps: whole and half lines only, the three most balanced */
+    var lines = {};
+    (x.m.spreads || []).forEach(function (b) {
+      b.o.forEach(function (z) {
+        if (z[0] !== ev.h || z[2] === null) return;
+        var p = z[2]; if ((p * 2) % 1 !== 0) return;
+        var other = b.o.filter(function (q) { return q[0] === ev.a && q[2] !== null && Math.abs(q[2] + p) < 0.001; })[0];
+        if (other) (lines[p] = lines[p] || []).push({ t: b.t, k: b.k, a: z[1], b: other[1] });
+      });
+    });
+    var arr = Object.keys(lines).map(function (k) { return { p: +k, items: lines[k] }; }).filter(function (L) { return L.items.length >= 3; });
+    arr.forEach(function (L) { L.fair = avg(L.items.map(function (it) { return (1 / it.a) / (1 / it.a + 1 / it.b); })); });
+    arr.sort(function (a, b) { return Math.abs(a.fair - 0.5) - Math.abs(b.fair - 0.5); });
+    arr.slice(0, 3).forEach(function (L) {
+      function sgn(v) { return (v > 0 ? "+" : "") + v; }
+      function d(team, p) { var half = (p * 2) % 2 !== 0;
+        return half ? (p < 0 ? "Wins if " + team + " win by " + Math.ceil(-p) + " or more goals." : "Wins unless " + team + " lose by " + Math.ceil(p) + " or more goals.")
+                    : team + " start with a " + sgn(p) + " goal handicap. Your stake comes back if the result lands exactly on the line."; }
+      out = out.concat(twoWay(L.items,
+        { label: ev.h + " " + sgn(L.p) + " handicap", market: "spread", rule: { t: "spread", team: ev.h, point: L.p }, desc: d(ev.h, L.p) },
+        { label: ev.a + " " + sgn(-L.p) + " handicap", market: "spread", rule: { t: "spread", team: ev.a, point: -L.p }, desc: d(ev.a, -L.p) }));
+    });
+    return out;
+  }
+
   /* Bets worked out from the win/draw/win chances, so they cost no extra credits. */
   function derivedMarkets(a, ev) {
     var h = 0, d = 0, w = 0;
     a.sels.forEach(function (s) { if (s.name === ev.h) h = s.fair; else if (s.name === ev.a) w = s.fair; else if (s.name === "Draw") d = s.fair; });
     if (!(h > 0 && d > 0 && w > 0)) return [];
     var t = h + d + w; h /= t; d /= t; w /= t;
-    function row(label, p, sub, text, desc, rule) { return { label: label, fair: p, fairOdds: 1 / p, need: 1.03 / p, sub: sub, chanceText: text, desc: desc, rule: rule }; }
+    function row(label, p, sub, text, desc, rule, refund) { return { label: label, fair: p, fairOdds: 1 / p, need: (1.03 - (refund || 0)) / p, sub: sub, chanceText: text, desc: desc, rule: rule, refund: refund || 0 }; }
     var dnb = "Stake back if it is a draw";
     return [
       row(ev.h + " or draw", h + d, "Double chance", null, "Wins if " + ev.h + " win or the match is a draw.", { t: "dc", set: [ev.h, "Draw"] }),
       row("Draw or " + ev.a, d + w, "Double chance", null, "Wins if " + ev.a + " win or the match is a draw.", { t: "dc", set: ["Draw", ev.a] }),
       row(ev.h + " or " + ev.a, h + w, "Double chance, no draw", null, "Wins if either team wins. Loses on a draw.", { t: "dc", set: [ev.h, ev.a] }),
-      row(ev.h + " draw no bet", h / (h + w), dnb, pct(h / (h + w)), "Wins if " + ev.h + " win. Your stake comes back if it is a draw.", { t: "dnb", team: ev.h }),
-      row(ev.a + " draw no bet", w / (h + w), dnb, pct(w / (h + w)), "Wins if " + ev.a + " win. Your stake comes back if it is a draw.", { t: "dnb", team: ev.a })
+      row(ev.h + " draw no bet", h, dnb, pct(h) + " win", "Wins if " + ev.h + " win. Your stake comes back if it is a draw.", { t: "dnb", team: ev.h }, d),
+      row(ev.a + " draw no bet", w, dnb, pct(w) + " win", "Wins if " + ev.a + " win. Your stake comes back if it is a draw.", { t: "dnb", team: ev.a }, d)
     ];
   }
 
@@ -849,6 +1028,13 @@ details.acc .pcheck { margin-bottom: 12px; }
             if (r.best > LONGSHOT) return;
             add({ name: r.label, fair: r.fair, fairOdds: r.fairOdds, best: r.best, bestBook: r.book, bestEx: r.ex, bestComm: r.comm, bestLink: "",
                   prices: r.prices, ev: r.ev, market: "totals", point: r.point, side: r.side }, r.n);
+          });
+        }
+        if (mode === "value" && S.extras) {
+          analyseExtras(ev).forEach(function (r) {
+            if (r.best > LONGSHOT) return;
+            add({ name: r.label, fair: r.fair, fairOdds: r.fairOdds, best: r.best, bestBook: r.book, bestEx: r.ex, bestComm: r.comm, bestLink: "",
+                  prices: r.prices, ev: r.ev, market: r.market, rule: r.rule, refund: r.refund || 0 }, r.n);
           });
         }
       });
@@ -976,7 +1162,7 @@ details.acc .pcheck { margin-bottom: 12px; }
     if (st.amount < 0.5) { showAlert("Your weekly budget is used up, so no stake is suggested. Raise it in Settings if you want to log this bet.", false); return; }
     BETS().push({ pid: p.id, evId: p.ev.id, key: p.key, league: p.league, h: p.ev.h, a: p.ev.a, sel: p.pick.name,
       odds: p.pick.best, book: p.pick.bestBook, stake: st.amount, fair: p.pick.fair, time: p.time, at: Date.now(),
-      mkt: p.pick.market || "", point: p.pick.point, side: p.pick.side,
+      mkt: p.pick.market || "", point: p.pick.point, side: p.pick.side, rule: p.pick.rule,
       status: "open", profit: 0 });
     save(); renderAll();
   }
@@ -987,6 +1173,17 @@ details.acc .pcheck { margin-bottom: 12px; }
   }
   function dueBets() { return BETS().filter(function (b) { return b.status === "open" && Date.now() > b.time + 2.5 * 3600000; }); }
   function dueKeys() { var k = []; dueBets().forEach(function (b) { if (k.indexOf(b.key) < 0) k.push(b.key); }); return k; }
+  /* Works out won / lost / void for the market types with a settlement rule. Returns null when it cannot tell. */
+  function ruleResult(rule, winner, a, b, sc) {
+    if (rule.t === "dc") return rule.set.indexOf(winner) > -1 ? "won" : "lost";
+    if (rule.t === "dnb") return winner === "Draw" ? "void" : winner === rule.team ? "won" : "lost";
+    if (rule.t === "btts") return ((a > 0 && b > 0) === (rule.side === "Yes")) ? "won" : "lost";
+    if (rule.t === "spread") {
+      var ts = sc[rule.team]; if (typeof ts !== "number") return null;
+      var m = ts - (a + b - ts) + rule.point; return m > 0 ? "won" : m < 0 ? "lost" : "void";
+    }
+    return null;
+  }
   function checkResults() {
     var keys = dueKeys();
     if (!keys.length || busy) return Promise.resolve();
@@ -999,15 +1196,18 @@ details.acc .pcheck { margin-bottom: 12px; }
           var a = parseFloat(r.scores[0].score), b = parseFloat(r.scores[1].score);
           if (isNaN(a) || isNaN(b)) return;
           var winner = a > b ? r.scores[0].name : b > a ? r.scores[1].name : "Draw";
+          var sc = {}; sc[r.scores[0].name] = a; sc[r.scores[1].name] = b;
           S.bets.concat(S.pbets).forEach(function (bt) {
             if (bt.status !== "open" || bt.evId !== r.id) return;
+            var res;
             if (bt.mkt === "totals") {
               var tot = a + b;
-              settle(bt, tot === bt.point ? "void" : ((tot > bt.point) === (bt.side === "Over")) ? "won" : "lost");
-            } else if (bt.mkt === "derived" && bt.rule) {
-              settle(bt, bt.rule.t === "dc" ? (bt.rule.set.indexOf(winner) > -1 ? "won" : "lost") : (winner === "Draw" ? "void" : winner === bt.rule.team ? "won" : "lost"));
-            } else settle(bt, bt.sel === winner ? "won" : "lost");
-            settled++;
+              res = tot === bt.point ? "void" : ((tot > bt.point) === (bt.side === "Over")) ? "won" : "lost";
+            } else if (bt.rule && bt.mkt) {
+              res = ruleResult(bt.rule, winner, a, b, sc);
+            } else res = bt.sel === winner ? "won" : "lost";
+            if (!res) return;
+            settle(bt, res); settled++;
           });
         });
       }, function (e) { errs.push(e); });
@@ -1060,11 +1260,11 @@ details.acc .pcheck { margin-bottom: 12px; }
   }
   function renderStatus() {
     var times = S.selected.map(function (k) { return S.cache[k] && S.cache[k].at; }).filter(Boolean);
-    $("updated").textContent = busy ? "Working…" : times.length ? "Odds updated " + ago(Math.min.apply(null, times)) : "No odds loaded yet";
+    $("updated").textContent = busy ? (busyMsg || "Working…") : times.length ? "Odds updated " + ago(Math.min.apply(null, times)) : "No odds loaded yet";
     var rb = $("refreshBtn");
     rb.disabled = busy || !S.selected.length;
-    var cost = S.selected.length * (S.totals ? 2 : 1);
-    rb.textContent = busy ? "Working…" : "Refresh · " + cost + (cost === 1 ? " credit" : " credits");
+    var cost = S.selected.length * (S.totals ? 2 : 1), xe = extraEstimate();
+    rb.textContent = busy ? "Working…" : "Refresh · " + (xe ? "about " + (cost + xe) : cost) + " credits";
   }
   function renderChips() {
     var box = $("groupChips"); box.textContent = "";
@@ -1151,7 +1351,7 @@ details.acc .pcheck { margin-bottom: 12px; }
     return d;
   }
   /* Lowest odds at which the bet is still worth it, plus a box to type the odds you actually see. */
-  function minRaw(s) { var need = (1 + VALUE_MIN) / s.fair, c = s.bestComm || 0; return c ? 1 + (need - 1) / (1 - c) : need; }
+  function minRaw(s) { var need = (1 + VALUE_MIN - (s.refund || 0)) / s.fair, c = s.bestComm || 0; return c ? 1 + (need - 1) / (1 - c) : need; }
   function verdictFor(e) {
     if (e > VALUE_MAX) return { k: "warn", t: "That is unusually high. Double-check it is the right match and the right result before betting." };
     if (e >= VALUE_MIN) return { k: "good", t: "Still good value. Go ahead if you want the bet." };
@@ -1170,14 +1370,17 @@ details.acc .pcheck { margin-bottom: 12px; }
     inp.addEventListener("input", function () {
       var v = parseFloat(inp.value); res.textContent = ""; res.className = "pcres";
       if (!(v > 1)) return;
-      var vd = verdictFor(s.fair * (c ? 1 + (v - 1) * (1 - c) : v) - 1);
+      var vd = verdictFor(s.fair * (c ? 1 + (v - 1) * (1 - c) : v) - 1 + (s.refund || 0));
       res.className = "pcres " + vd.k; res.textContent = vd.t;
     });
     return box;
   }
   function betWords(p) {
     var s = p.pick;
-    return s.market ? s.name + " in the match" : s.name === "Draw" ? "the match to end in a draw" : s.name + " to win";
+    if (s.market === "totals") return s.name + " in the match";
+    if (s.market === "btts" || s.market === "dc" || s.market === "dnb") return s.name;
+    if (s.market === "spread") return s.name;
+    return s.name === "Draw" ? "the match to end in a draw" : s.name + " to win";
   }
   function plainText(p, st) {
     var s = p.pick;
@@ -1308,11 +1511,14 @@ details.acc .pcheck { margin-bottom: 12px; }
 
   function otherRows(p) {
     var foot = p.a.sels.some(function (x) { return x.name === "Draw"; });
-    return analyseTotals(p.ev, foot ? " goals" : "").concat(foot ? derivedMarkets(p.a, p.ev) : []);
+    var tot = analyseTotals(p.ev, foot ? " goals" : ""), ex = analyseExtras(p.ev), have = {};
+    ex.forEach(function (r) { have[r.label] = 1; });
+    var der = (foot ? derivedMarkets(p.a, p.ev) : []).filter(function (r) { return !have[r.label]; });
+    return tot.concat(ex).concat(der);
   }
   function subPick(p, r) {
     var pk = { name: r.label, fair: r.fair, fairOdds: r.fairOdds, best: r.best, bestBook: r.book, bestEx: r.ex, bestComm: r.comm, bestLink: "",
-               prices: r.prices, ev: r.ev, market: "totals", point: r.point, side: r.side, pid: p.ev.id + "|" + r.label };
+               prices: r.prices, ev: r.ev, market: r.market || "totals", point: r.point, side: r.side, rule: r.rule, refund: r.refund || 0, pid: p.ev.id + "|" + r.label };
     var sp = { ev: p.ev, key: p.key, league: p.league, group: p.group, time: p.time, pick: pk, nBooks: r.n, a: p.a, id: pk.pid, sub: true };
     sp.isValue = pk.ev >= VALUE_MIN && pk.ev <= VALUE_MAX && r.n >= 4 && pk.best <= LONGSHOT; sp.suspect = pk.ev > VALUE_MAX;
     return sp;
@@ -1332,7 +1538,7 @@ details.acc .pcheck { margin-bottom: 12px; }
     var f2 = el("label", "field", "Which bookmaker"), sel = document.createElement("select");
     (names.length ? names : ["My bookmaker"]).forEach(function (n) { var o = el("option", null, n); o.value = n; sel.appendChild(o); }); f2.appendChild(sel); root.appendChild(f2);
     var out = el("div", "detail"); out.setAttribute("aria-live", "polite"); root.appendChild(out);
-    function cur() { var v = parseFloat(inp.value); if (!(v > 1)) return null; var pk = { name: r.label, fair: r.fair, best: v, ev: r.fair * v - 1, bestBook: sel.value, market: "derived", pid: pid }; return { v: v, pk: pk, st: stakeFor(pk) }; }
+    function cur() { var v = parseFloat(inp.value); if (!(v > 1)) return null; var pk = { name: r.label, fair: r.fair, best: v, ev: r.fair * v - 1 + (r.refund || 0), refund: r.refund || 0, bestBook: sel.value, market: "derived", pid: pid }; return { v: v, pk: pk, st: stakeFor(pk) }; }
     function draw() {
       out.textContent = ""; var c = cur(); if (!c) return;
       var vd = verdictFor(c.pk.ev); out.appendChild(el("div", "pcres " + vd.k, vd.t));
@@ -1383,7 +1589,7 @@ details.acc .pcheck { margin-bottom: 12px; }
       right.appendChild(el("span", null, r.chanceText ? "chance" : "chance · " + inN(r.fair)));
       row.appendChild(left); row.appendChild(right); box.appendChild(row);
     });
-    box.appendChild(el("p", "note", "Chances come from the market average. Double chance and draw no bet are safer than backing one result, but pay less. Their prices are not loaded, so check the odds at your bookmaker against the figure shown. Over/under prices need the goals option in Settings."));
+    box.appendChild(el("p", "note", "Chances come from the market average. Bets with a price shown use real bookmaker prices. Bets marked \"no live price\" were not loaded, so check your bookmaker's odds against the figure shown. Turn on extra markets and goals prices in Settings to load more."));
     return box;
   }
 
@@ -1734,7 +1940,27 @@ details.acc .pcheck { margin-bottom: 12px; }
     });
     if (!order.length) box.appendChild(el("p", null, "No leagues loaded yet. Press Reload leagues."));
     $("autoOn").checked = !!S.auto; $("autoHours").value = String(S.autoHours); $("totalsOn").checked = !!S.totals;
-    renderCost(); renderBooks();
+    $("extrasOn").checked = !!S.extras; $("extraMax").value = String(S.extraMax);
+    renderCost(); renderBooks(); renderMkCheck(); renderCreditLog();
+  }
+  function renderCreditLog() {
+    var box = $("creditLog"); box.textContent = "";
+    if (!S.clog.length) { box.appendChild(el("p", null, "Nothing recorded yet.")); return; }
+    var tot = 0; S.clog.forEach(function (c) { tot += c.used; });
+    S.clog.slice(0, 8).forEach(function (c) { box.appendChild(el("div", "typerow", ago(c.at) + " · " + c.label + " · " + c.used + (c.used === 1 ? " credit" : " credits"))); });
+    box.appendChild(el("p", "subnote", "Last " + S.clog.length + " refreshes: " + tot + " credits. " + (S.remaining !== null ? S.remaining + " left this month." : "")));
+  }
+  function renderMkCheck() {
+    var box = $("mkCheck"); box.textContent = "";
+    EXTRA_MKTS.forEach(function (m) {
+      var st = S.xmBad.indexOf(m) > -1 ? "not available on your plan" : S.xmOK.indexOf(m) > -1 ? "working" : "not tried yet";
+      box.appendChild(el("div", "typerow", EXTRA_NAMES[m] + " · " + st));
+    });
+    if (S.xmBad.length) {
+      var rb = el("button", "btn small", "Try the refused markets again"); rb.type = "button";
+      rb.addEventListener("click", function () { S.xmBad = []; save(); renderMkCheck(); renderCost(); renderStatus(); });
+      box.appendChild(rb);
+    }
   }
   function seenBooks() {
     var seen = {};
@@ -1759,9 +1985,10 @@ details.acc .pcheck { margin-bottom: 12px; }
     });
   }
   function renderCost() {
-    var cost = S.selected.length * (S.totals ? 2 : 1);
-    $("costNote").textContent = "Each refresh uses " + cost + (cost === 1 ? " credit" : " credits") +
-      " (" + (S.totals ? "two" : "one") + " per league). The free plan gives 500 a month. Leagues with no matches cost nothing.";
+    var cost = S.selected.length * (S.totals ? 2 : 1), xe = extraEstimate();
+    $("costNote").textContent = "Each refresh uses about " + (cost + xe) + " credits: " + cost + " for the main prices (" + (S.totals ? "two" : "one") + " per league)" +
+      (xe ? " plus about " + xe + " for extra markets (" + pickExtraTargets().length + " matches x " + extraMarkets().length + " markets)" : "") +
+      ". The free plan gives 500 a month. Opening the page only refreshes the main prices, never the extras.";
   }
   function showAlert(text, info) {
     var a = $("alerts"); a.textContent = "";
@@ -1793,6 +2020,7 @@ details.acc .pcheck { margin-bottom: 12px; }
     var wl = { 12: "12 hours", 24: "24 hours", 48: "2 days", 72: "3 days", 168: "7 days" }[S.windowH] || (S.windowH + " hours");
     $("filterSum").textContent = "Filters: budget £" + S.bankroll + " · min odds " + (+S.minOdds === 1 ? "any" : (+S.minOdds).toFixed(2)) + " · next " + wl;
     renderCredits(); renderStatus(); renderChips(); renderView();
+    if (!$("tab-more").hidden) { renderCreditLog(); renderMkCheck(); }
   }
 
   /* ---------- Automatic refresh ---------- */
@@ -1805,7 +2033,7 @@ details.acc .pcheck { margin-bottom: 12px; }
   function creditsOk() { return S.remaining === null || S.remaining >= MIN_CREDITS; }
   function autoRun() {
     if (!S.key || !S.auto || busy || !creditsOk()) return Promise.resolve();
-    var p = stale() ? refreshAll() : Promise.resolve();
+    var p = stale() ? refreshAll({ extras: false }) : Promise.resolve();
     return p.then(function () { if (creditsOk() && dueBets().length) return checkResults(); });
   }
 
@@ -1839,6 +2067,8 @@ details.acc .pcheck { margin-bottom: 12px; }
     save(); renderView();
   });
   $("practiceOn").addEventListener("change", function (e) { S.practice = e.target.checked; S.pracAsked = true; save(); renderAll(); });
+  $("extrasOn").addEventListener("change", function (e) { S.extras = e.target.checked; save(); renderCost(); renderStatus(); renderView(); });
+  $("extraMax").addEventListener("change", function (e) { S.extraMax = +e.target.value; save(); renderCost(); renderStatus(); });
   $("autoOn").addEventListener("change", function (e) { S.auto = e.target.checked; save(); });
   $("totalsOn").addEventListener("change", function (e) { S.totals = e.target.checked; save(); renderCost(); renderStatus(); });
   $("autoHours").addEventListener("change", function (e) { S.autoHours = +e.target.value; save(); });
