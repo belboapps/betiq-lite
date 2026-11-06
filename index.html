@@ -195,19 +195,45 @@ details.pick > summary::-webkit-details-marker { display: none; }
 .empty b { display: block; font: 700 22px/1.1 var(--display); color: var(--ink); text-transform: uppercase; margin-bottom: 6px; }
 footer { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 6px; }
 footer b { color: var(--ink); }
+
+/* Friendlier layout additions */
+.brand { min-width: 0; }
+.brand .tag { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+.credits { flex: none; white-space: nowrap; }
+.steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
+.steps a, .panel a { color: var(--accent); font-weight: 600; }
+.hint { margin: 0; font-size: 13px; color: var(--muted); }
+details.learn > summary { list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 48px; }
+details.learn > summary::-webkit-details-marker { display: none; }
+details.learn > summary::after { content: "+"; font: 700 22px/1 var(--display); color: var(--accent); flex: none; }
+details.learn[open] > summary::after { content: "\2212"; }
+#filterSum { font: 600 14px/1.3 var(--body); text-transform: none; letter-spacing: 0; color: var(--muted); }
+.slip { grid-column: 1 / -1; margin-top: 8px; padding: 8px 10px; background: var(--accent-soft); border-radius: 8px; font-size: 14px; color: var(--ink); }
+.slip b { font: 700 18px/1.2 var(--display); text-transform: uppercase; letter-spacing: .02em; }
+details.pick.isvalue { border-left: 5px solid var(--value); }
+.stat span, .chance span, .meta { font-size: 12px; }
+.panel { gap: 14px; }
+.panel h2 { font-size: 22px; }
+.btn.primary { box-shadow: 0 1px 0 rgba(0,0,0,.12); }
+.status .btn.primary { min-width: 150px; }
 @media (prefers-reduced-motion: no-preference) { details.pick { transition: border-color .15s; } }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>BetIQ <span>Lite</span></h1>
+    <div class="brand"><h1>BetIQ <span>Lite</span></h1><p class="tag">Compare prices. Find the best deal.</p></div>
     <div class="credits" id="credits" aria-live="polite"></div>
   </header>
 
   <section class="panel" id="setup" hidden>
-    <h2>Connect your odds key</h2>
-    <p>Paste the key from your The Odds API email. It is saved only in this browser on this phone and is sent only to The Odds API.</p>
+    <h2>Welcome. Let's get set up</h2>
+    <ol class="steps">
+      <li>Get a free key at <a href="https://the-odds-api.com" target="_blank" rel="noopener">the-odds-api.com</a>. It is emailed to you.</li>
+      <li>Paste it below and tap Save.</li>
+      <li>Tap Refresh to load today's prices.</li>
+    </ol>
+    <p>The key stays on this phone and is only ever sent to The Odds API.</p>
     <div class="row">
       <input id="keyInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Your API key" aria-label="The Odds API key">
       <button class="btn primary" id="keySave">Save and check</button>
@@ -266,7 +292,10 @@ footer b { color: var(--ink); }
         <button id="modeLikely" aria-pressed="true">Most likely</button>
         <button id="modeValue" aria-pressed="false">Best value</button>
       </div>
-      <div class="filters">
+      <p class="hint" id="modeHint"></p>
+      <details class="learn" id="filterBox">
+      <summary id="filterSum">Filters</summary>
+      <div class="filters body">
         <label for="bankroll">Starting budget £
           <input id="bankroll" type="number" inputmode="decimal" min="1" step="1" value="100">
         </label>
@@ -290,6 +319,7 @@ footer b { color: var(--ink); }
           </select>
         </label>
       </div>
+      </details>
       <div class="chips" id="groupChips" role="group" aria-label="Sport"></div>
     </div>
 
@@ -311,8 +341,8 @@ footer b { color: var(--ink); }
       <div class="body">
         <p><b>Odds of 2.00</b> mean a £1 bet returns £2 if it wins: your £1 back plus £1 profit. Odds of 1.50 return £1.50 for a £1 bet.</p>
         <p><b>Win chance</b> is the market's view of how likely a result is, after the bookmaker's built-in margin is removed.</p>
-        <p><b>Edge</b> shows how a bookmaker's price compares with the market average. +3% means about 3p expected profit for every £1 staked. Most prices have no edge at all.</p>
-        <p><b>Expected profit</b> is an average over many bets, not a promise for one. A bet with a positive figure can still lose. A bet with a negative figure can still win.</p>
+        <p><b>Price vs market</b> (called "edge" by bettors) shows how a bookmaker's price compares with the market average. +3% means about 3p expected profit for every £1 staked. Most prices have no edge at all.</p>
+        <p><b>Average result</b> is an average over many bets, not a promise for one. A bet with a positive figure can still lose. A bet with a negative figure can still win.</p>
         <p><b>Stake</b> is what you put on. Suggested stakes use a quarter of the standard "Kelly" sizing, capped at 5% of your current budget. Where there is no edge, the app suggests a small flat 1% stake instead.</p>
         <p><b>Current budget</b> is your starting budget plus or minus the bets you have settled, so stakes shrink after losses and grow after wins.</p>
         <p><b>Rules to keep:</b> set a budget you can afford to lose, never chase losses, and treat winnings as a bonus. This app does not predict results.</p>
@@ -810,7 +840,8 @@ footer b { color: var(--ink); }
     var box = $("plan"); box.textContent = "";
     if (!S.selected.some(function (k) { return S.cache[k]; })) {
       box.appendChild(el("h2", null, "Today's plan"));
-      box.appendChild(el("p", null, busy ? "Loading odds…" : "Press Refresh to load odds. Your plan appears here."));
+      box.appendChild(el("p", null, busy ? "Loading odds…" : "Load today's prices and your plan appears here."));
+      if (!busy) { var go = el("button", "btn primary", "Load prices"); go.type = "button"; go.addEventListener("click", function () { refreshAll(); }); box.appendChild(go); }
       return;
     }
     var cap = budget() * DAILY_CAP, today = stakedToday();
@@ -833,13 +864,12 @@ footer b { color: var(--ink); }
       });
     } else {
       var steady = d.plans.filter(function (x) { return x.id === "steady"; })[0];
-      box.appendChild(el("h2", null, "Today's plan: no bets"));
-      var r = el("div", "reco"); r.appendChild(el("b", null, "Nothing beats the market"));
+      box.appendChild(el("h2", null, "Today's plan"));
+      var r = el("div", "reco"); r.appendChild(el("b", null, "No good bets right now"));
       r.appendChild(document.createTextNode(steady && steady.sim.exp < 0
-        ? "Skipping is a valid choice. If you want a bet for fun, the favourites below with small stakes are the cheapest way to play, but they are expected to lose about " + gbp(steady.sim.exp) + " per round."
+        ? "No price beats the market, so skipping is a fine choice. If you fancy a bet for fun, keep it small. The favourites below are the cheapest way to play, but on average they lose about " + gbp(steady.sim.exp) + " per round."
         : "No pick is clearly priced above the market. If you want a bet, keep to small stakes."));
       box.appendChild(r);
-      box.appendChild(el("p", null, "Check again closer to kick-off or after the next refresh. Prices that stand out appear here automatically."));
     }
   }
 
@@ -919,6 +949,11 @@ footer b { color: var(--ink); }
       if (p.suspect) sel.appendChild(el("span", "badge warn", "CHECK PRICE"));
       sum.appendChild(sel);
       sum.appendChild(el("span", "match", p.ev.h + " v " + p.ev.a));
+      var slip = el("span", "slip");
+      slip.appendChild(el("b", null, "Bet " + gbp(st.amount) + " at " + s.best.toFixed(2)));
+      slip.appendChild(document.createTextNode(" with " + s.bestBook + " · wins " + gbp(st.amount * (s.best - 1))));
+      sum.appendChild(slip);
+      if (p.isValue) d.classList.add("isvalue");
       var ch = el("span", "chance"); ch.appendChild(el("b", null, pct(s.fair))); ch.appendChild(el("span", null, likeWord(s.fair)));
       sum.appendChild(ch);
       d.appendChild(sum);
@@ -929,8 +964,8 @@ footer b { color: var(--ink); }
       grid.appendChild(statBox("If it wins", sgbp(st.amount * (s.best - 1)), "profit", "pos"));
       grid.appendChild(statBox("If it loses", sgbp(-st.amount), "your stake", "neg"));
       var expP = st.amount * s.ev;
-      grid.appendChild(statBox("Expected profit", sgbp(expP), "average per bet", expP > 0.004 ? "pos" : "neg"));
-      grid.appendChild(statBox("Edge", signed(s.ev), p.suspect ? "unusually high" : p.isValue ? "above market" : "vs market", s.ev > 0 ? "pos" : "neg"));
+      grid.appendChild(statBox("Average result", sgbp(expP), "if you made this bet many times", expP > 0.004 ? "pos" : "neg"));
+      grid.appendChild(statBox("Price vs market", signed(s.ev), p.suspect ? "unusually high, check it" : p.isValue ? "better than the market" : "compared with the market average", s.ev > 0 ? "pos" : "neg"));
       d.appendChild(grid);
 
       var tb = el("div", "timing"); tb.appendChild(el("b", null, "Timing: " + tm.head));
@@ -1083,6 +1118,11 @@ footer b { color: var(--ink); }
     $("minOdds").value = String(S.minOdds);
     $("windowH").value = String(S.windowH);
     $("bankroll").value = String(S.bankroll);
+    $("modeHint").textContent = S.mode === "value"
+      ? "Sorted by how far each price beats the market average. Most are small."
+      : "Sorted by chance of winning. Favourites win often but pay little.";
+    var wl = { 12: "12 hours", 24: "24 hours", 48: "2 days", 72: "3 days", 168: "7 days" }[S.windowH] || (S.windowH + " hours");
+    $("filterSum").textContent = "Filters: budget £" + S.bankroll + " · min odds " + (+S.minOdds === 1 ? "any" : (+S.minOdds).toFixed(2)) + " · next " + wl;
     renderCredits(); renderStatus(); renderChips(); renderView();
   }
 
