@@ -1,0 +1,19 @@
+name: BetIQ alerts
+on:
+  schedule:
+    - cron: "0 10 * * *"   # once a day, 10:00 UTC (10:00 or 11:00 in the UK). Edit to change.
+  workflow_dispatch: {}     # lets you press "Run workflow" to test it
+permissions:
+  contents: read
+jobs:
+  alert:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node alerts/check.mjs
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
