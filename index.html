@@ -402,6 +402,11 @@ details.acc .pcheck { margin-bottom: 12px; }
 .balsum { list-style: none; background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); padding: 12px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
 .lgsec > .subnote { margin: -2px 2px 8px; }
 .seg button { font-size: 15px; padding: 11px 4px; }
+
+.leaguebar { position: sticky; top: 52px; z-index: 9; background: var(--bg); padding: 6px 0; margin: 0 -2px; }
+.chips.scroll { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 2px; }
+.chips.scroll::-webkit-scrollbar { display: none; }
+.chips.scroll .chip { flex: none; white-space: nowrap; }
 @media (prefers-reduced-motion: no-preference) { details.pick { transition: border-color .15s; } }
 </style>
 </head>
@@ -481,6 +486,7 @@ details.acc .pcheck { margin-bottom: 12px; }
       <div class="chips" id="groupChips" role="group" aria-label="Sport"></div>
     </div>
 
+      <div class="leaguebar" id="leagueBar" hidden><div class="chips scroll" id="leagueChips" role="group" aria-label="League"></div></div>
       <h2 class="section" id="picksHead" hidden>Every pick</h2>
       <ol class="list" id="list"></ol>
     </div>
@@ -582,7 +588,7 @@ details.acc .pcheck { margin-bottom: 12px; }
   var API = "https://api.the-odds-api.com/v4";
   var DEFAULTS = { key: "", selected: [], mode: "value", minOdds: 1.3, windowH: 72, group: "all",
                    sports: [], sportsAt: 0, cache: {}, remaining: null, used: null, picked: false,
-                   bankroll: 100, weekly: 0, tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
+                   bankroll: 100, weekly: 0, league: "all", tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
   var GROUPS = { "Soccer": "Football", "American Football": "US football", "Ice Hockey": "Ice hockey",
                  "Mixed Martial Arts": "MMA", "Rugby League": "Rugby", "Rugby Union": "Rugby", "Aussie Rules": "Aussie rules" };
   var DEFAULT_FOOTBALL = ["soccer_epl", "soccer_efl_champ", "soccer_uefa_champs_league", "soccer_uefa_europa_league"];
@@ -1188,14 +1194,14 @@ details.acc .pcheck { margin-bottom: 12px; }
     return el("p", "legend", "Chance: how likely it is to win. Reward: profit as a % of your stake if it wins. Value: how much better than the market average the price is.");
   }
   /* One row of the level board. medal = 1, 2, 3 for gold, silver, bronze. */
-  function boardRow(p, rank, medal, withActions) {
+  function boardRow(p, rank, medal, withActions, showLeague) {
     var s = p.pick, st = stakeFor(s);
     var wrap = el("div", "brow" + (medal === 1 ? " gold" : medal === 2 ? " silver" : medal === 3 ? " bronze" : ""));
     var main = el("button", "bmain"); main.type = "button";
     var top = el("span", "btop");
     top.appendChild(el("span", "bbadge", String(rank)));
     var tx = el("span", "btxt"), nm = el("span", "bn1", s.name); badgesFor(p, nm); tx.appendChild(nm);
-    tx.appendChild(el("span", "bsub", p.ev.h + " v " + p.ev.a + " · " + TF.format(new Date(p.time))));
+    tx.appendChild(el("span", "bsub", (showLeague ? p.league + " · " : "") + p.ev.h + " v " + p.ev.a + " · " + TF.format(new Date(p.time))));
     top.appendChild(tx);
     var pr = el("span", "bprofit");
     pr.appendChild(el("b", null, st.amount >= 0.5 ? "+" + gbp(st.amount * (s.best - 1)) : "–")); pr.appendChild(el("small", null, "if it wins"));
@@ -1246,7 +1252,7 @@ details.acc .pcheck { margin-bottom: 12px; }
     }
     box.appendChild(legend());
     var board = el("div", "board");
-    picks.forEach(function (p, i) { board.appendChild(boardRow(p, i + 1, i < 3 ? i + 1 : 0, i === 0 && d.value.length > 0)); });
+    picks.forEach(function (p, i) { board.appendChild(boardRow(p, i + 1, i < 3 ? i + 1 : 0, i === 0 && d.value.length > 0, true)); });
     box.appendChild(board);
     if (d.value.length) {
       var total = 0, ex = 0; d.value.forEach(function (p) { var st = stakeFor(p.pick); total += st.amount; ex += st.amount * p.pick.ev; });
@@ -1499,6 +1505,7 @@ details.acc .pcheck { margin-bottom: 12px; }
   }
   function renderBalanced(list) {
     var picks = buildBalanced();
+    $("leagueBar").hidden = true;
     $("picksHead").hidden = false; $("picksHead").textContent = "Your balanced " + (picks.length === 10 ? "10" : picks.length);
     if (!picks.length) {
       var li = el("li", "empty"); li.appendChild(el("b", null, "No balanced set right now"));
@@ -1526,13 +1533,13 @@ details.acc .pcheck { margin-bottom: 12px; }
       var sec = el("li", "lgsec"), h = el("div", "lghead");
       h.appendChild(el("b", null, t.name)); h.appendChild(el("span", null, items.length + (items.length === 1 ? " bet" : " bets"))); sec.appendChild(h);
       sec.appendChild(el("p", "subnote", t.note));
-      var inner = el("div", "board"); items.forEach(function (p) { idx++; inner.appendChild(boardRow(p, idx, 0, false)); });
+      var inner = el("div", "board"); items.forEach(function (p) { idx++; inner.appendChild(boardRow(p, idx, 0, false, true)); });
       sec.appendChild(inner); list.appendChild(sec);
     });
   }
 
   function renderList() {
-    var list = $("list"); list.textContent = "";
+    var list = $("list"); list.textContent = ""; list.classList.remove("board");
     if (S.mode === "balanced") { renderBalanced(list); return; }
     var picks = buildPicks(S.mode).slice(0, 60);
     $("picksHead").hidden = !picks.length;
@@ -1546,23 +1553,28 @@ details.acc .pcheck { margin-bottom: 12px; }
         : "Press Refresh to fetch prices. Each league costs one credit."));
       list.appendChild(li); return;
     }
-    list.appendChild(el("li", "legendli", "Leagues run top tier first. A gold, silver or bronze badge means one of your three best bets overall."));
+    list.appendChild(el("li", "legendli", "Best bets first across every league. Use the league buttons above to look at just one. Gold, silver and bronze mark the top three."));
     list.appendChild(el("li", "legendli", "Chance: how likely it is to win. Reward: profit as a % of your stake if it wins. Value: how much better than the market average the price is."));
-    var groups = {}, order = [];
-    picks.forEach(function (p, gi) {
-      p._g = gi;
-      var g = groups[p.key]; if (!g) { g = groups[p.key] = { key: p.key, title: p.league, group: p.group, items: [] }; order.push(g); }
-      g.items.push(p);
+    var counts = {}, order = [];
+    picks.forEach(function (p) {
+      var c = counts[p.key]; if (!c) { c = counts[p.key] = { key: p.key, title: p.league, group: p.group, n: 0 }; order.push(c); }
+      c.n++;
     });
     order.sort(function (a, b) { return leagueRank(a) - leagueRank(b) || a.title.localeCompare(b.title); });
-    order.forEach(function (g) {
-      var sec = el("li", "lgsec"), h = el("div", "lghead");
-      h.appendChild(el("b", null, g.title)); h.appendChild(el("span", null, g.items.length + (g.items.length === 1 ? " bet" : " bets")));
-      sec.appendChild(h);
-      var inner = el("div", "board");
-      g.items.forEach(function (p, j) { inner.appendChild(boardRow(p, j + 1, p._g < 3 ? p._g + 1 : 0, false)); });
-      sec.appendChild(inner); list.appendChild(sec);
+    if (S.league !== "all" && !counts[S.league]) S.league = "all";
+    var bar = $("leagueChips"); bar.textContent = "";
+    $("leagueBar").hidden = order.length < 2;
+    [{ key: "all", title: "All leagues", n: picks.length }].concat(order).forEach(function (c) {
+      var b = el("button", "chip", c.title + " " + c.n); b.type = "button"; b.setAttribute("aria-pressed", String(S.league === c.key));
+      b.addEventListener("click", function () { S.league = c.key; save(); renderAll(); });
+      bar.appendChild(b);
     });
+    var shown = S.league === "all" ? picks : picks.filter(function (p) { return p.key === S.league; });
+    $("picksHead").textContent = (S.league === "all" ? "All bets" : counts[S.league].title) + (S.mode === "value" ? ", best first" : ", most likely first");
+    shown.forEach(function (p, i) {
+      var wrap = el("li"); wrap.appendChild(boardRow(p, i + 1, i < 3 ? i + 1 : 0, false, S.league === "all")); list.appendChild(wrap);
+    });
+    list.classList.add("board");
   }
 
   /* ---------- Tiles, tabs ---------- */
