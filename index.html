@@ -251,6 +251,13 @@ body { padding-bottom: 0; }
 .tile .bar { margin-top: auto; }
 .pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .ptile { text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.nudge { min-height: 0; border-color: var(--accent); background: var(--accent-soft); }
+.nudge b { font-size: 22px; }
+.nudge small { color: var(--ink); }
+.hplain { font-size: 14px; line-height: 1.4; background: rgba(255,255,255,.16); border-radius: 8px; padding: 9px 10px; }
+.plain { background: var(--accent-soft); border-radius: 10px; padding: 10px 12px; font-size: 15px; line-height: 1.45; }
+.plain b { display: block; font: 700 15px/1.2 var(--display); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 2px; }
+.mk .mkl small + small { margin-top: 2px; }
 .ptile.isvalue { border-color: var(--value); }
 .ptile .pn { font: 700 21px/1.05 var(--display); text-transform: uppercase; overflow-wrap: anywhere; }
 .ptile .pm { font-size: 12px; color: var(--muted); }
@@ -464,7 +471,7 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
   var API = "https://api.the-odds-api.com/v4";
   var DEFAULTS = { key: "", selected: [], mode: "value", minOdds: 1.3, windowH: 72, group: "all",
                    sports: [], sportsAt: 0, cache: {}, remaining: null, used: null, picked: false,
-                   bankroll: 100, weekly: 0, tab: "today", ver: 2, myBooks: null, hist: {}, bets: [], auto: true, autoHours: 4, noLinks: false, totals: false };
+                   bankroll: 100, weekly: 0, tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], auto: true, autoHours: 4, noLinks: false, totals: false };
   var GROUPS = { "Soccer": "Football", "American Football": "US football", "Ice Hockey": "Ice hockey",
                  "Mixed Martial Arts": "MMA", "Rugby League": "Rugby", "Rugby Union": "Rugby", "Aussie Rules": "Aussie rules" };
   var DEFAULT_FOOTBALL = ["soccer_epl", "soccer_efl_champ", "soccer_uefa_champs_league", "soccer_uefa_europa_league"];
@@ -478,7 +485,7 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
     "888sport": "https://www.888sport.com", "Virgin Bet": "https://www.virginbet.com", "LeoVegas": "https://www.leovegas.com",
     "LiveScore Bet": "https://www.livescorebet.com", "Spreadex": "https://www.spreadex.com" };
   var KELLY_FRACTION = 0.25, MAX_STAKE = 0.05, SMALL_STAKE = 0.01, VALUE_MIN = 0.03, VALUE_MAX = 0.12;
-  var DAILY_CAP = 0.10, MIN_CREDITS = 60, LONGSHOT = 6, WEEK_CAP = 0.25;
+  var DAILY_CAP = 0.10, MIN_CREDITS = 60, LONGSHOT = 4, WEEK_CAP = 0.25;
 
   var S = load();
   var busy = false;
@@ -679,14 +686,14 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
     a.sels.forEach(function (s) { if (s.name === ev.h) h = s.fair; else if (s.name === ev.a) w = s.fair; else if (s.name === "Draw") d = s.fair; });
     if (!(h > 0 && d > 0 && w > 0)) return [];
     var t = h + d + w; h /= t; d /= t; w /= t;
-    function row(label, p, sub, text) { return { label: label, fair: p, fairOdds: 1 / p, need: 1.03 / p, sub: sub, chanceText: text }; }
+    function row(label, p, sub, text, desc) { return { label: label, fair: p, fairOdds: 1 / p, need: 1.03 / p, sub: sub, chanceText: text, desc: desc }; }
     var dnb = "Stake back if it is a draw";
     return [
-      row(ev.h + " or draw", h + d, "Double chance"),
-      row("Draw or " + ev.a, d + w, "Double chance"),
-      row(ev.h + " or " + ev.a, h + w, "Double chance, no draw"),
-      row(ev.h + " draw no bet", h / (h + w), dnb, pct(h) + " win"),
-      row(ev.a + " draw no bet", w / (h + w), dnb, pct(w) + " win")
+      row(ev.h + " or draw", h + d, "Double chance", null, "Wins if " + ev.h + " win or the match is a draw."),
+      row("Draw or " + ev.a, d + w, "Double chance", null, "Wins if " + ev.a + " win or the match is a draw."),
+      row(ev.h + " or " + ev.a, h + w, "Double chance, no draw", null, "Wins if either team wins. Loses on a draw."),
+      row(ev.h + " draw no bet", h / (h + w), dnb, pct(h / (h + w)), "Wins if " + ev.h + " win. Your stake comes back if it is a draw."),
+      row(ev.a + " draw no bet", w / (h + w), dnb, pct(w / (h + w)), "Wins if " + ev.a + " win. Your stake comes back if it is a draw.")
     ];
   }
 
@@ -727,7 +734,11 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
         }
       });
     });
-    function rank(p) { return p.suspect ? p.pick.ev - 10 : p.pick.ev; }   /* suspiciously big edges sink to the bottom */
+    /* Rank by expected profit at the sized stake: edge x Kelly share. This stops long shots (where the market average is least reliable) floating to the top. */
+    function rank(p) {
+      var e = p.pick.ev, sc = e > 0 ? Math.min(KELLY_FRACTION * e / (p.pick.best - 1), MAX_STAKE) * e : e;
+      return p.suspect ? sc - 10 : sc;   /* suspiciously big edges sink to the bottom */
+    }
     out.sort(function (x, y) { return mode === "value" ? rank(y) - rank(x) : y.pick.fair - x.pick.fair; });
     return out;
   }
@@ -770,9 +781,9 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
     var B = budget();
     if (pick.ev > 0.005) {
       var kelly = pick.ev / (pick.best - 1);
-      return { amount: round50(B * Math.min(KELLY_FRACTION * kelly, MAX_STAKE)), kind: "Quarter Kelly, max 5%" };
+      return { amount: round50(B * Math.min(KELLY_FRACTION * kelly, MAX_STAKE)), kind: "Sized to the edge and your budget" };
     }
-    return { amount: round50(B * SMALL_STAKE), kind: "Small stake, no edge" };
+    return { amount: round50(B * SMALL_STAKE), kind: "Small flat stake (no edge)" };
   }
 
   /* Works out every win/lose combination for a few bets. */
@@ -970,7 +981,8 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
 
   function planData() {
     var likely = buildPicks("likely").slice(0, 3);
-    var value = buildPicks("value").filter(function (p) { return p.isValue; }).slice(0, 5);
+    var ranked = buildPicks("value").slice(0, 10);
+    var value = ranked.filter(function (p) { return p.isValue; }).slice(0, 5);
     allocateWeekly(value);
     function legsFrom(picks) {
       return picks.map(function (p) { var st = stakeFor(p.pick); return { p: p.pick.fair, o: p.pick.best, s: st.amount, name: p.pick.name, book: p.pick.bestBook }; })
@@ -988,7 +1000,7 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
       plans.push({ id: "acca", title: "Accumulator", sub: "same picks, one combined bet", legs: ac, sim: simulate(ac),
         text: "Bigger payout, but every pick must win and the bookmaker's margin is applied on each one. Usually loses more for every £1 staked than the same picks as separate bets." });
     }
-    return { likely: likely, value: value, plans: plans };
+    return { likely: likely, value: value, ranked: ranked, plans: plans };
   }
 
   function weeklyStrip() {
@@ -1000,6 +1012,19 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
     d.appendChild(bar);
     return d;
   }
+  function betWords(p) {
+    var s = p.pick;
+    return s.market ? s.name + " in the match" : s.name === "Draw" ? "the match to end in a draw" : s.name + " to win";
+  }
+  function plainText(p, st) {
+    var s = p.pick;
+    if (st.amount < 0.5) return "";
+    var ret = st.amount * s.best, t = "You put " + gbp(st.amount) + " on " + betWords(p) + " with " + s.bestBook + ", at odds of " + s.best.toFixed(2) +
+      ". Odds of " + s.best.toFixed(2) + " mean every £1 you bet returns £" + s.best.toFixed(2) + " if you win. So if it wins you get " + gbp(ret) + " back: your " + gbp(st.amount) +
+      " plus " + gbp(ret - st.amount) + " profit. If it loses, you lose the " + gbp(st.amount) + ". Bets like this win about " + Math.round(s.fair * 10) + " times in 10.";
+    if (s.bestEx) t += " " + s.bestBook + " is a betting exchange, where you bet against other people instead of a bookmaker, and it needs its own account. The odds shown are after its commission.";
+    return t;
+  }
   function stakeLine(st) { return st.amount >= 0.5 ? "Bet " + gbp(st.amount) : st.kind; }
   function renderPlan(d) {
     var box = $("plan"); box.textContent = "";
@@ -1010,6 +1035,13 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
       return;
     }
     var wk = weeklyStrip();
+    if (!S.booksSet && !S.bets.length) {
+      var nb = el("button", "tile nudge"); nb.type = "button";
+      nb.appendChild(el("b", null, "Which bookmakers do you use?"));
+      nb.appendChild(el("small", null, "Bets are picked from every UK bookmaker and betting exchange, including ones you may not have an account with. Tap to choose yours."));
+      nb.addEventListener("click", function () { setTab("more"); });
+      box.appendChild(nb);
+    }
     if (d.value.length) {
       var p0 = d.value[0], s0 = p0.pick, st0 = stakeFor(s0);
       var hero = el("div", "hero");
@@ -1019,18 +1051,21 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
       var hg = el("div", "hgrid");
       var c1 = el("div", "hbox"); c1.appendChild(el("span", null, "Chance of winning")); c1.appendChild(el("b", null, pct(s0.fair))); c1.appendChild(el("small", null, inN(s0.fair) + " · " + likeWord(s0.fair)));
       var c2 = el("div", "hbox"); c2.appendChild(el("span", null, "Your bet")); c2.appendChild(el("b", null, st0.amount >= 0.5 ? gbp(st0.amount) : "–"));
-      c2.appendChild(el("small", null, st0.amount >= 0.5 ? "at " + s0.best.toFixed(2) + " with " + s0.bestBook : st0.kind));
+      c2.appendChild(el("small", null, st0.amount >= 0.5 ? "at odds of " + s0.best.toFixed(2) + " with " + s0.bestBook : st0.kind));
       var c3 = el("div", "hbox"); c3.appendChild(el("span", null, "If it wins")); c3.appendChild(el("b", "pos", st0.amount >= 0.5 ? sgbp(st0.amount * (s0.best - 1)) : "–")); c3.appendChild(el("small", null, "profit · lose it and you lose the stake"));
       var c4 = el("div", "hbox"); c4.appendChild(el("span", null, "Average result")); c4.appendChild(el("b", st0.amount * s0.ev > 0 ? "pos" : "neg", sgbp(st0.amount * s0.ev))); c4.appendChild(el("small", null, signed(s0.ev) + " better than the market"));
       [c1, c2, c3, c4].forEach(function (x) { hg.appendChild(x); });
       hero.appendChild(hg);
+      var pt = plainText(p0, st0); if (pt) hero.appendChild(el("div", "hplain", pt));
       hero.appendChild(actionsFor(p0, st0));
       var dt = el("button", "btn linkbtn", "Full details"); dt.type = "button"; dt.addEventListener("click", function () { openSheet(p0, dt); }); hero.appendChild(dt);
       box.appendChild(hero);
       if (wk) box.appendChild(wk);
-      if (d.value.length > 1) {
+      var rest = d.ranked.filter(function (p) { return p !== p0 && p.id !== p0.id; }).slice(0, 8);
+      if (rest.length) {
         box.appendChild(el("h3", null, "Next best bets"));
-        var pg = el("div", "pgrid"); d.value.slice(1).forEach(function (p) { pg.appendChild(pickTile(p)); }); box.appendChild(pg);
+        var pg = el("div", "pgrid"); rest.forEach(function (p) { pg.appendChild(pickTile(p)); }); box.appendChild(pg);
+        var more = el("button", "btn linkbtn", "See all bets"); more.type = "button"; more.addEventListener("click", function () { setTab("all"); }); box.appendChild(more);
       }
       var total = 0, ex = 0; d.value.forEach(function (p) { var st = stakeFor(p.pick); total += st.amount; ex += st.amount * p.pick.ev; });
       var cap = budget() * DAILY_CAP, today = stakedToday();
@@ -1046,6 +1081,10 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
         : "No price is clearly above the market. The list below is ranked best first. If you want a bet, keep to small stakes."));
       box.appendChild(r);
       if (wk) box.appendChild(wk);
+      if (d.ranked.length) {
+        box.appendChild(el("h3", null, "Closest to good value"));
+        var pg2 = el("div", "pgrid"); d.ranked.slice(0, 6).forEach(function (p) { pg2.appendChild(pickTile(p)); }); box.appendChild(pg2);
+      }
     }
   }
 
@@ -1081,20 +1120,22 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
     var foot = p.a.sels.some(function (x) { return x.name === "Draw"; });
     var rows = analyseTotals(p.ev, foot ? " goals" : "").concat(foot ? derivedMarkets(p.a, p.ev) : []);
     if (!rows.length) return null;
-    var box = el("div", "mk"); box.appendChild(el("b", null, "More ways to bet this match"));
+    var box = el("div", "mk"); box.appendChild(el("b", null, "Other ways to bet this match"));
     rows.forEach(function (r) {
       var row = el("div", "mkrow"), left = el("div", "mkl");
       var nm = el("span", "mkname", r.label);
       if (r.best && r.ev >= VALUE_MIN && r.ev <= VALUE_MAX && r.n >= 4) nm.appendChild(el("span", "badge value", "VALUE"));
       left.appendChild(nm);
+      var desc = r.desc || (r.side === "Over" ? "Wins if the match has " + (Math.floor(r.point) + 1) + " or more goals." : "Wins if the match has " + Math.floor(r.point) + " or fewer goals.");
+      left.appendChild(el("small", null, desc));
       left.appendChild(el("small", null, r.best
-        ? "Best " + r.best.toFixed(2) + " at " + r.book + (r.ex ? " after commission" : "") + " · edge " + signed(r.ev)
-        : r.sub + ". Good value at " + r.need.toFixed(2) + " or better."));
+        ? "Best odds " + r.best.toFixed(2) + " with " + r.book + (r.ex ? " (after commission)" : "") + ", " + signed(r.ev) + " vs the market."
+        : "No live price here. Worth betting only if your bookmaker offers odds of " + r.need.toFixed(2) + " or higher."));
       var right = el("div", "mkr"); right.appendChild(el("b", null, r.chanceText || pct(r.fair)));
-      right.appendChild(el("span", null, "fair " + r.fairOdds.toFixed(2)));
+      right.appendChild(el("span", null, r.chanceText ? "chance" : "chance · " + inN(r.fair)));
       row.appendChild(left); row.appendChild(right); box.appendChild(row);
     });
-    box.appendChild(el("p", "note", "Chances come from the market average. Double chance and draw no bet are worked out for free, so their prices are not loaded: check your bookmaker, and a price at or above the one shown is good value. Over/under prices need the goals option in Settings."));
+    box.appendChild(el("p", "note", "Chances come from the market average. Double chance and draw no bet are safer than backing one result, but pay less. Their prices are not loaded, so check the odds at your bookmaker against the figure shown. Over/under prices need the goals option in Settings."));
     return box;
   }
 
@@ -1109,7 +1150,7 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
   function slipFor(p, st) {
     var s = p.pick, slip = el("span", "slip");
     if (st.amount >= 0.5) {
-      slip.appendChild(el("b", null, "Bet " + gbp(st.amount) + " at " + s.best.toFixed(2)));
+      slip.appendChild(el("b", null, "Bet " + gbp(st.amount) + " at odds " + s.best.toFixed(2)));
       slip.appendChild(document.createTextNode(" with " + s.bestBook + " · wins " + gbp(st.amount * (s.best - 1))));
     } else { slip.appendChild(el("b", null, st.kind)); slip.appendChild(document.createTextNode(" · best price " + s.best.toFixed(2) + " with " + s.bestBook)); }
     return slip;
@@ -1120,7 +1161,7 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
     b.appendChild(el("span", "pn", s.name));
     b.appendChild(el("span", "pm", p.ev.h + " v " + p.ev.a + " · " + TF.format(new Date(p.time))));
     var ps = el("span", "ps");
-    if (st.amount >= 0.5) { ps.appendChild(el("b", null, gbp(st.amount) + " @ " + s.best.toFixed(2))); ps.appendChild(document.createTextNode(s.bestBook)); }
+    if (st.amount >= 0.5) { ps.appendChild(el("b", null, gbp(st.amount) + " at odds " + s.best.toFixed(2))); ps.appendChild(document.createTextNode(s.bestBook)); }
     else ps.appendChild(el("b", null, st.kind));
     b.appendChild(ps);
     b.addEventListener("click", function () { openSheet(p, b); });
@@ -1136,9 +1177,10 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
     ht.appendChild(el("div", "dsub", likeWord(s.fair) + " · " + inN(s.fair)));
     head.appendChild(ht); root.appendChild(head);
 
+    var pt = plainText(p, st); if (pt) { var pe = el("div", "plain"); pe.appendChild(el("b", null, "In plain English")); pe.appendChild(document.createTextNode(pt)); root.appendChild(pe); }
     var pa = el("div", "pickactions"); pa.appendChild(actionsFor(p, st)); root.appendChild(pa);
     var grid = el("div", "stats");
-    grid.appendChild(statBox("Bet at", s.bestBook, s.best.toFixed(2) + (s.bestEx ? " after commission" : " odds")));
+    grid.appendChild(statBox("Bet with", s.bestBook, "odds " + s.best.toFixed(2) + (s.bestEx ? " after commission" : "")));
     grid.appendChild(statBox("Suggested stake", st.amount >= 0.5 ? gbp(st.amount) : "–", st.kind));
     grid.appendChild(statBox("If it wins", sgbp(st.amount * (s.best - 1)), "profit", "pos"));
     grid.appendChild(statBox("If it loses", sgbp(-st.amount), "your stake", "neg"));
@@ -1363,7 +1405,7 @@ textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px soli
         var cur = S.myBooks ? S.myBooks.slice() : names.slice();
         var i = cur.indexOf(n);
         if (i > -1) cur.splice(i, 1); else cur.push(n);
-        S.myBooks = (cur.length === names.length) ? null : cur;
+        S.myBooks = (cur.length === names.length) ? null : cur; S.booksSet = true;
         save(); renderBooks(); renderView();
       });
       box.appendChild(b);
