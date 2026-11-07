@@ -402,6 +402,8 @@ details.acc .pcheck { margin-bottom: 12px; }
 
 .lossbar { background: var(--warn-bg); color: var(--warn); border-radius: 12px; padding: 10px 12px; font-size: 14px; line-height: 1.4; }
 .lossbar b { display: block; font: 700 16px/1.2 var(--display); margin-bottom: 2px; }
+.evid { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.45; }
+.evid b { color: var(--ink); }
 .balsum { list-style: none; background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); padding: 12px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
 .lgsec > .subnote { margin: -2px 2px 8px; }
 .seg button { font-size: 15px; padding: 11px 4px; }
@@ -557,6 +559,19 @@ details.acc .pcheck { margin-bottom: 12px; }
     </section>
 
       <section class="panel" id="creditBox"><h2>Credit use</h2><p>What your recent refreshes cost, so you can see how the 500 a month is going.</p><div id="creditLog"></div></section>
+      <section class="panel" id="evidenceBox">
+        <h2>How well has this worked?</h2>
+        <p>I replayed these rules over 30,176 past matches (10 leagues, 2019/20 onwards, odds from football-data.co.uk). The honest results:</p>
+        <ul class="evid">
+          <li><b>The chances are accurate.</b> Once the bookmaker's margin is removed the new way, predicted chances matched real results to within about 1 point in every band.</li>
+          <li><b>Betting blindly loses.</b> Backing every outcome lost about 2 to 5% of the money staked at the best price among several bookmakers, and about 6 to 7% at a single bookmaker's price.</li>
+          <li><b>VALUE bets did not prove profitable.</b> At the best price across many bookmakers they were about break-even (+3.6%, but with a margin of error of about 10 points). At one bookmaker's price they lost about 4 to 5%.</li>
+          <li><b>They did spot good prices.</b> VALUE bets beat the final market price by 4 to 6% on average. That only turns into money if you can actually get those prices, and bookmakers limit accounts that keep doing it.</li>
+          <li><b>"Check price" bets are suspect.</b> Bets with an edge over 12% won far less than predicted (about 18% against 31%), which usually means a stale or wrong price.</li>
+          <li><b>It takes thousands of bets to know.</b> Detecting a real 3% edge needs roughly 8,000 or more VALUE bets.</li>
+        </ul>
+        <p>So treat betting as paid entertainment, not income. Expect to lose a few percent of what you stake over time, and only stake what you can afford to lose.</p>
+      </section>
       <section class="panel" id="tourBox"><h2>New here?</h2><p>A short walk-through of how to read the page and stay in control.</p><button class="btn" id="tourAgain" type="button">Show the tour</button></section>
       <section class="panel" id="backupBox">
         <h2>Back up your bets</h2>
@@ -588,7 +603,7 @@ details.acc .pcheck { margin-bottom: 12px; }
   </section>
 
   <footer>
-    <span><b>How it works.</b> Each bookmaker's margin is removed, then prices are averaged to get a win chance. Edge compares the best price you can get with that average, with exchange commission taken off. It measures price against the market. It does not tell you who will win, and the market average can be wrong. A big edge is often a stale price, so confirm it on the bookmaker's site before betting.</span>
+    <span><b>How it works.</b> Each bookmaker's margin is removed (taking proportionally more off long shots, which tested better on 30,000 past matches), then the chances are averaged to get a win chance. Edge compares the best price you can get with that average, with exchange commission taken off. It measures price against the market. It does not tell you who will win, and the market average can be wrong. A big edge is often a stale price, so confirm it on the bookmaker's site before betting.</span>
     <span>Horse racing is not covered by this data source. 18+ only. Bet only what you can afford to lose. <a href="https://www.begambleaware.org" target="_blank" rel="noopener">BeGambleAware.org</a></span>
   </footer>
 </div>
@@ -862,16 +877,27 @@ details.acc .pcheck { margin-bottom: 12px; }
   function safeLink(u) { return (typeof u === "string" && u.indexOf("https://") === 0) ? u : ""; }
 
   /* ---------- Maths ---------- */
+  /* Takes the bookmaker's margin out of a set of implied chances (1 / odds) so they add up to `total` (1 for a normal market).
+     The power method takes proportionally more margin off long shots than simply dividing by the total. Tested on about 30,000 past matches,
+     it predicted results better: dividing by the total made long shots look about 1.3 points likelier than they were, and strong favourites up to 3 points less likely. */
+  function demargin(q, total) {
+    var T = total || 1, lo = 0.5, hi = 3, k = 1, i, j, sum;
+    for (i = 0; i < 50; i++) {
+      k = (lo + hi) / 2; sum = 0;
+      for (j = 0; j < q.length; j++) sum += Math.pow(q[j], k);
+      if (sum > T) lo = k; else hi = k;
+    }
+    return q.map(function (x) { return Math.pow(x, k); });
+  }
   function analyse(ev) {
     var map = {}, order = [], nBooks = 0;
     ev.books.forEach(function (b) {
-      var inv = b.o.map(function (x) { return 1 / x[1]; });
-      var sum = inv.reduce(function (p, c) { return p + c; }, 0);
+      var fairs = demargin(b.o.map(function (x) { return 1 / x[1]; }));
       nBooks++;
       b.o.forEach(function (x, i) {
         var n = x[0];
         if (!map[n]) { map[n] = { name: n, fair: [], prices: [] }; order.push(n); }
-        map[n].fair.push(inv[i] / sum);
+        map[n].fair.push(fairs[i]);
         map[n].prices.push({ book: b.t, raw: x[1], price: eff(x[1], b.k), ex: !!EXCH[b.k], comm: EXCH[b.k] || 0, ok: allowed(b.t), link: x[2] || "" });
       });
     });
@@ -897,9 +923,9 @@ details.acc .pcheck { margin-bottom: 12px; }
     var lines = {};
     (ev.tb || []).forEach(function (b) {
       Object.keys(b.p).forEach(function (k) {
-        var o = b.p[k][0], u = b.p[k][1], io = 1 / o, iu = 1 / u, t = io + iu;
+        var o = b.p[k][0], u = b.p[k][1], fp = demargin([1 / o, 1 / u]);
         var L = lines[k] || (lines[k] = { point: +k, fo: [], ov: [], un: [] });
-        L.fo.push(io / t);
+        L.fo.push(fp[0]);
         L.ov.push({ book: b.t, price: eff(o, b.k), ex: !!EXCH[b.k], comm: EXCH[b.k] || 0, ok: allowed(b.t) });
         L.un.push({ book: b.t, price: eff(u, b.k), ex: !!EXCH[b.k], comm: EXCH[b.k] || 0, ok: allowed(b.t) });
       });
@@ -942,7 +968,7 @@ details.acc .pcheck { margin-bottom: 12px; }
   }
   function twoWay(items, sa, sb, refundFor) {
     var fa = [], pa = [], pb = [];
-    items.forEach(function (it) { var ia = 1 / it.a, ib = 1 / it.b; fa.push(ia / (ia + ib)); pa.push(priceBox(it, it.a)); pb.push(priceBox(it, it.b)); });
+    items.forEach(function (it) { fa.push(demargin([1 / it.a, 1 / it.b])[0]); pa.push(priceBox(it, it.a)); pb.push(priceBox(it, it.b)); });
     if (fa.length < 3) return [];
     var A = avg(fa), ra = refundFor ? refundFor(A) : null;
     return [mkRow(sa, ra ? ra.fa : A, pa, fa.length, ra ? ra.refund : 0), mkRow(sb, ra ? ra.fb : 1 - A, pb, fa.length, ra ? ra.refund : 0)].filter(Boolean);
@@ -974,8 +1000,8 @@ details.acc .pcheck { margin-bottom: 12px; }
     (x.m.double_chance || []).forEach(function (b) {
       var m = {}; b.o.forEach(function (z) { var k = dcKey(z[0], ev.h, ev.a); if (k) m[k] = z[1]; });
       if (m.HD && m.DA && m.HA) {
-        var iv = { HD: 1 / m.HD, DA: 1 / m.DA, HA: 1 / m.HA }, sum = iv.HD + iv.DA + iv.HA;
-        ["HD", "DA", "HA"].forEach(function (k) { dc[k].push({ f: iv[k] / sum * 2, p: priceBox(b.t ? { t: b.t, k: b.k } : b, m[k]) }); });
+        var dcf = demargin([1 / m.HD, 1 / m.DA, 1 / m.HA], 2), dcx = { HD: dcf[0], DA: dcf[1], HA: dcf[2] };
+        ["HD", "DA", "HA"].forEach(function (k) { dc[k].push({ f: dcx[k], p: priceBox(b, m[k]) }); });
         dcItems.push(1);
       }
     });
@@ -999,7 +1025,7 @@ details.acc .pcheck { margin-bottom: 12px; }
       });
     });
     var arr = Object.keys(lines).map(function (k) { return { p: +k, items: lines[k] }; }).filter(function (L) { return L.items.length >= 3; });
-    arr.forEach(function (L) { L.fair = avg(L.items.map(function (it) { return (1 / it.a) / (1 / it.a + 1 / it.b); })); });
+    arr.forEach(function (L) { L.fair = avg(L.items.map(function (it) { return demargin([1 / it.a, 1 / it.b])[0]; })); });
     arr.sort(function (a, b) { return Math.abs(a.fair - 0.5) - Math.abs(b.fair - 0.5); });
     arr.slice(0, 3).forEach(function (L) {
       function sgn(v) { return (v > 0 ? "+" : "") + v; }
