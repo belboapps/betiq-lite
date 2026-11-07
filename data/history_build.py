@@ -13,8 +13,10 @@ import argparse, csv, math, os, random, sqlite3, sys, time, urllib.request, urll
 from datetime import datetime
 
 LEAGUES = {"E0": "Premier League", "E1": "Championship", "E2": "League One", "E3": "League Two", "EC": "Conference",
-           "SC0": "Scottish Premiership", "D1": "Bundesliga", "SP1": "La Liga", "I1": "Serie A", "F1": "Ligue 1"}
-SEASONS = ["1920", "2021", "2122", "2223", "2324", "2425", "2526", "2627"]
+           "SC0": "Scottish Premiership", "D1": "Bundesliga", "SP1": "La Liga", "I1": "Serie A", "F1": "Ligue 1",
+           "N1": "Eredivisie", "B1": "Belgian Pro League", "P1": "Primeira Liga", "T1": "Turkish Super Lig", "G1": "Greek Super League"}
+ENGLAND = ("E0", "E1", "E2", "E3", "EC")
+SEASONS = ["1213", "1314", "1415", "1516", "1617", "1718", "1819", "1920", "2021", "2122", "2223", "2324", "2425", "2526", "2627"]
 H2H_BOOKS = ["B365", "BW", "IW", "PS", "WH", "VC", "LB", "BF", "1XB", "SB", "GB", "BS", "SJ", "Max", "Avg", "BFE"]
 UK_BOOKS = ["B365", "WH", "LB", "BW", "VC", "BF", "IW"]          # stand-ins for the UK bookmakers the app compares
 TOT_BOOKS = {"B365": "B365", "P": "PS", "GB": "GB", "BS": "BS", "Max": "Max", "Avg": "Avg", "BFE": "BFE", "BbMx": "Max", "BbAv": "Avg"}
@@ -95,6 +97,10 @@ def build(db_path, raw_dir):
                             o = [num(r.get("%s%s%s" % (b, c, k))) for k in ("H", "D", "A")]
                             if all(o):
                                 db.execute("INSERT INTO odds VALUES(?,?,?,?,?,?,?)", (mid, "h2h", b, ph, o[0], o[1], o[2]))
+                    for old, b in (("BbMx", "Max"), ("BbAv", "Avg")):          # older seasons call the market best/average Betbrain
+                        o = [num(r.get("%s%s" % (old, k))) for k in ("H", "D", "A")]
+                        if all(o) and not db.execute("SELECT 1 FROM odds WHERE match_id=? AND market='h2h' AND book=? AND phase='open'", (mid, b)).fetchone():
+                            db.execute("INSERT INTO odds VALUES(?,?,?,?,?,?,?)", (mid, "h2h", b, "open", o[0], o[1], o[2]))
                     for col, b in TOT_BOOKS.items():
                         for ph, c in (("open", ""), ("close", "C")):
                             ov, un = num(r.get("%s%s>2.5" % (col, c))), num(r.get("%s%s<2.5" % (col, c)))
@@ -174,6 +180,13 @@ def simulate(db):
             best = [max(p[i] for p in uk.values()) for i in range(3)]
             bk = [max(uk, key=lambda b: uk[b][i]) for i in range(3)]
             add(m, "h2h", "uk4", ["H", "D", "A"], fairs, best, bk, len(uk), b365, closefair, wins)
+        # variant 3: how a professional would do it: Pinnacle's opening price as the fair price, best price among the UK bookmakers
+        ps = o_open.get("PS")
+        if ps and len(uk) >= 3:
+            fairs = demargin(list(ps))
+            best = [max(p[i] for p in uk.values()) for i in range(3)]
+            bk = [max(uk, key=lambda b: uk[b][i]) for i in range(3)]
+            add(m, "h2h", "sharp", ["H", "D", "A"], fairs, best, bk, len(uk) + 1, b365, closefair, wins)
         # variant 2: market average and best price (many bookmakers behind each)
         if "Avg" in o_open and "Max" in o_open:
             fairs = demargin(o_open["Avg"])
@@ -189,6 +202,28 @@ def simulate(db):
                 [tb[0], tb[1]] if tb else None, tcf, [hg + ag > 2.5, hg + ag < 2.5])
     db.executemany("INSERT INTO sim_bets VALUES(%s)" % ",".join("?" * 21), rows)
     print("simulated bets:", len(rows))
+
+
+def evidence(db_path, out_path):
+    """Compact table of how past bets of each kind turned out, for the page to show next to each bet."""
+    import json
+    db = sqlite3.connect(db_path)
+    buckets = [("none", -9, 0), ("tiny", 0, 0.01), ("small", 0.01, 0.03), ("value", 0.03, 0.06), ("big", 0.06, 0.12), ("huge", 0.12, 9)]
+    tiers = {"safer": "fair>=0.5", "mid": "fair>=0.3 AND fair<0.5", "long": "fair<0.3"}
+    out = {}
+    for key, variant, market in (("h2h", "uk4", "h2h"), ("goals", "maxavg", "totals25")):
+        for tn, tw in tiers.items():
+            for bn, lo, hi in buckets:
+                w = "variant='%s' AND market='%s' AND %s AND ev>%s AND ev<=%s" % (variant, market, tw, lo, hi)
+                v = [r[0] for r in db.execute("SELECT profit_best FROM sim_bets WHERE %s" % w)]
+                if len(v) < 30: continue
+                n, mean, ci = stats(v)
+                b = [r[0] for r in db.execute("SELECT profit_b365 FROM sim_bets WHERE %s AND profit_b365 IS NOT NULL" % w)]
+                nb, mb, cb = stats(b) if len(b) > 1 else (0, 0.0, 0.0)
+                won, pred = db.execute("SELECT AVG(won), AVG(fair) FROM sim_bets WHERE %s" % w).fetchone()
+                out["%s|%s|%s" % (key, tn, bn)] = {"n": n, "won": round(won, 3), "pred": round(pred, 3), "roi": round(mean, 3), "ci": round(ci, 3), "roiB": round(mb, 3) if nb else None, "ciB": round(cb, 3) if nb else None}
+    json.dump(out, open(out_path, "w"), separators=(",", ":"), sort_keys=True)
+    print("evidence cells:", len(out), "->", out_path)
 
 
 def stats(vals):
@@ -222,7 +257,15 @@ def report(db_path, out_path):
     p("Generated from football-data.co.uk results and bookmaker odds. %d matches from %s to %s across %d leagues." % (tot[0], tot[1], tot[2], db.execute("SELECT COUNT(DISTINCT div) FROM matches").fetchone()[0])); p()
     p("**How to read it.** Each row replays a rule over every past match, staking 1 unit per bet. *Won* is the share of bets that won, *Predicted* is the average win chance the rules had worked out (if they match, the chances are well calibrated). *ROI* is profit divided by money staked. *Beat closing price by* is the value against the final fair market price, positive meaning better than where the market settled. The +/- is a 95% margin of error.")
     p()
-    for variant, title in (("uk4", "Rules as the app applies them (individual UK bookmakers, best price among them)"), ("maxavg", "Cross-check using market average and best available price")):
+    p("## Coverage"); p(); p("| League | Matches |"); p("|---|---|")
+    for lg, n in db.execute("SELECT league, COUNT(*) FROM matches GROUP BY league ORDER BY 2 DESC"):
+        p("| %s | %d |" % (lg, n))
+    p(); p("Seasons: " + ", ".join("%s (%d)" % (a, b) for a, b in db.execute("SELECT season, COUNT(*) FROM matches GROUP BY season ORDER BY season")))
+    p(); p("Closing prices (needed for the closing-price columns) only exist from 2019/20. Older seasons still count for results and return.")
+    p()
+    for variant, title in (("uk4", "Rules as the app applies them (individual UK bookmakers, best price among them)"),
+                           ("maxavg", "Cross-check using market average and best available price"),
+                           ("sharp", "What a professional would do: Pinnacle's opening price as the fair price, best price among the UK bookmakers")):
         p("## " + title); p(); p(hdr)
         for mk in ("h2h", "totals25"):
             if not db.execute("SELECT 1 FROM sim_bets WHERE variant=? AND market=? LIMIT 1", (variant, mk)).fetchone():
@@ -233,7 +276,17 @@ def report(db_path, out_path):
             p(row("%s: not flagged" % mk, w + " AND value=0 AND suspect=0"))
             p(row("%s: 'check price' (over 12%%)" % mk, w + " AND suspect=1"))
         p()
-    p("## VALUE-flagged bets by risk level (app-like rules, match winner)"); p(); p(hdr)
+    eng = "league IN ('Premier League','Championship','League One','League Two','Conference')"
+    p("## English leagues only"); p(); p(hdr)
+    for variant in ("uk4", "maxavg", "sharp"):
+        p(row("%s: every bet" % variant, "variant='%s' AND market='h2h' AND %s" % (variant, eng)))
+        p(row("%s: VALUE flagged" % variant, "variant='%s' AND market='h2h' AND value=1 AND %s" % (variant, eng)))
+    p(); p("## Does beating the closing price predict profit? (match winner, seasons with closing prices)"); p()
+    p("If the closing price is the market's best guess, bets that beat it by more should earn more. Closing price here is Pinnacle's, with the margin removed."); p(); p(hdr)
+    for variant in ("uk4", "maxavg", "sharp"):
+        for lo, hi, nm in ((-9, -0.05, "worse than closing by over 5%"), (-0.05, 0, "worse by up to 5%"), (0, 0.03, "better by up to 3%"), (0.03, 0.06, "better by 3 to 6%"), (0.06, 9, "better by over 6%")):
+            p(row("%s: %s" % (variant, nm), "variant='%s' AND market='h2h' AND clv IS NOT NULL AND clv>%s AND clv<=%s" % (variant, lo, hi)))
+    p(); p("## VALUE-flagged bets by risk level (app-like rules, match winner)"); p(); p(hdr)
     for t, nm in (("safer", "Safer (50%+ chance)"), ("mid", "Middle (30-50%)"), ("long", "Longer shots (under 30%)")):
         p(row(nm, "variant='uk4' AND market='h2h' AND value=1 AND tier='%s'" % t))
     p(); p("## By size of the price edge (app-like rules, match winner)"); p(); p(hdr)
@@ -302,10 +355,11 @@ def report(db_path, out_path):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["build", "report"])
+    ap.add_argument("cmd", choices=["build", "report", "evidence"])
     ap.add_argument("--method", choices=["prop", "power"], default="power")
     ap.add_argument("--db", default="history.sqlite"); ap.add_argument("--raw", default="raw"); ap.add_argument("--out", default="HISTORY_REPORT.md")
     a = ap.parse_args()
     METHOD = a.method
     if a.cmd == "build": build(a.db, a.raw)
+    elif a.cmd == "evidence": evidence(a.db, a.out)
     else: report(a.db, a.out)

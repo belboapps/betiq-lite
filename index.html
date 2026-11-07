@@ -573,6 +573,19 @@ details.acc .pcheck { margin-bottom: 12px; }
         <p>So treat betting as paid entertainment, not income. Expect to lose a few percent of what you stake over time, and only stake what you can afford to lose.</p>
       </section>
       <section class="panel" id="tourBox"><h2>New here?</h2><p>A short walk-through of how to read the page and stay in control.</p><button class="btn" id="tourAgain" type="button">Show the tour</button></section>
+      <section class="panel" id="sbBox">
+        <h2>Cloud backup (optional)</h2>
+        <p>Keeps your bets safe in your own free Supabase project and shares them between your devices. Only you can see them, after signing in with an email link. Your Odds API key is never uploaded. See <a href="https://github.com/belboapps/betiq-lite/blob/main/supabase/README.md" target="_blank" rel="noopener">the setup steps</a>.</p>
+        <label class="field">Supabase project URL<input id="sbUrl" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://xxxx.supabase.co"></label>
+        <label class="field">Public anon key (safe to put here)<input id="sbKey" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="eyJ..."></label>
+        <label class="field">Your email<input id="sbEmail" type="email" autocomplete="email" placeholder="you@example.com"></label>
+        <div class="row">
+          <button class="btn primary" id="sbSignIn" type="button">Send me a sign-in link</button>
+          <button class="btn" id="sbSync" type="button" hidden>Sync now</button>
+          <button class="btn" id="sbOut" type="button" hidden>Sign out</button>
+        </div>
+        <div id="sbMsg"></div>
+      </section>
       <section class="panel" id="backupBox">
         <h2>Back up your bets</h2>
         <p>Your bet log lives only in this browser. If you clear site data or change phone it is gone, so copy a backup now and then and keep it in Notes. Your API key is not included.</p>
@@ -633,7 +646,7 @@ details.acc .pcheck { margin-bottom: 12px; }
   var API = "https://api.the-odds-api.com/v4";
   var DEFAULTS = { key: "", selected: [], mode: "value", minOdds: 1.3, windowH: 72, group: "all",
                    sports: [], sportsAt: 0, cache: {}, remaining: null, used: null, picked: false,
-                   bankroll: 100, weekly: 0, league: "all", extras: true, extraMax: 12, extraFreshH: 3, lossLimit: 0, lossStreak: 5, tour: false, afKey: "", newsOn: true, news: {}, afUse: { d: "", n: 0 }, afStatus: "", xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
+                   bankroll: 100, weekly: 0, league: "all", tomb: [], sb: { url: "", key: "", email: "", session: null, last: 0, status: "" }, extras: true, extraMax: 12, extraFreshH: 3, lossLimit: 0, lossStreak: 5, tour: false, afKey: "", newsOn: true, news: {}, afUse: { d: "", n: 0 }, afStatus: "", xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
   var GROUPS = { "Soccer": "Football", "American Football": "US football", "Ice Hockey": "Ice hockey",
                  "Mixed Martial Arts": "MMA", "Rugby League": "Rugby", "Rugby Union": "Rugby", "Aussie Rules": "Aussie rules" };
   var DEFAULT_FOOTBALL = ["soccer_epl", "soccer_efl_champ", "soccer_uefa_champs_league", "soccer_uefa_europa_league"];
@@ -660,7 +673,8 @@ details.acc .pcheck { margin-bottom: 12px; }
       var s = {}; for (var k in DEFAULTS) s[k] = (o && o[k] !== undefined) ? o[k] : DEFAULTS[k];
       if (!Array.isArray(s.bets)) s.bets = [];
       if (!Array.isArray(s.pbets)) s.pbets = [];
-      ['xmBad', 'xmOK', 'clog'].forEach(function (k) { if (!Array.isArray(s[k])) s[k] = []; });
+      ['xmBad', 'xmOK', 'clog', 'tomb'].forEach(function (k) { if (!Array.isArray(s[k])) s[k] = []; });
+      if (!s.sb || typeof s.sb !== 'object') s.sb = { url: '', key: '', email: '', session: null, last: 0, status: '' };
       if (!o || !o.ver || o.ver < 2) s.mode = "value";   /* v2: Best bets is the default view */
       s.ver = 2;
       return s;
@@ -1112,6 +1126,14 @@ details.acc .pcheck { margin-bottom: 12px; }
   /* Budget = starting budget plus settled profit or loss. */
   function BETS() { return S.practice ? S.pbets : S.bets; }
   function setBets(a) { if (S.practice) S.pbets = a; else S.bets = a; }
+  /* Every change to a bet stamps it, so the cloud copy can tell which version is newer. Deleting leaves a tombstone. */
+  function addBet(b) { b.m = Date.now(); BETS().push(b); sbChanged(); }
+  function removeBet(pid) {
+    var prac = !!S.practice; setBets(BETS().filter(function (b) { return b.pid !== pid; }));
+    S.tomb = S.tomb.filter(function (t) { return !(t.pid === pid && t.practice === prac); }); S.tomb.push({ pid: pid, practice: prac, m: Date.now() });
+    if (S.tomb.length > 300) S.tomb = S.tomb.slice(-300);
+    sbChanged();
+  }
   function budget() {
     var p = 0;
     BETS().forEach(function (b) { if (b.status !== "open") p += b.profit || 0; });
@@ -1192,6 +1214,23 @@ details.acc .pcheck { margin-bottom: 12px; }
       text = "Refresh about an hour before the start. Bet only if the price still matches or beats this one.";
     }
     return { head: head, text: text, move: movement(p) };
+  }
+  /* How bets of this kind did on past matches (from data/history_build.py, football-data.co.uk). Keys: market|chance level|price edge. */
+  var EVID = {};
+  function evidBucket(e) { return e <= 0 ? "none" : e <= 0.01 ? "tiny" : e <= 0.03 ? "small" : e <= 0.06 ? "value" : e <= 0.12 ? "big" : "huge"; }
+  var EV_TIER = { safer: "50% or better", mid: "30% to 50%", long: "under 30%" };
+  var EV_EDGE = { none: "no price edge", tiny: "an edge of up to 1%", small: "an edge of 1% to 3%", value: "an edge of 3% to 6%", big: "an edge of 6% to 12%", huge: "an edge over 12%" };
+  function evidBox(p) {
+    var s = p.pick, key = s.market === "totals" ? "goals" : s.market ? null : "h2h"; if (!key) return null;
+    var tier = s.fair >= 0.5 ? "safer" : s.fair >= 0.3 ? "mid" : "long", c = EVID[key + "|" + tier + "|" + evidBucket(s.ev)];
+    if (!c || c.n < 100) return null;
+    function sp(x) { return (x >= 0 ? "+" : "") + (x * 100).toFixed(1) + "%"; }
+    var box = el("div", "plain"); box.appendChild(el("b", null, "How bets like this did in the past"));
+    var verdict = c.roi + c.ci < 0 ? "On past matches, bets like this lost money." : c.roi - c.ci > 0 ? "On past matches, bets like this made money." : "Too close to call: it could have been a profit or a loss.";
+    box.appendChild(document.createTextNode(c.n.toLocaleString("en-GB") + " past " + (key === "goals" ? "over/under 2.5 goals" : "match winner") + " bets with a chance of " + EV_TIER[tier] + " and " + EV_EDGE[evidBucket(s.ev)] +
+      " won " + pct(c.won) + " of the time (the chances said " + pct(c.pred) + "). Return on money staked: " + sp(c.roi) + " at the best price" + (c.roiB !== null && c.roiB !== undefined ? ", " + sp(c.roiB) + " at a single bookmaker" : "") +
+      ", give or take " + (c.ci * 100).toFixed(1) + " points. " + verdict + " Past results never guarantee the future."));
+    return box;
   }
   /* Has the market moved since the earlier snapshot? Returns null when there is no history or nothing notable. */
   function moveInfo(p) {
@@ -1331,7 +1370,7 @@ details.acc .pcheck { margin-bottom: 12px; }
       if (b.status !== "open" || b.time <= now) return;
       var c = S.cache[b.key]; if (!c || now - c.at > 20 * 60000) return;
       var ev = c.events.filter(function (e) { return e.id === b.evId; })[0]; if (!ev) return;
-      var r = currentRow(ev, b); if (r) b.close = { f: r.fair, r: r.refund, at: now };
+      var r = currentRow(ev, b); if (r) { b.close = { f: r.fair, r: r.refund, at: now }; b.m = now; sbChanged(); }
     });
   }
   /* How much better your odds were than the final fair market price. Only trusted when captured within 3 hours of kick-off. */
@@ -1372,7 +1411,7 @@ details.acc .pcheck { margin-bottom: 12px; }
     if (findBet(p.id)) return;
     var st = stakeFor(p.pick);
     if (st.amount < 0.5) { var lsx = lossState(); showAlert(lsx.on ? lsx.reason : "Your weekly budget is used up, so no stake is suggested. Raise it in Settings if you want to log this bet.", false); return; }
-    BETS().push({ pid: p.id, evId: p.ev.id, key: p.key, league: p.league, h: p.ev.h, a: p.ev.a, sel: p.pick.name,
+    addBet({ pid: p.id, evId: p.ev.id, key: p.key, league: p.league, h: p.ev.h, a: p.ev.a, sel: p.pick.name,
       odds: p.pick.best, book: p.pick.bestBook, stake: st.amount, fair: p.pick.fair, time: p.time, at: Date.now(),
       mkt: p.pick.market || "", point: p.pick.point, side: p.pick.side, rule: p.pick.rule,
       status: "open", profit: 0 });
@@ -1381,7 +1420,7 @@ details.acc .pcheck { margin-bottom: 12px; }
   function settle(b, status) {
     b.status = status;
     b.profit = status === "won" ? b.stake * (b.odds - 1) : status === "lost" ? -b.stake : 0;
-    b.settledAt = Date.now();
+    b.settledAt = Date.now(); b.m = b.settledAt; sbChanged();
   }
   function dueBets() { return BETS().filter(function (b) { return b.status === "open" && Date.now() > b.time + 2.5 * 3600000; }); }
   function dueKeys() { var k = []; dueBets().forEach(function (b) { if (k.indexOf(b.key) < 0) k.push(b.key); }); return k; }
@@ -1516,7 +1555,7 @@ details.acc .pcheck { margin-bottom: 12px; }
     var logged = findBet(p.id);
     var lb = el("button", "btn" + (logged ? " done" : ""), logged ? (S.practice ? "Logged ✓ Undo" : "Placed ✓ Undo") : (S.practice ? "Log practice bet" : "I placed it")); lb.type = "button";
     lb.addEventListener("click", function () {
-      if (logged) { setBets(BETS().filter(function (b) { return b.pid !== p.id; })); save(); renderAll(); }
+      if (logged) { removeBet(p.id); save(); renderAll(); }
       else logBet(p);
     });
     box.appendChild(lb);
@@ -1768,9 +1807,9 @@ details.acc .pcheck { margin-bottom: 12px; }
       cp.addEventListener("click", function () { copyText(r.label + " · " + p.ev.h + " v " + p.ev.a + " · " + gbp(a) + " @ " + c.v.toFixed(2) + " · " + sel.value, cp); });
       var lb = el("button", "btn" + (logged ? " done" : ""), logged ? (S.practice ? "Logged ✓ Undo" : "Placed ✓ Undo") : (S.practice ? "Log practice bet" : "I placed it")); lb.type = "button";
       lb.addEventListener("click", function () {
-        if (logged) { setBets(BETS().filter(function (b) { return b.pid !== pid; })); save(); renderAll(); return; }
+        if (logged) { removeBet(pid); save(); renderAll(); return; }
         if (a < 0.5) { showAlert("No stake is suggested at these odds or your weekly budget is used up.", false); return; }
-        BETS().push({ pid: pid, evId: p.ev.id, key: p.key, league: p.league, h: p.ev.h, a: p.ev.a, sel: r.label, odds: c.v, book: sel.value, stake: a, fair: r.fair, time: p.time, at: Date.now(),
+        addBet({ pid: pid, evId: p.ev.id, key: p.key, league: p.league, h: p.ev.h, a: p.ev.a, sel: r.label, odds: c.v, book: sel.value, stake: a, fair: r.fair, time: p.time, at: Date.now(),
           status: "open", profit: 0, mkt: "derived", rule: r.rule });
         save(); renderAll();
       });
@@ -1849,6 +1888,7 @@ details.acc .pcheck { margin-bottom: 12px; }
     var mv = moveInfo(p); if (mv) root.appendChild(el("div", "msg", "Price moved. " + mv.text));
     var nb2 = newsBox(p); if (nb2) root.appendChild(nb2);
     root.appendChild(trio(p)); root.appendChild(legend());
+    var eb = evidBox(p); if (eb) root.appendChild(eb);
 
     var pt = plainText(p, st); if (pt) { var pe = el("div", "plain"); pe.appendChild(el("b", null, "In plain English")); pe.appendChild(document.createTextNode(pt)); root.appendChild(pe); }
     root.appendChild(priceCheck(p));
@@ -2120,8 +2160,8 @@ details.acc .pcheck { margin-bottom: 12px; }
         var edit = el("div", "row");
         var l1 = el("label", null, "Stake £"), i1 = el("input"); i1.type = "number"; i1.step = "0.5"; i1.min = "0.1"; i1.value = b.stake.toFixed(2); i1.setAttribute("inputmode", "decimal");
         var l2 = el("label", null, "Odds"), i2 = el("input"); i2.type = "number"; i2.step = "0.01"; i2.min = "1.01"; i2.value = b.odds.toFixed(2); i2.setAttribute("inputmode", "decimal");
-        i1.addEventListener("change", function () { var v = parseFloat(i1.value); if (isFinite(v) && v > 0) { b.stake = v; save(); renderAll(); } });
-        i2.addEventListener("change", function () { var v = parseFloat(i2.value); if (isFinite(v) && v > 1) { b.odds = v; save(); renderAll(); } });
+        i1.addEventListener("change", function () { var v = parseFloat(i1.value); if (isFinite(v) && v > 0) { b.stake = v; b.m = Date.now(); sbChanged(); save(); renderAll(); } });
+        i2.addEventListener("change", function () { var v = parseFloat(i2.value); if (isFinite(v) && v > 1) { b.odds = v; b.m = Date.now(); sbChanged(); save(); renderAll(); } });
         l1.appendChild(i1); l2.appendChild(i2); edit.appendChild(l1); edit.appendChild(l2); row.appendChild(edit);
         var acts = el("div", "actions");
         if (Date.now() > b.time) {
@@ -2132,7 +2172,7 @@ details.acc .pcheck { margin-bottom: 12px; }
           });
         }
         var rm = el("button", "btn small", "Remove"); rm.type = "button";
-        rm.addEventListener("click", function () { setBets(BETS().filter(function (z) { return z !== b; })); save(); renderAll(); });
+        rm.addEventListener("click", function () { removeBet(b.pid); save(); renderAll(); });
         acts.appendChild(rm);
         row.appendChild(acts);
       } else {
@@ -2171,6 +2211,7 @@ details.acc .pcheck { margin-bottom: 12px; }
     $("autoOn").checked = !!S.auto; $("autoHours").value = String(S.autoHours); $("totalsOn").checked = !!S.totals;
     $("extrasOn").checked = !!S.extras; $("extraMax").value = String(S.extraMax); $("extraFresh").value = String(S.extraFreshH);
     $("lossLimit").value = S.lossLimit ? String(S.lossLimit) : ""; $("lossStreak").value = String(S.lossStreak);
+    $("sbUrl").value = S.sb.url || ""; $("sbKey").value = S.sb.key || ""; $("sbEmail").value = S.sb.email || ""; renderSb();
     $("newsOn").checked = !!S.newsOn; $("afKey").value = S.afKey || ""; renderAfMsg();
     renderCost(); renderBooks(); renderMkCheck(); renderCreditLog();
   }
@@ -2314,6 +2355,9 @@ details.acc .pcheck { margin-bottom: 12px; }
   $("afKey").addEventListener("change", function (e) { S.afKey = e.target.value.trim(); S.afStatus = ""; save(); renderAfMsg(); });
   $("afTest").addEventListener("click", testNews);
   $("tourAgain").addEventListener("click", function () { openTour(); });
+  $("sbSignIn").addEventListener("click", sbSignIn);
+  $("sbSync").addEventListener("click", function () { syncNow(false); });
+  $("sbOut").addEventListener("click", function () { S.sb.session = null; S.sb.status = "Signed out. Your bets stay on this phone."; save(); renderSb(); });
   $("autoOn").addEventListener("change", function (e) { S.auto = e.target.checked; save(); });
   $("totalsOn").addEventListener("change", function (e) { S.totals = e.target.checked; save(); renderCost(); renderStatus(); });
   $("autoHours").addEventListener("change", function (e) { S.autoHours = +e.target.value; save(); });
@@ -2335,7 +2379,7 @@ details.acc .pcheck { margin-bottom: 12px; }
   $("changeKey").addEventListener("click", function () {
     S.key = ""; S.remaining = null; save(); renderAll(); $("keyInput").focus();
   });
-  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") { renderAll(); autoRun(); } });
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") { renderAll(); autoRun(); if (sbReady()) syncNow(true); } });
 
   /* ---------- Matched betting calculator ---------- */
   function initCalc() {
@@ -2371,6 +2415,91 @@ details.acc .pcheck { margin-bottom: 12px; }
     }
     [type, stake, back, lay, comm].forEach(function (x) { x.addEventListener("input", calc); x.addEventListener("change", calc); });
     calc();
+  }
+
+  /* ---------- Cloud backup (Supabase): your bets, synced between devices. Plain web requests, no library. ---------- */
+  var sbTimer = null, sbBusy = false, sbDirty = false, sbArrived = false;
+  function sbReady() { return !!(S.sb.url && S.sb.key && S.sb.session); }
+  function sbStatus(t) { S.sb.status = t; save(); renderSb(); }
+  function sbChanged() { sbDirty = true; if (sbReady()) { clearTimeout(sbTimer); sbTimer = setTimeout(function () { syncNow(true); }, 4000); } }
+  function jwtSub(t) { try { return JSON.parse(atob(t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).sub; } catch (e) { return ""; } }
+  function sbReq(path, opts) {
+    opts = opts || {};
+    var h = { apikey: S.sb.key, "Content-Type": "application/json" };
+    if (S.sb.session) h.Authorization = "Bearer " + S.sb.session.at;
+    if (opts.prefer) h.Prefer = opts.prefer;
+    return fetch(S.sb.url.replace(/\/+$/, "") + path, { method: opts.method || "GET", headers: h, body: opts.body ? JSON.stringify(opts.body) : undefined }).then(function (res) {
+      if (!res.ok) { var e = new Error("sb"); e.status = res.status; throw e; }
+      return res.status === 204 ? null : res.text().then(function (t) { return t ? JSON.parse(t) : null; });
+    }, function () { var e = new Error("net"); e.net = true; throw e; });
+  }
+  function sbErr(e) {
+    if (e.net) return "Could not reach Supabase. Check your signal and the project URL.";
+    if (e.status === 401 || e.status === 403) return "Signed out or not allowed. Send yourself a new sign-in link.";
+    if (e.status === 404) return "The bets table was not found. Run the setup SQL in your Supabase project first.";
+    return "Supabase returned an error (" + e.status + ").";
+  }
+  function sbFromHash() {
+    var h = location.hash.replace(/^#/, ""); if (h.indexOf("access_token=") < 0 && h.indexOf("error_description=") < 0) return;
+    var q = {}; h.split("&").forEach(function (kv) { var i = kv.indexOf("="); if (i > 0) q[kv.slice(0, i)] = decodeURIComponent(kv.slice(i + 1).replace(/\+/g, " ")); });
+    try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
+    if (q.error_description) { S.sb.status = "Sign-in failed: " + q.error_description; save(); return; }
+    S.sb.session = { at: q.access_token, rt: q.refresh_token, exp: Date.now() + (+q.expires_in || 3600) * 1000, uid: jwtSub(q.access_token) };
+    S.sb.status = "Signed in."; sbArrived = true; save();
+  }
+  function sbEnsureToken() {
+    var ses = S.sb.session; if (!ses) return Promise.reject(Object.assign(new Error("sb"), { status: 401 }));
+    if (ses.exp - Date.now() > 60000) return Promise.resolve();
+    return fetch(S.sb.url.replace(/\/+$/, "") + "/auth/v1/token?grant_type=refresh_token", { method: "POST", headers: { apikey: S.sb.key, "Content-Type": "application/json" }, body: JSON.stringify({ refresh_token: ses.rt }) })
+      .then(function (res) { if (!res.ok) { var e = new Error("sb"); e.status = 401; throw e; } return res.json(); }, function () { var e = new Error("net"); e.net = true; throw e; })
+      .then(function (j) { S.sb.session = { at: j.access_token, rt: j.refresh_token || ses.rt, exp: Date.now() + (+j.expires_in || 3600) * 1000, uid: jwtSub(j.access_token) || ses.uid }; save(); });
+  }
+  function sbSignIn() {
+    var url = $("sbUrl").value.trim(), key = $("sbKey").value.trim(), email = $("sbEmail").value.trim();
+    if (!/^https:\/\//.test(url) || key.length < 20 || email.indexOf("@") < 1) { S.sb.status = "Enter your Supabase project URL (starts with https://), the public anon key, and your email."; save(); renderSb(); return; }
+    S.sb.url = url; S.sb.key = key; S.sb.email = email; save();
+    sbStatus("Sending the link…");
+    fetch(url.replace(/\/+$/, "") + "/auth/v1/otp?redirect_to=" + encodeURIComponent(location.origin + location.pathname), { method: "POST", headers: { apikey: key, "Content-Type": "application/json" }, body: JSON.stringify({ email: email, create_user: true }) })
+      .then(function (res) { sbStatus(res.ok ? "Link sent to " + email + ". Open it on this phone and you will come back here signed in." : "Supabase would not send the link (" + res.status + "). Check the URL and key, and that this page's address is in your project's allowed redirect URLs."); },
+            function () { sbStatus("Could not reach Supabase. Check the project URL."); });
+  }
+  function rowKey(practice, pid) { return (practice ? "p|" : "r|") + pid; }
+  function syncNow(quiet) {
+    if (!sbReady() || sbBusy) return Promise.resolve();
+    sbBusy = true; if (!quiet) sbStatus("Syncing…");
+    var uid = S.sb.session.uid;
+    return sbEnsureToken().then(function () { return sbReq("/rest/v1/bets?select=pid,practice,m,data&limit=10000"); }).then(function (rows) {
+      var remote = {}; (rows || []).forEach(function (r) { remote[rowKey(r.practice, r.pid)] = r; });
+      var local = {}, push = [], pulled = 0;
+      function bm(b) { return b.m || b.settledAt || b.at || 0; }
+      S.bets.forEach(function (b) { local[rowKey(false, b.pid)] = { m: bm(b), bet: b, prac: false }; });
+      S.pbets.forEach(function (b) { local[rowKey(true, b.pid)] = { m: bm(b), bet: b, prac: true }; });
+      S.tomb.forEach(function (t) { var k = rowKey(t.practice, t.pid); if (!local[k] || t.m > local[k].m) local[k] = { m: t.m, tomb: t, prac: t.practice }; });
+      var keys = {}; Object.keys(local).concat(Object.keys(remote)).forEach(function (k) { keys[k] = 1; });
+      Object.keys(keys).forEach(function (k) {
+        var L = local[k], R = remote[k], lm = L ? L.m : -1, rm = R ? R.m : -1;
+        if (lm > rm) {
+          push.push({ user_id: uid, pid: L.bet ? L.bet.pid : L.tomb.pid, practice: L.prac, m: lm, data: L.bet ? L.bet : { deleted: true } });
+        } else if (rm > lm) {
+          var prac = R.practice, list = prac ? S.pbets : S.bets, pid = R.pid;
+          var rest = list.filter(function (b) { return b.pid !== pid; });
+          if (R.data && R.data.deleted) { if (prac) S.pbets = rest; else S.bets = rest; S.tomb = S.tomb.filter(function (t) { return !(t.pid === pid && t.practice === prac); }); S.tomb.push({ pid: pid, practice: prac, m: rm }); }
+          else if (R.data && R.data.pid) { var nb = R.data; nb.m = rm; rest.push(nb); if (prac) S.pbets = rest; else S.bets = rest; }
+          pulled++;
+        }
+      });
+      var done = push.length ? sbReq("/rest/v1/bets?on_conflict=user_id,pid,practice", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: push }) : Promise.resolve();
+      return done.then(function () { return { pushed: push.length, pulled: pulled }; });
+    }).then(function (r) {
+      sbBusy = false; sbDirty = false; S.sb.last = Date.now(); S.sb.status = "Synced: " + r.pushed + " sent, " + r.pulled + " received."; save(); renderAll(); renderSb();
+    }, function (e) { sbBusy = false; S.sb.status = sbErr(e); if (e.status === 401 || e.status === 403) S.sb.session = null; save(); renderSb(); });
+  }
+  function renderSb() {
+    var m = $("sbMsg"); if (!m) return; m.textContent = "";
+    var signedIn = sbReady();
+    $("sbSignIn").hidden = signedIn; $("sbSync").hidden = !signedIn; $("sbOut").hidden = !signedIn;
+    if (signedIn) m.appendChild(el("div", "msg info", "Signed in as " + (S.sb.email || "you") + (S.sb.last ? " · last synced " + ago(S.sb.last) : "") + ". " + (S.sb.status || "")));
+    else if (S.sb.status) m.appendChild(el("div", S.sb.status.indexOf("Link sent") === 0 || S.sb.status === "Signed in." ? "msg info" : "msg", S.sb.status));
   }
 
   /* ---------- Guided tour ---------- */
@@ -2421,6 +2550,7 @@ details.acc .pcheck { margin-bottom: 12px; }
     if (!window.confirm("Replace your current " + S.bets.length + " bets with " + d.bets.length + " from the backup?")) return;
     S.bets = d.bets;
     if (Array.isArray(d.pbets)) S.pbets = d.pbets;
+    S.bets.concat(S.pbets).forEach(function (b) { b.m = Date.now(); }); sbChanged();
     if (isFinite(d.bankroll) && d.bankroll >= 1) S.bankroll = d.bankroll;
     if (isFinite(d.weekly) && d.weekly >= 0) S.weekly = d.weekly;
     if (d.myBooks === null || Array.isArray(d.myBooks)) S.myBooks = d.myBooks;
@@ -2435,10 +2565,12 @@ details.acc .pcheck { margin-bottom: 12px; }
   document.addEventListener("keydown", function (e) { if (e.key !== "Escape") return; if (!$("tour").hidden) closeTour(); else if (sheetId) closeSheet(); });
 
   /* ---------- Start ---------- */
+  sbFromHash();
   initCalc();
   renderAll();
   if (S.key) renderSettings();
-  if (S.key && !S.tour && !S.booksSet && !S.bets.length && !S.pbets.length) openTour();
+  if (S.sb.session && S.sb.url) { if (sbArrived) setTab("more"); syncNow(true); }
+  if (S.key && !S.tour && !S.booksSet && !S.bets.length && !S.pbets.length && !S.sb.session) openTour();
   if (S.key) {
     var boot = S.sports.length ? Promise.resolve() : fetchSports();
     boot.then(function () { renderAll(); return autoRun(); }, function (e) { showAlert(errText(e), false); });
