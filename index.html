@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0f7a4f">
-<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#0b0e11">
+<meta name="color-scheme" content="dark">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="BetIQ Lite">
@@ -18,22 +18,23 @@
 <style>
 /* Layout: one narrow column, a betting-slip stack. Today's plan first, then every pick, then your bet log. */
 :root {
-  --bg: #f5f6f4;
-  --surface: #ffffff;
-  --ink: #101713;
-  --muted: #5a665e;
-  --line: #dbe2db;
-  --accent: #0f7a4f;
-  --accent-ink: #ffffff;
-  --accent-soft: #dff1e7;
-  --value: #8a4b00;
-  --value-bg: #fdecc8;
-  --warn: #a4261b;
-  --warn-bg: #fde4e0;
+  --bg: #0b0e11;
+  --surface: #14181d;
+  --ink: #eef2f5;
+  --muted: #8d98a5;
+  --line: #262c34;
+  --accent: #19d3a2;
+  --accent-ink: #04130e;
+  --accent-soft: #10291f;
+  --value: #f6c453;
+  --value-bg: #33280d;
+  --warn: #ff8f80;
+  --warn-bg: #3a1a16;
+  --blue: #6f8cff;
   --display: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --shadow: 0 1px 2px rgba(16,23,19,.06), 0 6px 18px rgba(16,23,19,.07);
+  --shadow: 0 0 0 1px #20262d;
   --body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
-  color-scheme: light;
+  color-scheme: dark;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
@@ -139,7 +140,7 @@ details.pick > summary::-webkit-details-marker { display: none; }
 .scen .stats, .panel .stats { padding: 0; }
 .badge { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; font: 700 12px/1.4 var(--display); letter-spacing: .06em; vertical-align: middle; }
 .badge.value { background: var(--value-bg); color: var(--value); }
-.badge.move { background: #e7f0fb; color: #1f5a99; }
+.badge.move { background: #16233f; color: #9db4ff; }
 .badge.warn { background: var(--warn-bg); color: var(--warn); }
 .pos { color: var(--accent); }
 .neg { color: var(--warn); }
@@ -412,6 +413,60 @@ details.acc .pcheck { margin-bottom: 12px; }
 .chips.scroll { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 2px; }
 .chips.scroll::-webkit-scrollbar { display: none; }
 .chips.scroll .chip { flex: none; white-space: nowrap; }
+
+/* ===== Dark card design ===== */
+.btn { background: #1b2027; border-color: var(--line); color: var(--ink); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); box-shadow: none; }
+.btn.done { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+input, select, textarea { color: var(--ink); }
+.chip { background: #1b2027; }
+.chip[aria-pressed="true"] { color: var(--ink); }
+.reco, .plain, .msg.info { color: var(--ink); }
+.ring::before { background: var(--surface); }
+.brow.card { border-left: 0; border-radius: 20px; background: var(--surface); box-shadow: var(--shadow); }
+.brow.card.gold { background: var(--surface); box-shadow: 0 0 0 1.5px var(--accent); }
+.card .bmain { padding: 14px 14px 6px; display: flex; flex-direction: column; gap: 10px; }
+.ctop { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.clg { font-size: 13px; font-weight: 600; color: var(--muted); }
+.cpills { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.cpills .badge { margin-left: 0; }
+.pillev { font: 700 12px/1.6 ui-monospace, Menlo, monospace; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line); }
+.pillev.pos { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.pillev.neg { color: var(--muted); }
+.cmatch { font: 700 21px/1.15 var(--display); overflow-wrap: anywhere; }
+.cwhen { font: 500 13px/1.3 ui-monospace, Menlo, monospace; color: var(--muted); margin-top: -6px; }
+.cwhen .old { color: var(--warn); }
+.cgrid, .cpay { display: grid; gap: 8px; background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 12px 10px; }
+.cgrid { grid-template-columns: 1.2fr 1fr 1fr; text-align: center; }
+.cpay { grid-template-columns: 1fr 1fr; }
+.cc { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.cc.right { text-align: right; }
+.cl { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.cc b { font: 700 18px/1.15 ui-monospace, Menlo, monospace; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.cc b.pick { font-family: var(--display); color: var(--accent); }
+.cc b.pos, .cc small.pos { color: var(--accent); }
+.cc small { font: 500 12px/1.2 ui-monospace, Menlo, monospace; color: var(--muted); overflow-wrap: anywhere; }
+.sbox { display: flex; flex-direction: column; gap: 9px; background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+.sbar { display: flex; flex-direction: column; gap: 5px; }
+.sbt { display: flex; justify-content: space-between; font-size: 14px; font-weight: 600; }
+.sbt b { font: 700 14px/1 ui-monospace, Menlo, monospace; }
+.sbar.b1 .sbt { color: var(--blue); } .sbar.b1 .meter i { background: var(--blue); }
+.sbar.b2 .sbt { color: var(--value); } .sbar.b2 .meter i { background: var(--value); }
+.sbar.b3 .sbt { color: var(--accent); } .sbar.b3 .meter i { background: var(--accent); }
+.sbar.b3 .sbt { font-size: 15px; }
+.cmore { font-size: 12px; color: var(--muted); text-align: center; }
+.card .bacts { padding: 4px 14px 14px; }
+.card .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.card .actions .btn { flex: none; min-height: 46px; }
+.card .actions .go { grid-column: 1 / -1; grid-row: 2; background: #1b2027; color: var(--ink); border-color: var(--line); }
+.card.gold .actions .go { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.why { margin: 4px 0; padding-left: 18px; font-size: 14px; display: flex; flex-direction: column; gap: 3px; }
+.why li.pos { color: var(--accent); } .why li.neg { color: var(--warn); }
+.t3.low { --c: #4a535e; } .t3 { --c: #4a535e; }
+.tabbar { background: #0e1115; }
+#plan { box-shadow: none; }
+.panelsheet { background: var(--surface); }
+.lossbar b, .pracbar b { color: inherit; }
 @media (prefers-reduced-motion: no-preference) { details.pick { transition: border-color .15s; } }
 </style>
 </head>
@@ -1091,7 +1146,7 @@ details.acc .pcheck { margin-bottom: 12px; }
         function add(pk, n) {
           if (pk.best < S.minOdds) return;
           if (mode === "value" && pk.ev <= 0) return;
-          var p = { ev: ev, key: key, league: meta.title || key, group: grp, time: t, pick: pk, nBooks: n, a: a };
+          var p = { ev: ev, key: key, league: meta.title || key, group: grp, time: t, pick: pk, nBooks: n, a: a, at: c.at };
           p.isValue = pk.ev >= VALUE_MIN && pk.ev <= VALUE_MAX && n >= 4 && pk.best <= LONGSHOT;
           p.suspect = pk.ev > VALUE_MAX;
           p.id = ev.id + "|" + pk.name;
@@ -1120,7 +1175,7 @@ details.acc .pcheck { margin-bottom: 12px; }
       var e = p.pick.ev, sc = e > 0 ? Math.min(KELLY_FRACTION * e / (p.pick.best - 1), MAX_STAKE) * e : e;
       return p.suspect ? sc - 10 : sc;   /* suspiciously big edges sink to the bottom */
     }
-    out.sort(function (x, y) { return mode === "value" ? rank(y) - rank(x) : y.pick.fair - x.pick.fair; });
+    out.sort(function (x, y) { return mode === "value" ? (scoreFor(y).total - scoreFor(x).total) || (rank(y) - rank(x)) : y.pick.fair - x.pick.fair; });
     return out;
   }
 
@@ -1545,7 +1600,7 @@ details.acc .pcheck { margin-bottom: 12px; }
   /* Open bookmaker, copy the bet, and log it, in one row of buttons. */
   function actionsFor(p, st) {
     var s = p.pick, box = el("div", "actions");
-    var a = el("a", "btn primary go", "Open " + s.bestBook);
+    var a = el("a", "btn primary go", "Place on " + s.bestBook + " ↗");
     a.href = bookUrl(p); a.target = "_blank"; a.rel = "noopener noreferrer";
     box.appendChild(a);
     var cp = el("button", "btn", "Copy bet"); cp.type = "button";
@@ -1662,28 +1717,93 @@ details.acc .pcheck { margin-bottom: 12px; }
   function legend() {
     return el("p", "legend", "Chance: how likely it is to win. Reward: profit as a % of your stake if it wins. Value: how much better than the market average the price is.");
   }
+  function legend2() {
+    return el("p", "legend", "BetIQ score: 0 to 100, half price edge and half evidence. Tap a bet to see why. EV is how far the price beats the market average.");
+  }
+  /* The BetIQ score, 0 to 100. Half is the price edge, half is the evidence behind it.
+     The evidence weights are starting values chosen by judgement, to be tuned once the app has its own track record. */
+  function priceAge(p) { return p.at ? Date.now() - p.at : null; }
+  function scoreFor(p) {
+    if (p.sc) return p.sc;
+    var s = p.pick, why = [], edge = Math.round(Math.max(0, Math.min(1, s.ev / 0.08)) * 100), ev = 40;
+    var nb = Math.min(p.nBooks || 0, 10); ev += nb * 2; why.push([nb >= 6 ? 1 : 0, (p.nBooks || 0) + " bookmakers compared"]);
+    var key = s.market === "totals" ? "goals" : s.market ? null : "h2h";
+    var c = key ? EVID[key + "|" + (s.fair >= 0.5 ? "safer" : s.fair >= 0.3 ? "mid" : "long") + "|" + evidBucket(s.ev)] : null;
+    if (c && c.n >= 100) {
+      if (c.roi - c.ci > 0) { ev += 25; why.push([1, "Bets like this made money on past matches"]); }
+      else if (c.roi > 0) { ev += 12; why.push([1, "Bets like this were slightly ahead on past matches"]); }
+      else if (c.roi + c.ci < 0) { ev -= 15; why.push([-1, "Bets like this lost money on past matches"]); }
+      else why.push([0, "Past results for bets like this were about level"]);
+    } else why.push([0, "Not enough past bets of this kind to judge"]);
+    var mv = moveInfo(p);
+    if (mv) {
+      if (mv.kind === "better") { ev += 10; why.push([1, "The market is moving towards this bet"]); }
+      else if (mv.kind === "worse") { ev -= 15; why.push([-1, "The market is moving against this bet"]); }
+      else { ev -= 10; why.push([-1, "The price has moved a lot, so it may be gone or reflect news"]); }
+    }
+    var age = priceAge(p);
+    if (age !== null) {
+      if (age < 3600000) { ev += 5; why.push([1, "Prices are under an hour old"]); }
+      else if (age > 6 * 3600000) { ev -= 15; why.push([-1, "Prices are over 6 hours old, refresh first"]); }
+    }
+    if (newsFlag(p)) { ev -= 10; why.push([-1, "Several players are listed as out"]); }
+    ev = Math.max(0, Math.min(100, Math.round(ev)));
+    var total = Math.round(edge * 0.5 + ev * 0.5);
+    if (p.suspect) { total = Math.min(total, 35); why.push([-1, "The edge is unusually large, which usually means a stale or wrong price"]); }
+    else if (s.ev <= 0) total = Math.min(total, 40);
+    p.sc = { edge: edge, evid: ev, total: total, why: why };
+    return p.sc;
+  }
+  function ageText(p) {
+    var a = priceAge(p); if (a === null) return "";
+    var m = Math.round(a / 60000);
+    return "prices " + (m < 1 ? "just loaded" : m < 60 ? m + " min old" : Math.round(m / 60) + " h old");
+  }
+  function bar3(label, val, cls) {
+    var r = el("span", "sbar " + cls), t = el("span", "sbt"); t.appendChild(el("span", null, label)); t.appendChild(el("b", null, String(val)));
+    var m = el("span", "meter"), fi = el("i"); fi.style.width = Math.max(3, val) + "%"; m.appendChild(fi); r.appendChild(t); r.appendChild(m); return r;
+  }
+  function scoreBars(p) {
+    var sc = scoreFor(p), box = el("span", "sbox");
+    box.appendChild(bar3("Price edge", sc.edge, "b1")); box.appendChild(bar3("Evidence", sc.evid, "b2")); box.appendChild(bar3("BetIQ score", sc.total, "b3"));
+    return box;
+  }
+  function whyBox(p) {
+    var sc = scoreFor(p), box = el("div", "plain"); box.appendChild(el("b", null, "Why this score: " + sc.total + " out of 100"));
+    box.appendChild(el("div", null, "Price edge " + sc.edge + ": the price is " + signed(p.pick.ev) + " against the market average (8% or more scores 100)."));
+    box.appendChild(el("div", null, "Evidence " + sc.evid + ":"));
+    var ul = el("ul", "why"); sc.why.forEach(function (w) { ul.appendChild(el("li", w[0] > 0 ? "pos" : w[0] < 0 ? "neg" : null, w[1])); }); box.appendChild(ul);
+    box.appendChild(el("div", "subnote", "The score is half price edge and half evidence. The evidence weights are starting values, not yet proven, and will be tuned as the app builds its own track record. A high score is not a promise."));
+    return box;
+  }
   /* One row of the level board. medal = 1, 2, 3 for gold, silver, bronze. */
   function boardRow(p, rank, medal, withActions, showLeague) {
-    var s = p.pick, st = stakeFor(s);
-    var wrap = el("div", "brow" + (medal === 1 ? " gold" : medal === 2 ? " silver" : medal === 3 ? " bronze" : ""));
+    var s = p.pick, st = stakeFor(s), sc = scoreFor(p), age = priceAge(p);
+    var wrap = el("div", "brow card" + (medal === 1 ? " gold" : ""));
     var main = el("button", "bmain"); main.type = "button";
-    var top = el("span", "btop");
-    top.appendChild(el("span", "bbadge", String(rank)));
-    var tx = el("span", "btxt"), nm = el("span", "bn1", s.name); badgesFor(p, nm); tx.appendChild(nm);
-    tx.appendChild(el("span", "bsub", (showLeague ? p.league + " · " : "") + p.ev.h + " v " + p.ev.a + " · " + TF.format(new Date(p.time))));
-    top.appendChild(tx);
-    var pr = el("span", "bprofit");
-    pr.appendChild(el("b", null, st.amount >= 0.5 ? "+" + gbp(st.amount * (s.best - 1)) : "–")); pr.appendChild(el("small", null, "if it wins"));
-    top.appendChild(pr); main.appendChild(top);
-    main.appendChild(trio(p));
-    main.appendChild(el("span", "bbet", st.amount >= 0.5 ? "Bet " + gbp(st.amount) + " at odds " + s.best.toFixed(2) + " with " + s.bestBook : st.kind + " · best odds " + s.best.toFixed(2) + " with " + s.bestBook));
+    var top = el("span", "ctop");
+    top.appendChild(el("span", "clg", "#" + rank + " · " + p.league));
+    var pills = el("span", "cpills"); badgesFor(p, pills);
+    pills.appendChild(el("span", "pillev " + (s.ev > 0 ? "pos" : "neg"), signed(s.ev) + " EV")); top.appendChild(pills); main.appendChild(top);
+    main.appendChild(el("span", "cmatch", p.ev.h + " vs " + p.ev.a));
+    var when = el("span", "cwhen", "Starts " + TF.format(new Date(p.time)));
+    if (age !== null) when.appendChild(el("span", age > 3 * 3600000 ? "old" : null, " · " + ageText(p)));
+    main.appendChild(when);
+    var g = el("span", "cgrid");
+    function cell(l, v, sub, cls) { var c = el("span", "cc"); c.appendChild(el("span", "cl", l)); c.appendChild(el("b", cls || null, v)); c.appendChild(el("small", null, sub)); return c; }
+    g.appendChild(cell("Pick", s.name, s.market ? "" : s.name === "Draw" ? "match ends level" : "to win", "pick"));
+    g.appendChild(cell("Best odds", s.best.toFixed(2), "@" + s.bestBook));
+    g.appendChild(cell("Fair price", s.fairOdds.toFixed(2), pct(s.fair, 1) + " win"));
+    main.appendChild(g);
+    main.appendChild(scoreBars(p));
+    var pay = el("span", "cpay"), l = el("span", "cc"), r = el("span", "cc right");
+    l.appendChild(el("span", "cl", "Recommended stake")); l.appendChild(el("b", null, st.amount >= 0.5 ? gbp(st.amount) : "–")); l.appendChild(el("small", null, st.amount >= 0.5 ? pct(st.amount / budget(), 1) + " of budget" : st.kind));
+    r.appendChild(el("span", "cl", "Potential payout")); r.appendChild(el("b", "pos", st.amount >= 0.5 ? gbp(st.amount * s.best) : "–")); r.appendChild(el("small", "pos", st.amount >= 0.5 ? "+" + gbp(st.amount * (s.best - 1)) + " profit" : ""));
+    pay.appendChild(l); pay.appendChild(r); main.appendChild(pay);
+    main.appendChild(el("span", "cmore", "Tap for the price check and full details"));
     main.addEventListener("click", function () { openSheet(p, main); });
     wrap.appendChild(main);
-    if (withActions) {
-      var acts = el("div", "bacts"); acts.appendChild(actionsFor(p, st));
-      var dt = el("button", "accbtn", "Check the price and see more details"); dt.type = "button"; dt.addEventListener("click", function () { openSheet(p, dt); }); acts.appendChild(dt);
-      wrap.appendChild(acts);
-    }
+    var acts = el("div", "bacts"); acts.appendChild(actionsFor(p, st)); wrap.appendChild(acts);
     return wrap;
   }
 
@@ -1712,7 +1832,7 @@ details.acc .pcheck { margin-bottom: 12px; }
     }
     var picks = d.ranked.length ? d.ranked.slice(0, 6) : d.likely;
     box.appendChild(el("h2", null, "Today's level board"));
-    if (d.value.length) box.appendChild(el("p", "subnote", "Ranked best first. Gold is your best bet right now."));
+    if (d.value.length) box.appendChild(el("p", "subnote", "Ranked by BetIQ score, best first."));
     else {
       var steady = d.plans.filter(function (x) { return x.id === "steady"; })[0];
       var r = el("div", "reco"); r.appendChild(el("b", null, "No bet beats the market"));
@@ -1721,7 +1841,7 @@ details.acc .pcheck { margin-bottom: 12px; }
         : "No price is clearly above the market. The board shows the closest ones. If you want a bet, keep to small stakes."));
       box.appendChild(r);
     }
-    box.appendChild(legend());
+    box.appendChild(legend2());
     var board = el("div", "board");
     picks.forEach(function (p, i) { board.appendChild(boardRow(p, i + 1, i < 3 ? i + 1 : 0, i === 0 && d.value.length > 0, true)); });
     box.appendChild(board);
@@ -1773,7 +1893,7 @@ details.acc .pcheck { margin-bottom: 12px; }
   function subPick(p, r) {
     var pk = { name: r.label, fair: r.fair, fairOdds: r.fairOdds, best: r.best, bestBook: r.book, bestEx: r.ex, bestComm: r.comm, bestLink: "",
                prices: r.prices, ev: r.ev, market: r.market || "totals", point: r.point, side: r.side, rule: r.rule, refund: r.refund || 0, pid: p.ev.id + "|" + r.label };
-    var sp = { ev: p.ev, key: p.key, league: p.league, group: p.group, time: p.time, pick: pk, nBooks: r.n, a: p.a, id: pk.pid, sub: true };
+    var sp = { ev: p.ev, key: p.key, league: p.league, group: p.group, time: p.time, pick: pk, nBooks: r.n, a: p.a, id: pk.pid, sub: true, at: p.at };
     sp.isValue = pk.ev >= VALUE_MIN && pk.ev <= VALUE_MAX && r.n >= 4 && pk.best <= LONGSHOT; sp.suspect = pk.ev > VALUE_MAX;
     return sp;
   }
@@ -1889,6 +2009,7 @@ details.acc .pcheck { margin-bottom: 12px; }
     var mv = moveInfo(p); if (mv) root.appendChild(el("div", "msg", "Price moved. " + mv.text));
     var nb2 = newsBox(p); if (nb2) root.appendChild(nb2);
     root.appendChild(trio(p)); root.appendChild(legend());
+    root.appendChild(whyBox(p));
     var eb = evidBox(p); if (eb) root.appendChild(eb);
 
     var pt = plainText(p, st); if (pt) { var pe = el("div", "plain"); pe.appendChild(el("b", null, "In plain English")); pe.appendChild(document.createTextNode(pt)); root.appendChild(pe); }
@@ -2033,7 +2154,7 @@ details.acc .pcheck { margin-bottom: 12px; }
       list.appendChild(li); return;
     }
     list.appendChild(el("li", "legendli", "Best bets first across every league. Use the league buttons above to look at just one. Gold, silver and bronze mark the top three."));
-    list.appendChild(el("li", "legendli", "Chance: how likely it is to win. Reward: profit as a % of your stake if it wins. Value: how much better than the market average the price is."));
+    list.appendChild(el("li", "legendli", "BetIQ score: 0 to 100, half price edge and half evidence. Tap a bet to see why."));
     var counts = {}, order = [];
     picks.forEach(function (p) {
       var c = counts[p.key]; if (!c) { c = counts[p.key] = { key: p.key, title: p.league, group: p.group, n: 0 }; order.push(c); }
@@ -2295,7 +2416,7 @@ details.acc .pcheck { margin-bottom: 12px; }
     $("modeHint").textContent = S.mode === "balanced"
       ? "Ten bets picked to balance risk: some safer, some middling, a couple of longer shots, one per match, so one bad result does not sink the lot."
       : S.mode === "value"
-      ? "Best bet first, ranked by profit for each £1 staked. Any outcome counts, not just the winner." + (S.totals ? "" : " Turn on goals prices in Settings to include over/under bets.")
+      ? "Best bet first, ranked by BetIQ score. Any outcome counts, not just the winner." + (S.totals ? "" : " Turn on goals prices in Settings to include over/under bets.")
       : "Sorted by chance of winning. Favourites win often but pay little.";
     var wl = { 12: "12 hours", 24: "24 hours", 48: "2 days", 72: "3 days", 168: "7 days" }[S.windowH] || (S.windowH + " hours");
     $("filterSum").textContent = "Filters: budget £" + S.bankroll + " · min odds " + (+S.minOdds === 1 ? "any" : (+S.minOdds).toFixed(2)) + " · next " + wl;
