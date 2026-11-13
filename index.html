@@ -699,6 +699,7 @@ input, select, textarea { color: var(--ink); }
 
   <footer>
     <span><b>How it works.</b> Each bookmaker's margin is removed (taking proportionally more off long shots, which tested better on 30,000 past matches), then the chances are averaged to get a win chance. Edge compares the best price you can get with that average, with exchange commission taken off. It measures price against the market. It does not tell you who will win, and the market average can be wrong. A big edge is often a stale price, so confirm it on the bookmaker's site before betting.</span>
+    <span id="verLine"></span>
     <span>Horse racing is not covered by this data source. 18+ only. Bet only what you can afford to lose. <a href="https://www.begambleaware.org" target="_blank" rel="noopener">BeGambleAware.org</a></span>
   </footer>
 </div>
@@ -724,6 +725,7 @@ input, select, textarea { color: var(--ink); }
 <script>
 (function () {
   "use strict";
+  var VERSION = "v22 (13 Nov 2026)";   /* shown in the footer; bump on every release */
   var LS = "betiqlite.v1";
   var API = "https://api.the-odds-api.com/v4";
   var DEFAULTS = { key: "", selected: [], mode: "value", minOdds: 1.3, windowH: 72, group: "all",
@@ -3034,6 +3036,7 @@ input, select, textarea { color: var(--ink); }
 
   /* ---------- Start ---------- */
   sbFromHash();
+  $("verLine").textContent = "BetIQ Lite " + VERSION + ". If the page looks out of date, add ?" + VERSION.slice(0, 3) + " to the address to skip your phone's saved copy.";
   initCalc();
   renderAll();
   if (S.key) renderSettings();
