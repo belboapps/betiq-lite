@@ -465,6 +465,12 @@ input, select, textarea { color: var(--ink); }
 .verdict.skip, .verdict.check { background: var(--warn-bg); border-color: var(--warn); } .verdict.skip b, .verdict.check b { color: var(--warn); }
 .detail .verdict { margin-top: -2px; }
 body.simple .adv { display: none !important; }
+.plain .chart { width: 100%; height: auto; background: var(--bg); border-radius: 12px; margin: 6px 0; }
+.acct { background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.acct.off { opacity: .6; }
+.atop { display: flex; justify-content: space-between; align-items: center; gap: 8px; } .atop b { font: 700 17px/1.2 var(--display); }
+.atop select { flex: none; min-height: 38px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 4px 8px; }
+.acct .row .field { flex: 1 1 120px; }
 .cdo { font-size: 14px; color: var(--ink); background: var(--accent-soft); border-radius: 10px; padding: 7px 10px; }
 .cdo.wait { background: #1c2230; } .cdo.skip, .cdo.check { background: var(--warn-bg); }
 .cdo b { font-weight: 700; }
@@ -557,6 +563,15 @@ body.simple .adv { display: none !important; }
             <option value="168">7 days</option>
           </select>
         </label>
+        <label for="fMaxOdds">Maximum odds
+          <select id="fMaxOdds"><option value="0">Any</option><option value="2">2.00</option><option value="3">3.00</option><option value="4">4.00</option><option value="6">6.00</option></select>
+        </label>
+        <label for="fMinEdge">Minimum edge
+          <select id="fMinEdge"><option value="0">Any</option><option value="0.01">1%</option><option value="0.03">3%</option><option value="0.05">5%</option></select>
+        </label>
+        <label for="fMinScore">Minimum BetIQ score
+          <select id="fMinScore"><option value="0">Any</option><option value="50">50</option><option value="60">60</option><option value="70">70</option></select>
+        </label>
       </div>
       </details>
       <div class="chips" id="groupChips" role="group" aria-label="Sport"></div>
@@ -575,7 +590,7 @@ body.simple .adv { display: none !important; }
     <div class="tab" id="tab-more" hidden>
     <section class="panel" id="settings">
       <h2>Settings</h2>
-      <label class="check"><input type="checkbox" id="simpleOn"> Simple view: Today shows only bets worth acting on, and advanced tools are hidden</label>
+      <label class="check"><input type="checkbox" id="simpleOn"> Simple view: Today shows only bets worth acting on. Untick it to show the advanced tools: cloud backup, team news, Pinnacle yardstick, calculator and scenarios</label>
       <h3>Leagues and sports</h3>
       <p>Tick anything here: football leagues, tennis, basketball, US football, ice hockey and more, or press "Use recommended sports" below for football, tennis and basketball. Horse racing is not offered by this data source at the moment; if that changes it will appear in this list and in the recommended set. Every league costs the same per refresh. Outside football, handicaps are the only extra market, the "bets like this" history does not apply, and tennis results may need marking by hand.</p>
       <p id="costNote"></p>
@@ -657,6 +672,12 @@ body.simple .adv { display: none !important; }
         <p>So treat betting as paid entertainment, not income. If you only use one or two bookmakers, expect roughly to lose a few percent of what you stake over time, and only stake what you can afford to lose.</p>
       </section>
       <section class="panel" id="tourBox"><h2>New here?</h2><p>A short walk-through of how to read the page and stay in control.</p><button class="btn" id="tourAgain" type="button">Show the tour</button></section>
+      <section class="panel" id="acctBox">
+        <h2>My bookmaker accounts</h2>
+        <p>Keep track of balances and which accounts have been limited. A limited or closed account is no longer offered as a place to bet. Set a deposit limit on every account when you open it.</p>
+        <div id="acctList" class="bodyflow"></div>
+        <div class="row"><input id="acctNew" type="text" placeholder="Add a bookmaker not in the list" aria-label="Add a bookmaker"><button class="btn small" id="acctAdd" type="button">Add</button></div>
+      </section>
       <section class="panel adv" id="sbBox">
         <h2>Cloud backup (optional)</h2>
         <p>Keeps your bets safe in your own free Supabase project and shares them between your devices. Only you can see them, after signing in with an email link. Your Odds API key is never uploaded. See <a href="https://github.com/belboapps/betiq-lite/blob/main/supabase/README.md" target="_blank" rel="noopener">the setup steps</a>.</p>
@@ -727,12 +748,12 @@ body.simple .adv { display: none !important; }
 <script>
 (function () {
   "use strict";
-  var VERSION = "v23 (13 Nov 2026)";   /* shown in the footer; bump on every release */
+  var VERSION = "v24 (13 Nov 2026)";   /* shown in the footer; bump on every release */
   var LS = "betiqlite.v1";
   var API = "https://api.the-odds-api.com/v4";
   var DEFAULTS = { key: "", selected: [], mode: "value", minOdds: 1.3, windowH: 72, group: "all",
                    sports: [], sportsAt: 0, cache: {}, remaining: null, used: null, picked: false,
-                   bankroll: 100, weekly: 0, league: "all", sugg: [], live: null, simple: true, recAt: 0, autoKick: true, sharp: false, sharpBad: false, placeMin: 60, tuneN: 0, tomb: [], sb: { url: "", key: "", email: "", session: null, last: 0, status: "" }, extras: true, extraMax: 12, extraFreshH: 3, lossLimit: 0, lossStreak: 5, tour: false, afKey: "", newsOn: true, news: {}, afUse: { d: "", n: 0 }, afStatus: "", xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
+                   bankroll: 100, weekly: 0, league: "all", sugg: [], series: {}, accts: {}, fMaxOdds: 0, fMinEdge: 0, fMinScore: 0, live: null, simple: true, recAt: 0, autoKick: true, sharp: false, sharpBad: false, placeMin: 60, tuneN: 0, tomb: [], sb: { url: "", key: "", email: "", session: null, last: 0, status: "" }, extras: true, extraMax: 12, extraFreshH: 3, lossLimit: 0, lossStreak: 5, tour: false, afKey: "", newsOn: true, news: {}, afUse: { d: "", n: 0 }, afStatus: "", xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
   var GROUPS = { "Soccer": "Football", "American Football": "US football", "Ice Hockey": "Ice hockey",
                  "Mixed Martial Arts": "MMA", "Rugby League": "Rugby", "Rugby Union": "Rugby", "Aussie Rules": "Aussie rules" };
   var DEFAULT_FOOTBALL = ["soccer_epl", "soccer_efl_champ", "soccer_uefa_champs_league", "soccer_uefa_europa_league"];
@@ -760,6 +781,7 @@ body.simple .adv { display: none !important; }
       if (!Array.isArray(s.bets)) s.bets = [];
       if (!Array.isArray(s.pbets)) s.pbets = [];
       ['xmBad', 'xmOK', 'clog', 'tomb', 'sugg'].forEach(function (k) { if (!Array.isArray(s[k])) s[k] = []; });
+      ['series', 'accts'].forEach(function (k) { if (!s[k] || typeof s[k] !== 'object') s[k] = {}; });
       if (!s.sb || typeof s.sb !== 'object') s.sb = { url: '', key: '', email: '', session: null, last: 0, status: '' };
       if (!o || !o.ver || o.ver < 2) s.mode = "value";   /* v2: Best bets is the default view */
       s.ver = 2;
@@ -775,7 +797,11 @@ body.simple .adv { display: none !important; }
     return n;
   }
   function groupLabel(g) { return GROUPS[g] || g || "Other"; }
-  function allowed(title) { return !S.myBooks || S.myBooks.indexOf(title) > -1; }
+  function allowed(title) {
+    var a = S.accts && S.accts[title];
+    if (a && a.status && a.status !== "active") return false;     /* limited or closed accounts are not offered as places to bet */
+    return !S.myBooks || S.myBooks.indexOf(title) > -1;
+  }
   function eff(price, k) { var c = EXCH[k]; return c ? 1 + (price - 1) * (1 - c) : price; }
 
   /* ---------- API ---------- */
@@ -868,6 +894,19 @@ body.simple .adv { display: none !important; }
       sl.tb.forEach(function (b) { if (b.k === "pinnacle") { b.sharp = true; ev.tb = (ev.tb || []).filter(function (x) { return x.k !== "pinnacle"; }); ev.tb.push(b); } });
     });
   }
+  /* A short history of the best price and fair chance for every selection, one point per refresh, for the chart in each bet's details. */
+  function recordSeries(evs) {
+    var now = Date.now();
+    evs.forEach(function (ev) {
+      var a = analyse(ev); if (!a) return;
+      var ser = S.series[ev.id] || (S.series[ev.id] = {});
+      a.sels.forEach(function (x) {
+        var arr = ser[x.name] || (ser[x.name] = []), last = arr[arr.length - 1];
+        if (last && now - last[0] < 10 * 60000) { last[1] = x.best; last[2] = x.fair; return; }
+        arr.push([now, x.best, x.fair]); if (arr.length > 30) arr.shift();
+      });
+    });
+  }
   function loadLeague(key, errors) {
     return Promise.all([fetchOdds(key), fetchSharp(key)]).then(function (res) {
       var events = res[0], old = S.cache[key]; if (old) snapshot(old);
@@ -875,6 +914,7 @@ body.simple .adv { display: none !important; }
       var evs = events.map(slim); evs.forEach(function (e) { if (oldX[e.id]) e.x = oldX[e.id]; });
       foldSharp(evs, res[1]);
       S.cache[key] = { at: Date.now(), events: evs };
+      recordSeries(evs);
     }, function (e) { errors.push(e); });
   }
   var busyMsg = "";
@@ -906,6 +946,7 @@ body.simple .adv { display: none !important; }
       var ids = {};
       S.selected.forEach(function (k) { (S.cache[k] ? S.cache[k].events : []).forEach(function (e) { ids[e.id] = 1; }); });
       Object.keys(S.hist).forEach(function (id) { if (!ids[id]) delete S.hist[id]; });
+      Object.keys(S.series).forEach(function (id) { if (!ids[id]) delete S.series[id]; });
       save(); renderAll();
       if (errors[0]) showAlert(errText(errors[0]) + (errors.length > 1 ? " (" + errors.length + " leagues affected.)" : ""), false);
       else if (note === "credits") showAlert("Some extra markets were skipped to keep a safety reserve of credits.", true);
@@ -1189,7 +1230,7 @@ body.simple .adv { display: none !important; }
     ];
   }
 
-  function buildPicks(mode) {
+  function buildPicks(mode, raw) {
     var now = Date.now(), end = now + S.windowH * 3600000, out = [];
     S.selected.forEach(function (key) {
       var c = S.cache[key]; if (!c) return;
@@ -1237,6 +1278,14 @@ body.simple .adv { display: none !important; }
     function rank(p) {
       var e = p.pick.ev, sc = e > 0 ? Math.min(KELLY_FRACTION * e / (p.pick.best - 1), MAX_STAKE) * e : e;
       return p.suspect ? sc - 10 : sc;   /* suspiciously big edges sink to the bottom */
+    }
+    if (!raw) {   /* the user's saved filters: they shape what is shown, never what the track record logs */
+      out = out.filter(function (p) {
+        if (S.fMaxOdds > 0 && p.pick.best > S.fMaxOdds) return false;
+        if (mode === "value" && S.fMinEdge > 0 && p.pick.ev < S.fMinEdge) return false;
+        if (mode === "value" && S.fMinScore > 0 && scoreFor(p).total < S.fMinScore) return false;
+        return true;
+      });
     }
     out.sort(function (x, y) { return mode === "value" ? (scoreFor(y).total - scoreFor(x).total) || (rank(y) - rank(x)) : y.pick.fair - x.pick.fair; });
     return out;
@@ -1588,7 +1637,7 @@ body.simple .adv { display: none !important; }
      The first sighting counts, so the record cannot be improved by re-flagging a bet at a better price later. */
   function recordSuggestions() {
     var now = Date.now(), added = 0;
-    buildPicks("value").filter(function (p) { return p.isValue && !p.suspect; }).slice(0, 10).forEach(function (p) {
+    buildPicks("value", true).filter(function (p) { return p.isValue && !p.suspect; }).slice(0, 10).forEach(function (p) {
       if (S.sugg.some(function (x) { return x.pid === p.id; })) return;
       var s = p.pick, sc = scoreFor(p);
       S.sugg.push({ sugg: true, pid: p.id, evId: p.ev.id, key: p.key, league: p.league, h: p.ev.h, a: p.ev.a, sel: s.name, odds: s.best, book: s.bestBook,
@@ -2183,6 +2232,7 @@ body.simple .adv { display: none !important; }
     var rb2 = remindBtn(p); if (rb2) tb.appendChild(rb2);
     if (liveWindow(p) && !p.live) { var wl2 = el("button", "accbtn", "Watch this match live"); wl2.type = "button"; wl2.addEventListener("click", function () { closeSheet(); startLive(p); setTab("today"); }); tb.appendChild(wl2); }
     root.appendChild(tb);
+    var mch = moveChart(p); if (mch) root.appendChild(mch);
     var mkb = p.sub ? null : marketsBox(p); if (mkb) root.appendChild(mkb);
 
     var bk = el("div", "books"), tbl = el("table");
@@ -2199,7 +2249,31 @@ body.simple .adv { display: none !important; }
     return root;
   }
   var sheetId = null, sheetFrom = null, sheetSub = null;
-  function findPick(id) { return buildPicks("value").concat(buildPicks("likely")).filter(function (p) { return p.id === id; })[0]; }
+  function findPick(id) { return buildPicks("value", true).concat(buildPicks("likely", true)).filter(function (p) { return p.id === id; })[0]; }
+  function moveChart(p) {
+    if (p.pick.market || p.live) return null;
+    var ser = S.series[p.ev.id] && S.series[p.ev.id][p.pick.name], box = el("div", "plain");
+    box.appendChild(el("b", null, "Price over time"));
+    if (!ser || ser.length < 2) { box.appendChild(document.createTextNode("Each refresh adds a point here. After your next refresh you will see whether this price is rising or falling.")); return box; }
+    var NS = "http://www.w3.org/2000/svg", W = 300, H = 110, pad = 18, lo = Infinity, hi = -Infinity;
+    ser.forEach(function (x) { lo = Math.min(lo, x[1], 1 / x[2]); hi = Math.max(hi, x[1], 1 / x[2]); }); if (hi - lo < 0.05) { hi += 0.05; lo -= 0.05; }
+    var t0 = ser[0][0], t1 = ser[ser.length - 1][0] || t0 + 1;
+    function X(t) { return pad + (W - 2 * pad) * (t1 === t0 ? 1 : (t - t0) / (t1 - t0)); }
+    function Y(v) { return pad + (H - 2 * pad) * (1 - (v - lo) / (hi - lo)); }
+    var svg = document.createElementNS(NS, "svg"); svg.setAttribute("viewBox", "0 0 " + W + " " + H); svg.setAttribute("class", "chart"); svg.setAttribute("role", "img");
+    var fairNow = 1 / ser[ser.length - 1][2];
+    svg.setAttribute("aria-label", "Best price went from " + ser[0][1].toFixed(2) + " to " + ser[ser.length - 1][1].toFixed(2));
+    function mk(tag, at) { var e = document.createElementNS(NS, tag); Object.keys(at).forEach(function (k) { e.setAttribute(k, at[k]); }); svg.appendChild(e); return e; }
+    mk("line", { x1: pad, x2: W - pad, y1: Y(fairNow), y2: Y(fairNow), stroke: "#8d98a5", "stroke-dasharray": "4 3", "stroke-width": "1.2" });
+    mk("polyline", { points: ser.map(function (x) { return X(x[0]).toFixed(1) + "," + Y(x[1]).toFixed(1); }).join(" "), fill: "none", stroke: "#19d3a2", "stroke-width": "2.5", "stroke-linejoin": "round" });
+    ser.forEach(function (x) { mk("circle", { cx: X(x[0]).toFixed(1), cy: Y(x[1]).toFixed(1), r: 2.5, fill: "#19d3a2" }); });
+    var a = mk("text", { x: pad, y: 11, fill: "#8d98a5", "font-size": 11 }); a.textContent = "best price " + ser[0][1].toFixed(2) + " → " + ser[ser.length - 1][1].toFixed(2);
+    var b = mk("text", { x: W - pad, y: Y(fairNow) - 4, "text-anchor": "end", fill: "#8d98a5", "font-size": 10 }); b.textContent = "fair " + fairNow.toFixed(2);
+    box.appendChild(svg);
+    var d = ser[ser.length - 1][1] - ser[0][1];
+    box.appendChild(el("div", "subnote", "Over your last " + ser.length + " refreshes (" + ago(ser[0][0]) + " to now) the best price " + (Math.abs(d) < 0.02 ? "barely moved." : d < 0 ? "fell. Falling prices are often corrected, so act on a good one early." : "rose. A rising price can mean the market is losing faith in this outcome.") + " The dashed line is the fair price now."));
+    return box;
+  }
   function renderSheet() {
     if (!sheetId) return;
     var p = findPick(sheetId); if (!p) { closeSheet(); return; }
@@ -2442,6 +2516,26 @@ body.simple .adv { display: none !important; }
       body.appendChild(r);
     });
   }
+  function csvEsc(v) { v = v === null || v === undefined ? "" : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  function betsCsv() {
+    var rows = [["Mode", "Placed", "Kick-off", "League", "Match", "Selection", "Market", "Odds", "Stake", "Bookmaker", "Status", "Profit", "Closing-price check", "Live"]];
+    [["Real", S.bets], ["Practice", S.pbets]].forEach(function (g) {
+      g[1].forEach(function (b) {
+        var c = clvOf(b);
+        rows.push([g[0], new Date(b.at).toISOString(), new Date(b.time).toISOString(), b.league, b.h + " v " + b.a, b.sel, b.mkt || "match winner", b.odds, b.stake, b.book, b.status, (b.profit || 0).toFixed(2), c === null ? "" : (c * 100).toFixed(1) + "%", b.live ? "yes" : ""]);
+      });
+    });
+    return rows.map(function (r) { return r.map(csvEsc).join(","); }).join("\r\n");
+  }
+  function exportBets() {
+    if (!S.bets.length && !S.pbets.length) { showAlert("No bets to export yet.", false); return; }
+    var csv = betsCsv();
+    try {
+      var blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" }), a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = "betiq-bets-" + new Date().toISOString().slice(0, 10) + ".csv"; document.body.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); document.body.removeChild(a); }, 1500);
+    } catch (e) { copyText(csv, $("exportBtn")); }
+  }
   function renderBets() {
     var body = $("betsBody"); body.textContent = "";
     var open = BETS().filter(function (b) { return b.status === "open"; });
@@ -2462,6 +2556,7 @@ body.simple .adv { display: none !important; }
     if (clvs.length) { var av = clvs.reduce(function (a, c) { return a + c; }, 0) / clvs.length; g.appendChild(statBox("Closing-price score", signed(av), clvs.length + (clvs.length === 1 ? " bet" : " bets") + " measured", av >= 0 ? "pos" : "neg")); }
     body.appendChild(g);
     if (clvs.length) body.appendChild(el("p", "subnote", "Closing-price score: how much better your odds were than the final fair market price just before kick-off. Positive means you usually took better prices than the market settled at. It is the best sign your bets are good, but it only means something after 30 or more bets."));
+    var xb = el("button", "btn small", "Download all my bets as a spreadsheet"); xb.type = "button"; xb.id = "exportBtn"; xb.addEventListener("click", exportBets); body.appendChild(xb);
     var soon = soonBets();
     if (soon.length) {
       var ks = []; soon.forEach(function (b) { if (ks.indexOf(b.key) < 0) ks.push(b.key); });
@@ -2548,6 +2643,7 @@ body.simple .adv { display: none !important; }
     $("simpleOn").checked = !!S.simple; $("sharpOn").checked = !!S.sharp; $("autoKick").checked = !!S.autoKick; renderSharpMsg();
     $("extrasOn").checked = !!S.extras; $("extraMax").value = String(S.extraMax); $("extraFresh").value = String(S.extraFreshH);
     $("lossLimit").value = S.lossLimit ? String(S.lossLimit) : ""; $("lossStreak").value = String(S.lossStreak);
+    renderAccts();
     $("sbUrl").value = S.sb.url || ""; $("sbKey").value = S.sb.key || ""; $("sbEmail").value = S.sb.email || ""; renderSb();
     $("newsOn").checked = !!S.newsOn; $("afKey").value = S.afKey || ""; renderAfMsg();
     renderCost(); renderBooks(); renderMkCheck(); renderCreditLog();
@@ -2582,6 +2678,30 @@ body.simple .adv { display: none !important; }
       rb.addEventListener("click", function () { S.xmBad = []; save(); renderMkCheck(); renderCost(); renderStatus(); });
       box.appendChild(rb);
     }
+  }
+  function renderAccts() {
+    var box = $("acctList"); if (!box) return; box.textContent = "";
+    var names = {}; seenBooks().forEach(function (n) { names[n] = 1; }); Object.keys(S.accts).forEach(function (n) { names[n] = 1; });
+    var list = Object.keys(names).sort(), total = 0;
+    if (!list.length) { box.appendChild(el("p", "subnote", "Load prices once and your bookmakers appear here.")); return; }
+    list.forEach(function (n) {
+      var a = S.accts[n] || (S.accts[n] = { bal: 0, status: "active", note: "" }), mine = S.bets.filter(function (b) { return b.book === n; }), done = mine.filter(function (b) { return b.status !== "open"; });
+      var staked = 0, profit = 0; done.forEach(function (b) { staked += b.stake; profit += b.profit; }); total += +a.bal || 0;
+      var row = el("div", "acct " + (a.status !== "active" ? "off" : ""));
+      var top = el("div", "atop"); top.appendChild(el("b", null, n));
+      var sel = document.createElement("select"); [["active", "Active"], ["limited", "Limited"], ["closed", "Closed"], ["none", "No account"]].forEach(function (o) { var op = el("option", null, o[1]); op.value = o[0]; sel.appendChild(op); });
+      sel.value = a.status === "none" ? "none" : a.status; sel.setAttribute("aria-label", n + " account status");
+      sel.addEventListener("change", function () { a.status = sel.value === "none" ? "closed" : sel.value; a.none = sel.value === "none"; S.accts[n] = a; save(); renderAccts(); renderView(); });
+      if (a.none) sel.value = "none"; top.appendChild(sel); row.appendChild(top);
+      var mid = el("div", "row"), lab = el("label", "field", "Balance £"), bi = document.createElement("input"); bi.type = "number"; bi.step = "1"; bi.min = "0"; bi.value = a.bal ? String(a.bal) : ""; bi.placeholder = "0"; bi.setAttribute("inputmode", "decimal");
+      bi.addEventListener("change", function () { var v = parseFloat(bi.value); a.bal = isFinite(v) && v >= 0 ? v : 0; S.accts[n] = a; save(); renderAccts(); }); lab.appendChild(bi); mid.appendChild(lab);
+      var nl = el("label", "field", "Note"), ni = document.createElement("input"); ni.type = "text"; ni.value = a.note || ""; ni.placeholder = "bonus, limit, anything"; ni.addEventListener("change", function () { a.note = ni.value; S.accts[n] = a; save(); }); nl.appendChild(ni); mid.appendChild(nl);
+      row.appendChild(mid);
+      if (mine.length) row.appendChild(el("div", "subnote", mine.length + " bet" + (mine.length === 1 ? "" : "s") + " logged here" + (done.length ? " · " + done.length + " settled · " + sgbp(profit) + (staked ? " (" + signed(profit / staked) + ")" : "") : "") + "."));
+      if (done.length >= 20 && staked && profit / staked > 0.1 && a.status === "active") row.appendChild(el("div", "msg", "You are winning well here. Bookmakers often limit accounts like this, so spreading bets across several is sensible."));
+      box.appendChild(row);
+    });
+    box.appendChild(el("p", "subnote", "Total across your accounts: " + gbp(total) + ". " + (S.accts && Object.keys(S.accts).some(function (k) { return S.accts[k].status === "limited" || S.accts[k].status === "closed"; }) ? "Limited and closed accounts are left out of the bets suggested." : "")));
   }
   function seenBooks() {
     var seen = {};
@@ -2640,7 +2760,9 @@ body.simple .adv { display: none !important; }
       ? "Best bet first, ranked by BetIQ score. Any outcome counts, not just the winner." + (S.totals ? "" : " Turn on goals prices in Settings to include over/under bets.")
       : "Sorted by chance of winning. Favourites win often but pay little.";
     var wl = { 12: "12 hours", 24: "24 hours", 48: "2 days", 72: "3 days", 168: "7 days" }[S.windowH] || (S.windowH + " hours");
-    $("filterSum").textContent = "Filters: budget £" + S.bankroll + " · min odds " + (+S.minOdds === 1 ? "any" : (+S.minOdds).toFixed(2)) + " · next " + wl;
+    $("fMaxOdds").value = String(S.fMaxOdds); $("fMinEdge").value = String(S.fMinEdge); $("fMinScore").value = String(S.fMinScore);
+    $("filterSum").textContent = "Filters: budget £" + S.bankroll + " · min odds " + (+S.minOdds === 1 ? "any" : (+S.minOdds).toFixed(2)) + " · next " + wl +
+      (S.fMaxOdds ? " · max odds " + S.fMaxOdds : "") + (S.fMinEdge ? " · edge " + (S.fMinEdge * 100) + "%+" : "") + (S.fMinScore ? " · score " + S.fMinScore + "+" : "") + " (saved)";
     renderCredits(); renderStatus(); renderChips(); renderView();
     if (!$("tab-more").hidden) { renderCreditLog(); renderMkCheck(); }
   }
@@ -2701,6 +2823,7 @@ body.simple .adv { display: none !important; }
   $("modeLikely").addEventListener("click", function () { S.mode = "likely"; save(); renderAll(); });
   $("modeBal").addEventListener("click", function () { S.mode = "balanced"; save(); renderAll(); });
   $("modeValue").addEventListener("click", function () { S.mode = "value"; save(); renderAll(); });
+  [["fMaxOdds", +1], ["fMinEdge", +1], ["fMinScore", +1]].forEach(function (x) { $(x[0]).addEventListener("change", function (e) { S[x[0]] = +e.target.value; save(); renderAll(); }); });
   $("minOdds").addEventListener("change", function (e) { S.minOdds = +e.target.value; save(); renderView(); });
   $("windowH").addEventListener("change", function (e) { S.windowH = +e.target.value; save(); renderView(); });
   $("weeklyIn").addEventListener("change", function (e) {
@@ -2721,6 +2844,7 @@ body.simple .adv { display: none !important; }
   $("afKey").addEventListener("change", function (e) { S.afKey = e.target.value.trim(); S.afStatus = ""; save(); renderAfMsg(); });
   $("afTest").addEventListener("click", testNews);
   $("tourAgain").addEventListener("click", function () { openTour(); });
+  $("acctAdd").addEventListener("click", function () { var n = $("acctNew").value.trim(); if (!n) return; if (!S.accts[n]) S.accts[n] = { bal: 0, status: "active", note: "" }; $("acctNew").value = ""; save(); renderAccts(); });
   $("sbSignIn").addEventListener("click", sbSignIn);
   $("sbSync").addEventListener("click", function () { syncNow(false); });
   $("sbOut").addEventListener("click", function () { S.sb.session = null; S.sb.status = "Signed out. Your bets stay on this phone."; save(); renderSb(); });
@@ -2871,6 +2995,7 @@ body.simple .adv { display: none !important; }
   function renderSb() {
     var m = $("sbMsg"); if (!m) return; m.textContent = "";
     var signedIn = sbReady();
+    $("sbBox").classList.toggle("adv", !(S.sb.url || S.sb.session));   /* once backup is set up it stays visible in Simple view */
     $("sbSignIn").hidden = signedIn; $("sbSync").hidden = !signedIn; $("sbOut").hidden = !signedIn;
     if (signedIn) m.appendChild(el("div", "msg info", "Signed in as " + (S.sb.email || "you") + (S.sb.last ? " · last synced " + ago(S.sb.last) : "") + ". " + (S.sb.status || "")));
     else if (S.sb.status) m.appendChild(el("div", S.sb.status.indexOf("Link sent") === 0 || S.sb.status === "Signed in." ? "msg info" : "msg", S.sb.status));
