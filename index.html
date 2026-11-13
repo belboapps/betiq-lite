@@ -455,6 +455,8 @@ input, select, textarea { color: var(--ink); }
 .sbar.b3 .sbt { color: var(--accent); } .sbar.b3 .meter i { background: var(--accent); }
 .sbar.b3 .sbt { font-size: 15px; }
 .cmore { font-size: 12px; color: var(--muted); text-align: center; }
+#liveBox { border: 1.5px solid var(--blue); }
+.lrow { cursor: default; } .lrow::after { content: none; }
 .cdo { font-size: 14px; color: var(--ink); background: var(--accent-soft); border-radius: 10px; padding: 7px 10px; }
 .cdo.wait { background: #1c2230; } .cdo.skip, .cdo.check { background: var(--warn-bg); }
 .cdo b { font-weight: 700; }
@@ -505,6 +507,7 @@ input, select, textarea { color: var(--ink); }
     <div id="alerts"></div>
 
     <div class="tab" id="tab-today">
+      <section class="panel" id="liveBox" hidden></section>
       <section class="panel" id="plan"></section>
       <div class="tiles" id="tiles"></div>
       <details class="learn" id="scenBox">
@@ -710,7 +713,7 @@ input, select, textarea { color: var(--ink); }
   var API = "https://api.the-odds-api.com/v4";
   var DEFAULTS = { key: "", selected: [], mode: "value", minOdds: 1.3, windowH: 72, group: "all",
                    sports: [], sportsAt: 0, cache: {}, remaining: null, used: null, picked: false,
-                   bankroll: 100, weekly: 0, league: "all", sugg: [], tomb: [], sb: { url: "", key: "", email: "", session: null, last: 0, status: "" }, extras: true, extraMax: 12, extraFreshH: 3, lossLimit: 0, lossStreak: 5, tour: false, afKey: "", newsOn: true, news: {}, afUse: { d: "", n: 0 }, afStatus: "", xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
+                   bankroll: 100, weekly: 0, league: "all", sugg: [], live: null, tomb: [], sb: { url: "", key: "", email: "", session: null, last: 0, status: "" }, extras: true, extraMax: 12, extraFreshH: 3, lossLimit: 0, lossStreak: 5, tour: false, afKey: "", newsOn: true, news: {}, afUse: { d: "", n: 0 }, afStatus: "", xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
   var GROUPS = { "Soccer": "Football", "American Football": "US football", "Ice Hockey": "Ice hockey",
                  "Mixed Martial Arts": "MMA", "Rugby League": "Rugby", "Rugby Union": "Rugby", "Aussie Rules": "Aussie rules" };
   var DEFAULT_FOOTBALL = ["soccer_epl", "soccer_efl_champ", "soccer_uefa_champs_league", "soccer_uefa_europa_league"];
@@ -1857,7 +1860,9 @@ input, select, textarea { color: var(--ink); }
     main.appendChild(el("span", "cmore", "Tap for the price check and full details"));
     main.addEventListener("click", function () { openSheet(p, main); });
     wrap.appendChild(main);
-    var acts = el("div", "bacts"); acts.appendChild(actionsFor(p, st)); var rb = remindBtn(p); if (rb) acts.appendChild(rb); wrap.appendChild(acts);
+    var acts = el("div", "bacts"); acts.appendChild(actionsFor(p, st)); var rb = remindBtn(p); if (rb) acts.appendChild(rb);
+    if (liveWindow(p) && p.group === "Football") { var wl = el("button", "accbtn", "Watch this match live · about " + liveCostPerCheck() + " credit" + (liveCostPerCheck() === 1 ? "" : "s") + " a check"); wl.type = "button"; wl.addEventListener("click", function () { startLive(p); setTab("today"); }); acts.appendChild(wl); }
+    wrap.appendChild(acts);
     return wrap;
   }
 
@@ -1883,6 +1888,15 @@ input, select, textarea { color: var(--ink); }
       nb.appendChild(el("small", null, "Bets come from every UK bookmaker and exchange, including ones you may not have. Tap to choose yours."));
       nb.addEventListener("click", function () { setTab("more"); });
       box.appendChild(nb);
+    }
+    var inPlay = [];
+    S.selected.forEach(function (k) { var c = S.cache[k]; if (!c) return; c.events.forEach(function (ev) { var t = Date.parse(ev.c); if (liveWindow({ time: t }) && isFootball(ev)) inPlay.push({ key: k, ev: ev, time: t, league: (S.sports.filter(function (x) { return x.key === k; })[0] || {}).title || k, group: "Football" }); }); });
+    if (inPlay.length && !liveActive()) {
+      var lp = el("div", "plain"); lp.appendChild(el("b", null, "In play now"));
+      inPlay.slice(0, 6).forEach(function (m) {
+        var b = el("button", "accbtn", m.ev.h + " v " + m.ev.a + " · watch live"); b.type = "button"; b.addEventListener("click", function () { startLive(m); }); lp.appendChild(b);
+      });
+      box.appendChild(lp);
     }
     var picks = d.ranked.length ? d.ranked.slice(0, 6) : d.likely;
     box.appendChild(el("h2", null, "Today's level board"));
@@ -2088,6 +2102,7 @@ input, select, textarea { color: var(--ink); }
     tb.appendChild(el("p", null, tm.text));
     if (tm.move) tb.appendChild(el("p", null, tm.move));
     var rb2 = remindBtn(p); if (rb2) tb.appendChild(rb2);
+    if (liveWindow(p) && p.group === "Football" && !p.live) { var wl2 = el("button", "accbtn", "Watch this match live"); wl2.type = "button"; wl2.addEventListener("click", function () { closeSheet(); startLive(p); setTab("today"); }); tb.appendChild(wl2); }
     root.appendChild(tb);
     var mkb = p.sub ? null : marketsBox(p); if (mkb) root.appendChild(mkb);
 
@@ -2372,7 +2387,7 @@ input, select, textarea { color: var(--ink); }
 
     open.concat(done.slice().sort(function (a, b) { return (b.settledAt || 0) - (a.settledAt || 0); })).forEach(function (b) {
       var row = el("div", "bet");
-      row.appendChild(el("div", "nm", b.sel));
+      var nmEl = el("div", "nm", b.sel); if (b.live) nmEl.appendChild(el("span", "badge move", "LIVE")); row.appendChild(nmEl);
       row.appendChild(el("div", "sub", b.h + " v " + b.a + " · " + b.book + " · " + TF.format(new Date(b.time))));
       var cv = clvOf(b);
       if (cv !== null) row.appendChild(el("div", "sub", "Closing-price check: " + signed(cv) + " against the final market price"));
@@ -2785,12 +2800,122 @@ input, select, textarea { color: var(--ink); }
   $("sheetBack").addEventListener("click", closeSheet);
   document.addEventListener("keydown", function (e) { if (e.key !== "Escape") return; if (!$("tour").hidden) closeTour(); else if (sheetId) closeSheet(); });
 
+  /* ---------- Live watch: one match at a time, in-play prices rechecked every minute or two ----------
+     Each check costs about 1 credit (2 with goals prices). The score is fetched every 5 minutes for 2 credits. There is a cap, and it stops at full time.
+     Not tested against real in-play prices: the first trial will show how often the bookmakers update them. */
+  var liveTimer = null, liveBusy = false;
+  function liveWindow(p) { var d = Date.now() - p.time; return d > -15 * 60000 && d < 130 * 60000; }
+  function liveActive() { return !!(S.live && !S.live.stopped); }
+  function liveCostPerCheck() { return S.totals ? 2 : 1; }
+  function startLive(p) {
+    if (liveActive() && S.live.evId !== p.ev.id && !window.confirm("You are already watching " + S.live.h + " v " + S.live.a + ". Stop that and watch this match instead?")) return;
+    var per = liveCostPerCheck(), est = Math.round(per * 60 + 2 * 12 / 1), cap = Math.min(S.live && S.live.cap || 40, S.remaining !== null ? Math.max(5, S.remaining - 25) : 40);
+    if (!window.confirm("Watch " + p.ev.h + " v " + p.ev.a + " live?\n\nEvery check costs about " + per + (per === 1 ? " credit" : " credits") + ", the score 2 credits every 5 minutes. A whole match at one check a minute would use about " + est + " credits. It will stop by itself at " + cap + " credits or at full time, and only runs while this page is open.\n\nIn-play prices move in seconds and a standout price usually means a slow bookmaker. Bets may be delayed or refused. Try this in practice mode first.")) return;
+    S.live = { key: p.key, evId: p.ev.id, h: p.ev.h, a: p.ev.a, time: p.time, league: p.league, startedAt: Date.now(), checks: 0, spent: 0, cap: cap, every: 60, score: null, scoreAt: 0, last: null, prev: null, log: [], stopped: false, note: "" };
+    save(); renderLive(); liveCheck(); scheduleLive();
+  }
+  function stopLive(reason) {
+    if (!S.live) return;
+    S.live.stopped = true; S.live.note = reason || "Stopped."; clearInterval(liveTimer); liveTimer = null; save(); renderLive();
+  }
+  function scheduleLive() {
+    clearInterval(liveTimer); liveTimer = null;
+    if (!liveActive()) return;
+    liveTimer = setInterval(function () { if (document.visibilityState === "visible") liveCheck(); }, S.live.every * 1000);
+  }
+  function liveCheck() {
+    var L = S.live; if (!liveActive() || liveBusy || busy) return Promise.resolve();
+    if (Date.now() - L.time > 130 * 60000) { stopLive("Stopped at full time."); return Promise.resolve(); }
+    if (L.spent >= L.cap) { stopLive("Stopped: credit cap of " + L.cap + " reached."); return Promise.resolve(); }
+    if (S.remaining !== null && S.remaining < 25) { stopLive("Stopped: fewer than 25 credits left."); return Promise.resolve(); }
+    liveBusy = true; var start = spentCounter, before = S.remaining;
+    var p = { regions: "uk", markets: S.totals ? "h2h,totals" : "h2h", oddsFormat: "decimal" };
+    var wantScore = Date.now() - L.scoreAt > 5 * 60000;
+    return api("/sports/" + L.key + "/events/" + L.evId + "/odds", p).then(function (evFull) {
+      var ev = slim(evFull), a = analyse(ev), snap = { at: Date.now(), sels: [], nBooks: a ? a.nBooks : 0 };
+      if (a) a.sels.forEach(function (x) { snap.sels.push({ name: x.name, fair: x.fair, best: x.best, bestBook: x.bestBook, bestEx: x.bestEx, bestComm: x.bestComm, bestLink: x.bestLink, ev: x.ev, prices: x.prices.slice(0, 8) }); });
+      analyseTotals(ev, " goals").forEach(function (r) { snap.sels.push({ name: r.label, fair: r.fair, best: r.best, bestBook: r.book, bestEx: r.ex, bestComm: r.comm, ev: r.ev, market: "totals", point: r.point, side: r.side, prices: r.prices.slice(0, 8) }); });
+      L.prev = L.last; L.last = snap; L.checks++;
+      if (!L.first) L.first = snap;
+      L.log.push({ at: snap.at, best: snap.sels.map(function (x) { return [x.name, x.best]; }) }); if (L.log.length > 200) L.log.shift();
+      if (!wantScore) return null;
+      return api("/sports/" + L.key + "/scores/", { daysFrom: 1 }).then(function (rows) {
+        var r = rows.filter(function (z) { return z.id === L.evId; })[0];
+        if (r && r.scores && r.scores.length >= 2) { L.score = r.scores.map(function (z) { return z.name + " " + z.score; }).join(" · ") + (r.completed ? " (final)" : ""); L.scoreAt = Date.now(); if (r.completed) stopLive("Stopped: the match has finished."); }
+        else if (r) { L.score = r.completed ? "Finished" : "No score yet"; L.scoreAt = Date.now(); }
+      }, function () {});
+    }).then(function () {
+      var used = spentCounter - start; if (!(used > 0) && before !== null && S.remaining !== null && before > S.remaining) used = before - S.remaining;
+      L.spent += used > 0 ? used : liveCostPerCheck(); liveBusy = false; save(); renderLive();
+    }, function (e) {
+      liveBusy = false; L.note = errText(e); if (e.code === "http") stopLive("Stopped: the API refused in-play odds for this match (" + (e.status || "error") + "). It may not offer live prices on your plan."); else { save(); renderLive(); }
+    });
+  }
+  function liveMove(sel) {
+    var L = S.live, f = L.first && L.first.sels.filter(function (x) { return x.name === sel.name; })[0], pv = L.prev && L.prev.sels.filter(function (x) { return x.name === sel.name; })[0];
+    var out = [];
+    if (pv && Math.abs(sel.best - pv.best) >= 0.02) out.push((sel.best > pv.best ? "↑" : "↓") + " from " + pv.best.toFixed(2) + " last check");
+    if (f && f !== L.last && Math.abs(sel.best - f.best) >= 0.05) out.push((sel.best > f.best ? "up" : "down") + " from " + f.best.toFixed(2) + " at the start");
+    return out.join(" · ");
+  }
+  function livePick(sel) {
+    var L = S.live, ev = { id: L.evId, h: L.h, a: L.a, c: new Date(L.time).toISOString(), books: [], tb: [] };
+    var pk = { name: sel.name, fair: sel.fair, fairOdds: 1 / sel.fair, best: sel.best, bestBook: sel.bestBook, bestEx: sel.bestEx, bestComm: sel.bestComm, bestLink: sel.bestLink || "", prices: sel.prices, ev: sel.ev, market: sel.market, point: sel.point, side: sel.side };
+    var p = { ev: ev, key: L.key, league: L.league, group: "Football", time: L.time, pick: pk, nBooks: L.last.nBooks, a: null, id: L.evId + "|live|" + sel.name, at: L.last.at, live: true };
+    pk.pid = p.id; p.isValue = sel.ev >= 0.05 && L.last.nBooks >= 4 && sel.best <= LONGSHOT; p.suspect = sel.ev > 0.2;
+    return p;
+  }
+  function logLive(p) {
+    var st = baseStake(p.pick); if (st.amount < 0.5) { showAlert("No stake is suggested for this bet.", false); return; }
+    if (findBet(p.id)) { removeBet(p.id); save(); renderAll(); return; }
+    addBet({ pid: p.id, evId: p.ev.id, key: p.key, league: p.league, h: p.ev.h, a: p.ev.a, sel: p.pick.name, odds: p.pick.best, book: p.pick.bestBook, stake: st.amount, fair: p.pick.fair,
+      time: p.time, at: Date.now(), mkt: p.pick.market || "", point: p.pick.point, side: p.pick.side, status: "open", profit: 0, live: true });
+    save(); renderAll();
+  }
+  function renderLive() {
+    var box = $("liveBox"); if (!box) return; box.textContent = "";
+    var L = S.live; if (!L) { box.hidden = true; return; }
+    box.hidden = false;
+    var head = el("div", "ctop"); head.appendChild(el("h2", null, (L.stopped ? "Live watch (stopped)" : "Live watch") + ": " + L.h + " v " + L.a));
+    box.appendChild(head);
+    box.appendChild(el("p", "subnote", (L.score ? "Score: " + L.score + " · " : "") + L.checks + " check" + (L.checks === 1 ? "" : "s") + " · " + L.spent + " of " + L.cap + " credits" + (L.last ? " · last " + ago(L.last.at) : "") + (liveBusy ? " · checking…" : "")));
+    if (L.note) box.appendChild(el("div", L.stopped ? "msg" : "msg info", L.note));
+    var ctl = el("div", "row");
+    if (!L.stopped) {
+      var sb = el("button", "btn small", "Stop watching"); sb.type = "button"; sb.addEventListener("click", function () { stopLive("Stopped."); }); ctl.appendChild(sb);
+      var cb = el("button", "btn small", "Check now"); cb.type = "button"; cb.disabled = liveBusy; cb.addEventListener("click", function () { liveCheck(); }); ctl.appendChild(cb);
+      var lab = el("label", "filters", "Every "), sel = document.createElement("select");
+      [[60, "1 min"], [120, "2 min"], [300, "5 min"]].forEach(function (o) { var op = el("option", null, o[1]); op.value = String(o[0]); sel.appendChild(op); }); sel.value = String(L.every);
+      sel.addEventListener("change", function () { L.every = +sel.value; save(); scheduleLive(); }); lab.appendChild(sel); ctl.appendChild(lab);
+    } else { var xb = el("button", "btn small", "Clear"); xb.type = "button"; xb.addEventListener("click", function () { S.live = null; save(); renderLive(); }); ctl.appendChild(xb); }
+    box.appendChild(ctl);
+    if (!L.last) { box.appendChild(el("p", null, "Waiting for the first prices…")); return; }
+    var sels = L.last.sels.slice().sort(function (x, y) { return y.ev - x.ev; }), standout = sels.filter(function (x) { return x.ev >= 0.05 && L.last.nBooks >= 4 && x.best <= LONGSHOT; });
+    box.appendChild(el("p", "subnote", standout.length ? "Standout price" + (standout.length === 1 ? "" : "s") + " now: a bookmaker is at least 5% above the others. In-play prices move in seconds, so it may already be gone." : "No standout price right now. Prices are compared across " + L.last.nBooks + " bookmakers at each check."));
+    sels.forEach(function (x) {
+      var p = livePick(x), st = baseStake(p.pick), row = el("div", "mkrow lrow"), left = el("div", "mkl");
+      var nm = el("span", "mkname", x.name); if (p.isValue) nm.appendChild(el("span", "badge value", "STANDOUT")); if (p.suspect) nm.appendChild(el("span", "badge warn", "CHECK PRICE")); left.appendChild(nm);
+      left.appendChild(el("small", null, "Best " + x.best.toFixed(2) + " with " + x.bestBook + " · " + signed(x.ev) + " vs the others" + (liveMove(x) ? " · " + liveMove(x) : "")));
+      var right = el("div", "mkr"); right.appendChild(el("b", null, pct(x.fair))); right.appendChild(el("span", null, "chance now"));
+      row.appendChild(left); row.appendChild(right); box.appendChild(row);
+      if (p.isValue) {
+        var acts = el("div", "actions");
+        var a = el("a", "btn primary go", "Place on " + x.bestBook + " ↗"); a.href = bookUrl(p); a.target = "_blank"; a.rel = "noopener noreferrer"; acts.appendChild(a);
+        var logged = findBet(p.id), lb = el("button", "btn" + (logged ? " done" : ""), logged ? "Logged ✓ Undo" : (S.practice ? "Log practice bet" : "I placed it") + (st.amount >= 0.5 ? " · " + gbp(st.amount) : "")); lb.type = "button";
+        lb.addEventListener("click", function () { logLive(p); }); acts.appendChild(lb); box.appendChild(acts);
+      }
+    });
+    box.appendChild(el("p", "subnote", "Live bets are logged with a LIVE tag and settle from the final score like any other bet. This is experimental: it has not been tested against real in-play prices, and there is no past data to say whether in-play standouts pay. Keep stakes small."));
+  }
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible" && liveActive()) { scheduleLive(); if (!S.live.last || Date.now() - S.live.last.at > S.live.every * 1000) liveCheck(); } });
+
   /* ---------- Start ---------- */
   sbFromHash();
   initCalc();
   renderAll();
   if (S.key) renderSettings();
   if (S.sb.session && S.sb.url) { if (sbArrived) setTab("more"); syncNow(true); }
+  if (S.live) { if (liveActive() && Date.now() - S.live.time > 130 * 60000) S.live.stopped = true; renderLive(); if (liveActive()) { scheduleLive(); liveCheck(); } }
   if (S.key && !S.tour && !S.booksSet && !S.bets.length && !S.pbets.length && !S.sb.session) openTour();
   if (S.key) {
     var boot = S.sports.length ? Promise.resolve() : fetchSports();
