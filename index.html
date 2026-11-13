@@ -464,6 +464,7 @@ input, select, textarea { color: var(--ink); }
 .verdict.wait { background: #1c2230; border-color: #2c3a55; } .verdict.wait b { color: var(--blue); }
 .verdict.skip, .verdict.check { background: var(--warn-bg); border-color: var(--warn); } .verdict.skip b, .verdict.check b { color: var(--warn); }
 .detail .verdict { margin-top: -2px; }
+body.simple .adv { display: none !important; }
 .cdo { font-size: 14px; color: var(--ink); background: var(--accent-soft); border-radius: 10px; padding: 7px 10px; }
 .cdo.wait { background: #1c2230; } .cdo.skip, .cdo.check { background: var(--warn-bg); }
 .cdo b { font-weight: 700; }
@@ -517,7 +518,7 @@ input, select, textarea { color: var(--ink); }
       <section class="panel" id="liveBox" hidden></section>
       <section class="panel" id="plan"></section>
       <div class="tiles" id="tiles"></div>
-      <details class="learn" id="scenBox">
+      <details class="learn adv" id="scenBox">
         <summary>What could happen</summary>
         <div class="body" id="scenBody"></div>
       </details>
@@ -574,26 +575,27 @@ input, select, textarea { color: var(--ink); }
     <div class="tab" id="tab-more" hidden>
     <section class="panel" id="settings">
       <h2>Settings</h2>
+      <label class="check"><input type="checkbox" id="simpleOn"> Simple view: Today shows only bets worth acting on, and advanced tools are hidden</label>
       <h3>Leagues and sports</h3>
       <p>Tick anything here: football leagues, tennis, basketball, US football, ice hockey and more, or press "Use recommended sports" below for football, tennis and basketball. Horse racing is not offered by this data source at the moment; if that changes it will appear in this list and in the recommended set. Every league costs the same per refresh. Outside football, handicaps are the only extra market, the "bets like this" history does not apply, and tennis results may need marking by hand.</p>
       <p id="costNote"></p>
       <div class="leagues" id="leagues"></div>
       <label class="check"><input type="checkbox" id="totalsOn"> Include over/under goals prices (doubles the credit cost)</label>
       <label class="check"><input type="checkbox" id="extrasOn"> Load extra markets: both teams to score, double chance, draw no bet and handicaps</label>
-      <label class="field">Matches to load extra markets for on each refresh
+      <label class="field adv">Matches to load extra markets for on each refresh
         <select id="extraMax"><option value="6">6 matches</option><option value="12">12 matches</option><option value="20">20 matches</option></select>
       </label>
-      <label class="field">Reload a match's extra markets only if they are older than
+      <label class="field adv">Reload a match's extra markets only if they are older than
         <select id="extraFresh"><option value="1">1 hour</option><option value="3">3 hours</option><option value="6">6 hours</option></select>
       </label>
       <p>Extra markets are football only and cost about one credit per market per match. They load when you press Refresh, soonest kick-offs first, never when the page just opens.</p>
       <div id="mkCheck"></div>
-      <h2>Team news (optional)</h2>
-      <p>Shows injuries and who is missing beside a bet, as a warning only. It never changes the numbers. It needs a free key from api-football.com, and the free plan may not include the current season, so use Test to find out.</p>
-      <label class="check"><input type="checkbox" id="newsOn"> Show team news when available</label>
-      <label class="field">API-Football key<input id="afKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your key (optional)"></label>
-      <div class="row"><button class="btn small" id="afTest" type="button">Test team news</button></div>
-      <div id="afMsg"></div>
+      <h2 class="adv">Team news (optional)</h2>
+      <p class="adv">Shows injuries and who is missing beside a bet, as a warning only. It never changes the numbers. It needs a free key from api-football.com, and the free plan may not include the current season, so use Test to find out.</p>
+      <label class="check adv"><input type="checkbox" id="newsOn"> Show team news when available</label>
+      <label class="field adv">API-Football key<input id="afKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your key (optional)"></label>
+      <div class="row adv"><button class="btn small" id="afTest" type="button">Test team news</button></div>
+      <div id="afMsg" class="adv"></div>
       <p>After changing this, press Refresh to load the extra prices.</p>
       <h2>My bookmakers</h2>
       <p>Tick the ones you have accounts with. Suggested bets only use these. Load odds once to see the list.</p>
@@ -611,10 +613,10 @@ input, select, textarea { color: var(--ink); }
       <h2>Weekly budget</h2>
       <p>The most you want to spend in a week (Monday to Sunday). Stakes are shared across the best bets and never go over it. Leave empty for no limit. You do not have to spend it all: if few bets have an edge, the rest stays in your pocket.</p>
       <label class="check" for="weeklyIn">Weekly budget £ <input id="weeklyIn" type="number" inputmode="decimal" min="0" step="1" placeholder="no limit"></label>
-      <h2>Fair price yardstick</h2>
-      <p>Normally the fair price is the average of the UK bookmakers with their margins removed. Pinnacle is the bookmaker professionals use and has the smallest margin, so its prices make a better yardstick. It doubles the cost of the main prices and is never a price to bet at.</p>
-      <label class="check"><input type="checkbox" id="sharpOn"> Use Pinnacle as the yardstick (doubles main-price credits)</label>
-      <div id="sharpMsg"></div>
+      <h2 class="adv">Fair price yardstick</h2>
+      <p class="adv">Normally the fair price is the average of the UK bookmakers with their margins removed. Pinnacle is the bookmaker professionals use and has the smallest margin, so its prices make a better yardstick. It doubles the cost of the main prices and is never a price to bet at.</p>
+      <label class="check adv"><input type="checkbox" id="sharpOn"> Use Pinnacle as the yardstick (doubles main-price credits)</label>
+      <div id="sharpMsg" class="adv"></div>
       <h2>Automatic</h2>
       <label class="check"><input type="checkbox" id="autoOn"> Refresh odds when I open this page</label>
       <label class="check"><input type="checkbox" id="autoKick"> Also refresh a league's prices when I open the page within an hour of one of its matches (1 credit per league, 2 with goals)</label>
@@ -655,7 +657,7 @@ input, select, textarea { color: var(--ink); }
         <p>So treat betting as paid entertainment, not income. If you only use one or two bookmakers, expect roughly to lose a few percent of what you stake over time, and only stake what you can afford to lose.</p>
       </section>
       <section class="panel" id="tourBox"><h2>New here?</h2><p>A short walk-through of how to read the page and stay in control.</p><button class="btn" id="tourAgain" type="button">Show the tour</button></section>
-      <section class="panel" id="sbBox">
+      <section class="panel adv" id="sbBox">
         <h2>Cloud backup (optional)</h2>
         <p>Keeps your bets safe in your own free Supabase project and shares them between your devices. Only you can see them, after signing in with an email link. Your Odds API key is never uploaded. See <a href="https://github.com/belboapps/betiq-lite/blob/main/supabase/README.md" target="_blank" rel="noopener">the setup steps</a>.</p>
         <label class="field">Supabase project URL<input id="sbUrl" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://xxxx.supabase.co"></label>
@@ -676,7 +678,7 @@ input, select, textarea { color: var(--ink); }
         <button class="btn" id="bkRestore">Restore from backup</button>
         <div id="bkMsg"></div>
       </section>
-    <details class="learn" id="calcBox">
+    <details class="learn adv" id="calcBox">
       <summary>Matched betting calculator</summary>
       <div class="body" id="calcBody"></div>
     </details>
@@ -725,12 +727,12 @@ input, select, textarea { color: var(--ink); }
 <script>
 (function () {
   "use strict";
-  var VERSION = "v22 (13 Nov 2026)";   /* shown in the footer; bump on every release */
+  var VERSION = "v23 (13 Nov 2026)";   /* shown in the footer; bump on every release */
   var LS = "betiqlite.v1";
   var API = "https://api.the-odds-api.com/v4";
   var DEFAULTS = { key: "", selected: [], mode: "value", minOdds: 1.3, windowH: 72, group: "all",
                    sports: [], sportsAt: 0, cache: {}, remaining: null, used: null, picked: false,
-                   bankroll: 100, weekly: 0, league: "all", sugg: [], live: null, autoKick: true, sharp: false, sharpBad: false, placeMin: 60, tuneN: 0, tomb: [], sb: { url: "", key: "", email: "", session: null, last: 0, status: "" }, extras: true, extraMax: 12, extraFreshH: 3, lossLimit: 0, lossStreak: 5, tour: false, afKey: "", newsOn: true, news: {}, afUse: { d: "", n: 0 }, afStatus: "", xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
+                   bankroll: 100, weekly: 0, league: "all", sugg: [], live: null, simple: true, recAt: 0, autoKick: true, sharp: false, sharpBad: false, placeMin: 60, tuneN: 0, tomb: [], sb: { url: "", key: "", email: "", session: null, last: 0, status: "" }, extras: true, extraMax: 12, extraFreshH: 3, lossLimit: 0, lossStreak: 5, tour: false, afKey: "", newsOn: true, news: {}, afUse: { d: "", n: 0 }, afStatus: "", xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
   var GROUPS = { "Soccer": "Football", "American Football": "US football", "Ice Hockey": "Ice hockey",
                  "Mixed Martial Arts": "MMA", "Rugby League": "Rugby", "Rugby Union": "Rugby", "Aussie Rules": "Aussie rules" };
   var DEFAULT_FOOTBALL = ["soccer_epl", "soccer_efl_champ", "soccer_uefa_champs_league", "soccer_uefa_europa_league"];
@@ -1613,7 +1615,7 @@ input, select, textarea { color: var(--ink); }
   }
   function checkResults(withRecord) {
     var keys = dueKeys();
-    if (withRecord) suggKeys().forEach(function (k) { if (keys.indexOf(k) < 0) keys.push(k); });
+    if (withRecord) { suggKeys().forEach(function (k) { if (keys.indexOf(k) < 0) keys.push(k); }); S.recAt = Date.now(); }
     if (!keys.length || busy) return Promise.resolve();
     busy = true; renderStatus(); renderBets();
     var settled = 0, sg = 0, errs = [];
@@ -1967,8 +1969,13 @@ input, select, textarea { color: var(--ink); }
       box.appendChild(lp);
     }
     if (S.myBooks && S.myBooks.length < 3) box.appendChild(el("div", "msg", "You have " + S.myBooks.length + " bookmaker" + (S.myBooks.length === 1 ? "" : "s") + " ticked. On past matches the edge only existed at the best price across several bookmakers: at a single bookmaker's prices it was roughly break-even. More accounts matter more than any setting here."));
-    var picks = d.ranked.length ? d.ranked.slice(0, 6) : d.likely;
-    box.appendChild(el("h2", null, "Today's level board"));
+    var picks = d.ranked.length ? d.ranked.slice(0, 6) : d.likely, simpleEmpty = false;
+    if (S.simple) {
+      var act = d.ranked.filter(function (p) { var k = decision(p).k; return k === "place" || k === "consider"; }).slice(0, 5);
+      if (act.length) picks = act; else { simpleEmpty = true; picks = d.ranked.slice(0, 2); }
+    }
+    box.appendChild(el("h2", null, S.simple ? "Today" : "Today's level board"));
+    if (S.simple && simpleEmpty) box.appendChild(el("div", "reco", "Nothing worth acting on right now. The closest two are below, but skipping is a perfectly good choice."));
     if (d.value.length) {
       var nowN = 0, cons = 0, later = null;
       d.ranked.forEach(function (p) { var k = decision(p).k; if (k === "place") nowN++; else if (k === "consider") cons++; else if (k === "wait" && (!later || p.time < later)) later = p.time; });
@@ -1983,7 +1990,7 @@ input, select, textarea { color: var(--ink); }
         : "No price is clearly above the market. The board shows the closest ones. If you want a bet, keep to small stakes."));
       box.appendChild(r);
     }
-    box.appendChild(legend2());
+    if (!S.simple) box.appendChild(legend2());
     var board = el("div", "board");
     picks.forEach(function (p, i) { board.appendChild(boardRow(p, i + 1, i < 3 ? i + 1 : 0, i === 0 && d.value.length > 0, true)); });
     box.appendChild(board);
@@ -2391,7 +2398,7 @@ input, select, textarea { color: var(--ink); }
   function renderRecord() {
     var body = $("recordBody"); body.textContent = "";
     var all = S.sugg, done = all.filter(function (b) { return b.status === "won" || b.status === "lost"; }), open = all.filter(function (b) { return b.status === "open"; });
-    body.appendChild(el("p", null, "Every bet the app flags as VALUE is logged here at the price it was flagged, with a pretend £1 stake, and settled from the real result. It is the app's record, not yours, and it cannot be edited. It is the honest test of whether high scores really win more."));
+    body.appendChild(el("p", null, "Every bet the app flags as VALUE is logged here at the price it was flagged, with a pretend £1 stake, and settled from the real result. It is the app's record, not yours, and it cannot be edited. It is the honest test of whether high scores really win more. Results are fetched by themselves when you open the app, at most once every 12 hours and only when credits allow."));
     if (!all.length) { body.appendChild(el("p", "subnote", "Nothing logged yet. Suggestions are recorded each time you refresh.")); return; }
     var due = dueSugg();
     if (due.length) {
@@ -2538,7 +2545,7 @@ input, select, textarea { color: var(--ink); }
     });
     if (!order.length) box.appendChild(el("p", null, "No leagues loaded yet. Press Reload leagues."));
     $("autoOn").checked = !!S.auto; $("autoHours").value = String(S.autoHours); $("totalsOn").checked = !!S.totals;
-    $("sharpOn").checked = !!S.sharp; $("autoKick").checked = !!S.autoKick; renderSharpMsg();
+    $("simpleOn").checked = !!S.simple; $("sharpOn").checked = !!S.sharp; $("autoKick").checked = !!S.autoKick; renderSharpMsg();
     $("extrasOn").checked = !!S.extras; $("extraMax").value = String(S.extraMax); $("extraFresh").value = String(S.extraFreshH);
     $("lossLimit").value = S.lossLimit ? String(S.lossLimit) : ""; $("lossStreak").value = String(S.lossStreak);
     $("sbUrl").value = S.sb.url || ""; $("sbKey").value = S.sb.key || ""; $("sbEmail").value = S.sb.email || ""; renderSb();
@@ -2616,6 +2623,7 @@ input, select, textarea { color: var(--ink); }
     $("setup").hidden = !!S.key;
     $("main").hidden = !S.key;
     $("tabbar").hidden = !S.key;
+    document.body.classList.toggle("simple", !!S.simple);
     applyTab();
     if (!S.key) return;
     $("modeLikely").setAttribute("aria-pressed", String(S.mode === "likely"));
@@ -2667,7 +2675,11 @@ input, select, textarea { color: var(--ink); }
   function autoRun() {
     if (!S.key || !S.auto || busy || !creditsOk()) return Promise.resolve();
     var p = stale() ? refreshAll({ extras: false }) : (S.autoKick ? refreshLeagues(kickoffKeys()) : Promise.resolve());
-    return p.then(function () { if (creditsOk() && dueBets().length) return checkResults(); });
+    return p.then(function () {
+      if (!creditsOk()) return;
+      var wantRecord = dueSugg().length > 0 && Date.now() - (S.recAt || 0) > 12 * 3600000 && S.remaining !== null && S.remaining >= MIN_CREDITS + 30;
+      if (dueBets().length || wantRecord) return checkResults(wantRecord);
+    });
   }
 
   /* ---------- Events ---------- */
@@ -2712,6 +2724,7 @@ input, select, textarea { color: var(--ink); }
   $("sbSignIn").addEventListener("click", sbSignIn);
   $("sbSync").addEventListener("click", function () { syncNow(false); });
   $("sbOut").addEventListener("click", function () { S.sb.session = null; S.sb.status = "Signed out. Your bets stay on this phone."; save(); renderSb(); });
+  $("simpleOn").addEventListener("change", function (e) { S.simple = e.target.checked; save(); renderAll(); });
   $("sharpOn").addEventListener("change", function (e) { S.sharp = e.target.checked; if (S.sharp) S.sharpBad = false; save(); renderCost(); renderStatus(); renderSharpMsg(); });
   $("autoKick").addEventListener("change", function (e) { S.autoKick = e.target.checked; save(); });
   $("autoOn").addEventListener("change", function (e) { S.auto = e.target.checked; save(); });
