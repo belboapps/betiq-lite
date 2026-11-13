@@ -20,7 +20,7 @@ async function newDevice(browser, seed, hash){
    }
    return r.fulfill({status:404,headers:cors,body:'{}'}); });
   await p.addInitScript((s)=>{ if(!sessionStorage.getItem('seeded')){sessionStorage.setItem('seeded','1'); localStorage.setItem('betiqlite.v1',JSON.stringify(s));}},
-    Object.assign({key:'dummy',auto:false,ver:2,booksSet:true,pracAsked:true,tour:true,sports:[{key:'soccer_epl',title:'EPL',group:'Soccer'}],selected:['soccer_epl'],picked:true},seed));
+    Object.assign({key:'dummy',auto:false,ver:2,booksSet:true,pracAsked:true,tour:true,simple:false,sports:[{key:'soccer_epl',title:'EPL',group:'Soccer'}],selected:['soccer_epl'],picked:true},seed));
   await p.goto('file://'+require('path').resolve(__dirname,'..','index.html')+''+(hash||'')); await p.waitForTimeout(900);
   return {ctx,p,errs};
 }
