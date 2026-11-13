@@ -455,6 +455,11 @@ input, select, textarea { color: var(--ink); }
 .sbar.b3 .sbt { color: var(--accent); } .sbar.b3 .meter i { background: var(--accent); }
 .sbar.b3 .sbt { font-size: 15px; }
 .cmore { font-size: 12px; color: var(--muted); text-align: center; }
+.cdo { font-size: 14px; color: var(--ink); background: var(--accent-soft); border-radius: 10px; padding: 7px 10px; }
+.cdo.wait { background: #1c2230; } .cdo.skip, .cdo.check { background: var(--warn-bg); }
+.cdo b { font-weight: 700; }
+.timing a.accbtn { display: block; border-top: 0; padding-top: 6px; }
+.bacts a.accbtn { display: block; text-decoration: none; }
 .card .bacts { padding: 4px 14px 14px; }
 .card .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .card .actions .btn { flex: none; min-height: 46px; }
@@ -553,6 +558,7 @@ input, select, textarea { color: var(--ink); }
 
     <div class="tab" id="tab-bets" hidden>
       <section class="panel" id="betsBox"><h2 id="betsSum">My bets</h2><div id="betsBody" class="bodyflow"></div></section>
+      <section class="panel" id="recordBox"><h2>The app's track record</h2><div id="recordBody" class="bodyflow"></div></section>
     </div>
 
     <div class="tab" id="tab-more" hidden>
@@ -624,6 +630,8 @@ input, select, textarea { color: var(--ink); }
           <li><b>Be careful with that.</b> The best price is often a stale or short-lived price. In real life it may have gone by the time you get there, your stake may be limited, and bookmakers restrict accounts that keep taking such prices. The past figures assume you could always get it.</li>
           <li><b>Beating the final price pays.</b> Bets that beat the closing market price by over 6% returned about +11% to +12%. Bets that were over 5% worse than it lost about 13% to 15%. That is why checking the price before you bet matters.</li>
           <li><b>"Check price" bets are suspect.</b> Bets with an edge over 12% won about 20% of the time against 26% predicted, and lost money. It usually means a stale or wrong price.</li>
+          <li><b>When to bet.</b> Of the value prices the rules would flag, 63% were worse by kick-off and only 39% were still good value at the start. So a good price should be taken as soon as it has been checked.</li>
+          <li><b>Form and head-to-head add nothing.</b> Across 79,000 matches, teams with better recent form or a dominant head-to-head record won no more often than the odds already implied. The bookmakers price it in, so this app does not use them.</li>
           <li><b>Even now it is only an estimate.</b> With over a thousand flagged bets the margin of error was still about 7 points. Recent seasons have far fewer qualifying bets, so the newest evidence is thin.</li>
         </ul>
         <p>So treat betting as paid entertainment, not income. If you only use one or two bookmakers, expect roughly to lose a few percent of what you stake over time, and only stake what you can afford to lose.</p>
@@ -702,7 +710,7 @@ input, select, textarea { color: var(--ink); }
   var API = "https://api.the-odds-api.com/v4";
   var DEFAULTS = { key: "", selected: [], mode: "value", minOdds: 1.3, windowH: 72, group: "all",
                    sports: [], sportsAt: 0, cache: {}, remaining: null, used: null, picked: false,
-                   bankroll: 100, weekly: 0, league: "all", tomb: [], sb: { url: "", key: "", email: "", session: null, last: 0, status: "" }, extras: true, extraMax: 12, extraFreshH: 3, lossLimit: 0, lossStreak: 5, tour: false, afKey: "", newsOn: true, news: {}, afUse: { d: "", n: 0 }, afStatus: "", xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
+                   bankroll: 100, weekly: 0, league: "all", sugg: [], tomb: [], sb: { url: "", key: "", email: "", session: null, last: 0, status: "" }, extras: true, extraMax: 12, extraFreshH: 3, lossLimit: 0, lossStreak: 5, tour: false, afKey: "", newsOn: true, news: {}, afUse: { d: "", n: 0 }, afStatus: "", xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
   var GROUPS = { "Soccer": "Football", "American Football": "US football", "Ice Hockey": "Ice hockey",
                  "Mixed Martial Arts": "MMA", "Rugby League": "Rugby", "Rugby Union": "Rugby", "Aussie Rules": "Aussie rules" };
   var DEFAULT_FOOTBALL = ["soccer_epl", "soccer_efl_champ", "soccer_uefa_champs_league", "soccer_uefa_europa_league"];
@@ -729,7 +737,7 @@ input, select, textarea { color: var(--ink); }
       var s = {}; for (var k in DEFAULTS) s[k] = (o && o[k] !== undefined) ? o[k] : DEFAULTS[k];
       if (!Array.isArray(s.bets)) s.bets = [];
       if (!Array.isArray(s.pbets)) s.pbets = [];
-      ['xmBad', 'xmOK', 'clog', 'tomb'].forEach(function (k) { if (!Array.isArray(s[k])) s[k] = []; });
+      ['xmBad', 'xmOK', 'clog', 'tomb', 'sugg'].forEach(function (k) { if (!Array.isArray(s[k])) s[k] = []; });
       if (!s.sb || typeof s.sb !== 'object') s.sb = { url: '', key: '', email: '', session: null, last: 0, status: '' };
       if (!o || !o.ver || o.ver < 2) s.mode = "value";   /* v2: Best bets is the default view */
       s.ver = 2;
@@ -845,7 +853,7 @@ input, select, textarea { color: var(--ink); }
       busyMsg = "Checking team news…"; renderStatus();
       return loadNews().then(function () { return note; });
     }).then(function (note) {
-      busy = false; busyMsg = ""; captureClosings();
+      busy = false; busyMsg = ""; captureClosings(); recordSuggestions();
       logCredits(before, startCount, wantExtras ? "Refresh with extra markets" : "Refresh");
       var ids = {};
       S.selected.forEach(function (k) { (S.cache[k] ? S.cache[k].events : []).forEach(function (e) { ids[e.id] = 1; }); });
@@ -1251,25 +1259,51 @@ input, select, textarea { color: var(--ink); }
     return { total: total, best: best, worst: -total, exp: exp, chance: chance };
   }
 
+  function doLine(p) {
+    var tm = timingFor(p);
+    return tm.action === "now" ? "Bet now, check the price first" : tm.action === "wait" ? "Wait, check about 1 h before kick-off" : tm.action === "skip" ? "Skip, or small stake only" : "Check the price carefully first";
+  }
+  /* A calendar reminder an hour before kick-off, with the bet written in the notes. Works with no server: the phone's calendar does the reminding. */
+  function icsFor(p) {
+    var s = p.pick, st = stakeFor(s), start = new Date(Math.max(p.time - 3600000, Date.now() + 300000)), end = new Date(p.time);
+    function f(d) { return d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, ""); }
+    var what = (st.amount >= 0.5 ? gbp(st.amount) + " on " : "") + betWords(p) + " at " + minRaw(s).toFixed(2) + " or better (best seen " + s.best.toFixed(2) + " with " + s.bestBook + "). Check the price and team news, then bet or skip.";
+    return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//BetIQ Lite//EN", "BEGIN:VEVENT", "UID:" + p.id.replace(/[^A-Za-z0-9]/g, "") + "@betiq", "DTSTAMP:" + f(new Date()),
+      "DTSTART:" + f(start), "DTEND:" + f(end), "SUMMARY:BetIQ: " + p.ev.h + " v " + p.ev.a, "DESCRIPTION:" + what.replace(/,/g, "\\,"),
+      "BEGIN:VALARM", "TRIGGER:PT0M", "ACTION:DISPLAY", "DESCRIPTION:Check the price", "END:VALARM", "END:VEVENT", "END:VCALENDAR"].join("\r\n");
+  }
+  function remindBtn(p) {
+    if (p.time - Date.now() < 70 * 60000) return null;
+    var a = el("a", "accbtn", "Add a reminder to my calendar · 1 h before kick-off");
+    a.href = "data:text/calendar;charset=utf-8," + encodeURIComponent(icsFor(p)); a.download = "betiq-reminder.ics";
+    return a;
+  }
   function timingFor(p) {
     var hrs = (p.time - Date.now()) / 3600000;
     var foot = p.group === "Football";
     var head, text;
-    if (hrs < 1.5) {
-      head = "Kick-off is close";
-      text = "Check team news and that the price is still on offer, or skip it. Skipping is always fine.";
+    var minOdds = minRaw(p.pick).toFixed(2), action;
+    if (p.suspect) {
+      head = "Probably a stale price"; action = "check";
+      text = "Edges this big usually mean a price that has not been updated or the wrong match. On past matches, bets like this lost money. Only bet if the bookmaker really shows " + minOdds + " or better right now, and even then keep it small.";
+    } else if (hrs < 1.5 && p.isValue) {
+      head = "Bet now if the price is still there"; action = "now";
+      text = "Kick-off is close, so team news is out. Check the price is still " + minOdds + " or better and that the key players are playing, then place it. If the price has dropped, skip.";
+    } else if (hrs < 1.5) {
+      head = "Skip, or small stake only"; action = "skip";
+      text = "No price beats the market and kick-off is close. Skipping is a perfectly good choice.";
     } else if (p.isValue) {
-      head = "Price stands out now";
-      text = "This bookmaker is above the market average. Prices like this are often corrected, so if you want the bet, do not wait long. Check it is still available first.";
+      head = "Bet now, after checking the price"; action = "now";
+      text = "Good prices do not last: on " + "194 past bets like this, 63% were worse by kick-off and only 39% were still good value at the start. Check the bookmaker shows " + minOdds + " or better, then place it. Do not wait for team news.";
     } else if (hrs > 24) {
-      head = "No rush";
-      text = foot ? "Nothing stands out yet. Football team news usually appears about an hour before kick-off. Refresh then and compare."
-                  : "Nothing stands out yet. On the day, check the player is fit and the start time is confirmed, then refresh and compare.";
+      head = "No bet yet"; action = "wait";
+      text = foot ? "Nothing beats the market. Check again about an hour before kick-off, when team news is out and prices have settled."
+                  : "Nothing beats the market. On the day, check the player is fit and the start time is confirmed, then refresh and compare.";
     } else {
-      head = "Check again later";
-      text = "Refresh about an hour before the start. Bet only if the price still matches or beats this one.";
+      head = "Wait and check nearer kick-off"; action = "wait";
+      text = "Nothing beats the market yet. Refresh about an hour before the start. Bet only if the price is " + minOdds + " or better by then.";
     }
-    return { head: head, text: text, move: movement(p) };
+    return { head: head, text: text, action: action, move: movement(p) };
   }
   /* How bets of this kind did on past matches (from data/history_build.py, football-data.co.uk). Keys: market|chance level|price edge. */
   var EVID = {"goals|long|none":{"ci":0.068,"ciB":0.083,"n":2145,"pred":0.254,"roi":-0.056,"roiB":-0.084,"won":0.261},"goals|mid|none":{"ci":0.008,"ciB":0.011,"n":73941,"pred":0.438,"roi":-0.027,"roiB":-0.069,"won":0.439},"goals|mid|small":{"ci":0.067,"ciB":0.11,"n":1124,"pred":0.447,"roi":0.056,"roiB":-0.063,"won":0.462},"goals|mid|tiny":{"ci":0.043,"ciB":0.065,"n":2518,"pred":0.457,"roi":-0.06,"roiB":-0.095,"won":0.428},"goals|mid|value":{"ci":0.171,"ciB":0.255,"n":182,"pred":0.427,"roi":-0.111,"roiB":-0.161,"won":0.368},"goals|safer|big":{"ci":0.293,"ciB":0.365,"n":40,"pred":0.566,"roi":0.19,"roiB":0.009,"won":0.625},"goals|safer|huge":{"ci":0.436,"ciB":0.35,"n":37,"pred":0.58,"roi":0.19,"roiB":-0.171,"won":0.486},"goals|safer|none":{"ci":0.007,"ciB":0.009,"n":67787,"pred":0.563,"roi":-0.014,"roiB":-0.041,"won":0.563},"goals|safer|small":{"ci":0.028,"ciB":0.044,"n":3718,"pred":0.583,"roi":0.021,"roiB":-0.008,"won":0.586},"goals|safer|tiny":{"ci":0.018,"ciB":0.026,"n":9123,"pred":0.578,"roi":-0.012,"roiB":-0.044,"won":0.569},"goals|safer|value":{"ci":0.083,"ciB":0.126,"n":436,"pred":0.586,"roi":0.072,"roiB":0.032,"won":0.606},"h2h|long|big":{"ci":0.286,"ciB":0.237,"n":320,"pred":0.163,"roi":-0.125,"roiB":-0.246,"won":0.131},"h2h|long|huge":{"ci":0.42,"ciB":0.327,"n":42,"pred":0.121,"roi":-0.786,"roiB":-0.833,"won":0.024},"h2h|long|none":{"ci":0.011,"ciB":0.011,"n":111406,"pred":0.229,"roi":-0.06,"roiB":-0.085,"won":0.229},"h2h|long|small":{"ci":0.07,"ciB":0.067,"n":2874,"pred":0.223,"roi":-0.061,"roiB":-0.099,"won":0.211},"h2h|long|tiny":{"ci":0.069,"ciB":0.066,"n":2974,"pred":0.233,"roi":0.003,"roiB":-0.032,"won":0.233},"h2h|long|value":{"ci":0.127,"ciB":0.111,"n":1199,"pred":0.199,"roi":-0.062,"roiB":-0.132,"won":0.187},"h2h|mid|big":{"ci":0.305,"ciB":0.265,"n":88,"pred":0.388,"roi":0.388,"roiB":0.196,"won":0.489},"h2h|mid|none":{"ci":0.01,"ciB":0.01,"n":57309,"pred":0.387,"roi":-0.03,"roiB":-0.05,"won":0.387},"h2h|mid|small":{"ci":0.054,"ciB":0.052,"n":2234,"pred":0.387,"roi":0.0,"roiB":-0.046,"won":0.38},"h2h|mid|tiny":{"ci":0.045,"ciB":0.043,"n":3061,"pred":0.391,"roi":-0.036,"roiB":-0.071,"won":0.376},"h2h|mid|value":{"ci":0.107,"ciB":0.1,"n":606,"pred":0.38,"roi":0.016,"roiB":-0.052,"won":0.375},"h2h|safer|big":{"ci":0.224,"ciB":0.196,"n":55,"pred":0.599,"roi":0.226,"roiB":0.094,"won":0.691},"h2h|safer|none":{"ci":0.01,"ciB":0.01,"n":24918,"pred":0.617,"roi":-0.008,"roiB":-0.027,"won":0.622},"h2h|safer|small":{"ci":0.036,"ciB":0.034,"n":1616,"pred":0.676,"roi":0.026,"roiB":-0.024,"won":0.684},"h2h|safer|tiny":{"ci":0.022,"ciB":0.022,"n":3782,"pred":0.688,"roi":0.013,"roiB":-0.02,"won":0.695},"h2h|safer|value":{"ci":0.088,"ciB":0.08,"n":307,"pred":0.644,"roi":0.115,"roiB":0.022,"won":0.687}};
@@ -1422,11 +1456,11 @@ input, select, textarea { color: var(--ink); }
   /* After any refresh, remember the latest market price for every bet that has not kicked off yet. The last one before kick-off is the closing price. */
   function captureClosings() {
     var now = Date.now();
-    S.bets.concat(S.pbets).forEach(function (b) {
+    S.bets.concat(S.pbets).concat(S.sugg).forEach(function (b) {
       if (b.status !== "open" || b.time <= now) return;
       var c = S.cache[b.key]; if (!c || now - c.at > 20 * 60000) return;
       var ev = c.events.filter(function (e) { return e.id === b.evId; })[0]; if (!ev) return;
-      var r = currentRow(ev, b); if (r) { b.close = { f: r.fair, r: r.refund, at: now }; b.m = now; sbChanged(); }
+      var r = currentRow(ev, b); if (r) { b.close = { f: r.fair, r: r.refund, at: now }; if (!b.sugg) { b.m = now; sbChanged(); } }
     });
   }
   /* How much better your odds were than the final fair market price. Only trusted when captured within 3 hours of kick-off. */
@@ -1478,6 +1512,23 @@ input, select, textarea { color: var(--ink); }
     b.profit = status === "won" ? b.stake * (b.odds - 1) : status === "lost" ? -b.stake : 0;
     b.settledAt = Date.now(); b.m = b.settledAt; sbChanged();
   }
+  /* ---------- The app's own track record ----------
+     Every bet the app flags as VALUE is logged at the price it was flagged, with a pretend £1 stake, and settled from the real result.
+     The first sighting counts, so the record cannot be improved by re-flagging a bet at a better price later. */
+  function recordSuggestions() {
+    var now = Date.now(), added = 0;
+    buildPicks("value").filter(function (p) { return p.isValue && !p.suspect; }).slice(0, 10).forEach(function (p) {
+      if (S.sugg.some(function (x) { return x.pid === p.id; })) return;
+      var s = p.pick, sc = scoreFor(p);
+      S.sugg.push({ sugg: true, pid: p.id, evId: p.ev.id, key: p.key, league: p.league, h: p.ev.h, a: p.ev.a, sel: s.name, odds: s.best, book: s.bestBook,
+        fair: s.fair, ev: s.ev, score: sc.total, stake: 1, time: p.time, at: now, mkt: s.market || "", point: s.point, side: s.side, rule: s.rule, status: "open", profit: 0 });
+      added++;
+    });
+    if (S.sugg.length > 400) S.sugg = S.sugg.slice(-400);
+    return added;
+  }
+  function dueSugg() { return S.sugg.filter(function (b) { return b.status === "open" && Date.now() > b.time + 2.5 * 3600000; }); }
+  function suggKeys() { var k = []; dueSugg().forEach(function (b) { if (k.indexOf(b.key) < 0) k.push(b.key); }); return k; }
   function dueBets() { return BETS().filter(function (b) { return b.status === "open" && Date.now() > b.time + 2.5 * 3600000; }); }
   function dueKeys() { var k = []; dueBets().forEach(function (b) { if (k.indexOf(b.key) < 0) k.push(b.key); }); return k; }
   /* Works out won / lost / void for the market types with a settlement rule. Returns null when it cannot tell. */
@@ -1491,11 +1542,12 @@ input, select, textarea { color: var(--ink); }
     }
     return null;
   }
-  function checkResults() {
+  function checkResults(withRecord) {
     var keys = dueKeys();
+    if (withRecord) suggKeys().forEach(function (k) { if (keys.indexOf(k) < 0) keys.push(k); });
     if (!keys.length || busy) return Promise.resolve();
     busy = true; renderStatus(); renderBets();
-    var settled = 0, errs = [];
+    var settled = 0, sg = 0, errs = [];
     return Promise.all(keys.map(function (k) {
       return api("/sports/" + k + "/scores/", { daysFrom: 3 }).then(function (rows) {
         rows.forEach(function (r) {
@@ -1504,7 +1556,7 @@ input, select, textarea { color: var(--ink); }
           if (isNaN(a) || isNaN(b)) return;
           var winner = a > b ? r.scores[0].name : b > a ? r.scores[1].name : "Draw";
           var sc = {}; sc[r.scores[0].name] = a; sc[r.scores[1].name] = b;
-          S.bets.concat(S.pbets).forEach(function (bt) {
+          S.bets.concat(S.pbets).concat(S.sugg).forEach(function (bt) {
             if (bt.status !== "open" || bt.evId !== r.id) return;
             var res;
             if (bt.mkt === "totals") {
@@ -1514,7 +1566,8 @@ input, select, textarea { color: var(--ink); }
               res = ruleResult(bt.rule, winner, a, b, sc);
             } else res = bt.sel === winner ? "won" : "lost";
             if (!res) return;
-            settle(bt, res); settled++;
+            if (bt.sugg) { bt.status = res; bt.profit = res === "won" ? Math.round((bt.odds - 1) * 100) / 100 : res === "lost" ? -1 : 0; bt.settledAt = Date.now(); sg++; }
+            else { settle(bt, res); settled++; }
           });
         });
       }, function (e) { errs.push(e); });
@@ -1522,7 +1575,7 @@ input, select, textarea { color: var(--ink); }
       busy = false; save(); renderAll();
       var left = dueBets().length;
       if (errs[0]) showAlert(errText(errs[0]), false);
-      else showAlert(settled + " bet" + (settled === 1 ? "" : "s") + " settled." + (left ? " " + left + " still need a result. Mark them yourself under My bets." : ""), true);
+      else showAlert(settled + " bet" + (settled === 1 ? "" : "s") + " settled" + (sg ? ", " + sg + " suggestion" + (sg === 1 ? "" : "s") + " added to the record" : "") + "." + (left ? " " + left + " still need a result. Mark them yourself under My bets." : ""), true);
     });
   }
 
@@ -1786,6 +1839,7 @@ input, select, textarea { color: var(--ink); }
     var pills = el("span", "cpills"); badgesFor(p, pills);
     pills.appendChild(el("span", "pillev " + (s.ev > 0 ? "pos" : "neg"), signed(s.ev) + " EV")); top.appendChild(pills); main.appendChild(top);
     main.appendChild(el("span", "cmatch", p.ev.h + " vs " + p.ev.a));
+    var dl = el("span", "cdo " + timingFor(p).action); dl.appendChild(el("b", null, "What to do: ")); dl.appendChild(document.createTextNode(doLine(p))); main.appendChild(dl);
     var when = el("span", "cwhen", "Starts " + TF.format(new Date(p.time)));
     if (age !== null) when.appendChild(el("span", age > 3 * 3600000 ? "old" : null, " · " + ageText(p)));
     main.appendChild(when);
@@ -1803,7 +1857,7 @@ input, select, textarea { color: var(--ink); }
     main.appendChild(el("span", "cmore", "Tap for the price check and full details"));
     main.addEventListener("click", function () { openSheet(p, main); });
     wrap.appendChild(main);
-    var acts = el("div", "bacts"); acts.appendChild(actionsFor(p, st)); wrap.appendChild(acts);
+    var acts = el("div", "bacts"); acts.appendChild(actionsFor(p, st)); var rb = remindBtn(p); if (rb) acts.appendChild(rb); wrap.appendChild(acts);
     return wrap;
   }
 
@@ -1832,7 +1886,12 @@ input, select, textarea { color: var(--ink); }
     }
     var picks = d.ranked.length ? d.ranked.slice(0, 6) : d.likely;
     box.appendChild(el("h2", null, "Today's level board"));
-    if (d.value.length) box.appendChild(el("p", "subnote", "Ranked by BetIQ score, best first."));
+    if (d.value.length) {
+      var nowN = 0, later = null;
+      d.ranked.forEach(function (p) { var a = timingFor(p).action; if (a === "now") nowN++; else if (a === "wait" && (!later || p.time < later)) later = p.time; });
+      box.appendChild(el("p", "subnote", (nowN ? nowN + (nowN === 1 ? " bet to place now, after checking the price. " : " bets to place now, after checking the prices. ") : "Nothing to place right now. ") +
+        (later ? "Next check: about an hour before " + TF.format(new Date(later)) + "." : "") + " Ranked by BetIQ score."));
+    }
     else {
       var steady = d.plans.filter(function (x) { return x.id === "steady"; })[0];
       var r = el("div", "reco"); r.appendChild(el("b", null, "No bet beats the market"));
@@ -2025,9 +2084,10 @@ input, select, textarea { color: var(--ink); }
     grid.appendChild(statBox("Price vs market", signed(s.ev), p.suspect ? "unusually high, check it" : p.isValue ? "better than the market" : "compared with the market average", s.ev > 0 ? "pos" : "neg"));
     root.appendChild(grid);
 
-    var tb = el("div", "timing"); tb.appendChild(el("b", null, "Timing: " + tm.head));
+    var tb = el("div", "timing"); tb.appendChild(el("b", null, "What to do: " + tm.head));
     tb.appendChild(el("p", null, tm.text));
     if (tm.move) tb.appendChild(el("p", null, tm.move));
+    var rb2 = remindBtn(p); if (rb2) tb.appendChild(rb2);
     root.appendChild(tb);
     var mkb = p.sub ? null : marketsBox(p); if (mkb) root.appendChild(mkb);
 
@@ -2228,6 +2288,45 @@ input, select, textarea { color: var(--ink); }
     var z = mk("text", { x: pad, y: Y(0) - 4 }); z.textContent = "£0";
     return svg;
   }
+  function renderRecord() {
+    var body = $("recordBody"); body.textContent = "";
+    var all = S.sugg, done = all.filter(function (b) { return b.status === "won" || b.status === "lost"; }), open = all.filter(function (b) { return b.status === "open"; });
+    body.appendChild(el("p", null, "Every bet the app flags as VALUE is logged here at the price it was flagged, with a pretend £1 stake, and settled from the real result. It is the app's record, not yours, and it cannot be edited. It is the honest test of whether high scores really win more."));
+    if (!all.length) { body.appendChild(el("p", "subnote", "Nothing logged yet. Suggestions are recorded each time you refresh.")); return; }
+    var due = dueSugg();
+    if (due.length) {
+      var ks = suggKeys(), ub = el("button", "btn", "Update the record · " + (ks.length * 2) + " credits"); ub.type = "button"; ub.disabled = busy;
+      ub.addEventListener("click", function () { showAlert(""); checkResults(true); }); body.appendChild(ub);
+      body.appendChild(el("p", "subnote", due.length + " suggestion" + (due.length === 1 ? " has" : "s have") + " finished and need" + (due.length === 1 ? "s" : "") + " a result. Checking results for your own bets updates the record for free when the leagues match."));
+    }
+    function line(label, rows) {
+      var n = rows.length; if (!n) return null;
+      var won = rows.filter(function (b) { return b.status === "won"; }).length, pred = rows.reduce(function (t, b) { return t + b.fair; }, 0) / n, pr = rows.reduce(function (t, b) { return t + b.profit; }, 0);
+      var clv = rows.map(clvOf).filter(function (c) { return c !== null; });
+      var r = el("div", "typerow"); r.appendChild(el("span", null, label + " · " + n + (n === 1 ? " bet" : " bets")));
+      r.appendChild(el("span", null, "won " + pct(won / n) + " (expected " + pct(pred) + ") · " + sgbp(pr / n) + " per £1" + (clv.length ? " · beat closing by " + signed(clv.reduce(function (t, c) { return t + c; }, 0) / clv.length) : "")));
+      return r;
+    }
+    if (done.length < 30) body.appendChild(el("div", "msg info", all.length + " flagged, " + done.length + " settled, " + open.length + " waiting. Too early to judge: a fair verdict needs 30 or more settled bets, and a confident one needs hundreds."));
+    else body.appendChild(el("div", "msg info", all.length + " flagged, " + done.length + " settled. A positive number per £1 means the flagged bets would have made money at the prices shown. Hundreds of bets are needed before this means much."));
+    if (done.length) {
+      var g = el("div", "stats"), won = done.filter(function (b) { return b.status === "won"; }).length, pr = done.reduce(function (t, b) { return t + b.profit; }, 0);
+      g.appendChild(statBox("Settled", String(done.length), open.length + " waiting"));
+      g.appendChild(statBox("Won", pct(won / done.length), "expected " + pct(done.reduce(function (t, b) { return t + b.fair; }, 0) / done.length)));
+      g.appendChild(statBox("Per £1 staked", sgbp(pr / done.length), "at the flagged price", pr >= 0 ? "pos" : "neg"));
+      body.appendChild(g);
+      body.appendChild(el("h3", null, "By BetIQ score"));
+      [["80 and over", 80, 101], ["60 to 79", 60, 80], ["40 to 59", 40, 60], ["under 40", 0, 40]].forEach(function (bnd) {
+        var l = line("Score " + bnd[0], done.filter(function (b) { return (b.score || 0) >= bnd[1] && (b.score || 0) < bnd[2]; })); if (l) body.appendChild(l);
+      });
+    }
+    body.appendChild(el("h3", null, "Latest suggestions"));
+    all.slice(-8).reverse().forEach(function (b) {
+      var r = el("div", "typerow"); r.appendChild(el("span", null, b.sel + " · " + b.h + " v " + b.a + " · " + b.odds.toFixed(2) + " · score " + (b.score || "–")));
+      r.appendChild(el("span", b.status === "won" ? "pos" : b.status === "lost" ? "neg" : null, b.status === "open" ? "waiting" : b.status + " " + sgbp(b.profit)));
+      body.appendChild(r);
+    });
+  }
   function renderBets() {
     var body = $("betsBody"); body.textContent = "";
     var open = BETS().filter(function (b) { return b.status === "open"; });
@@ -2397,7 +2496,7 @@ input, select, textarea { color: var(--ink); }
   }
   function renderView() {
     var d = planData();
-    renderPlan(d); renderTiles(d); renderScenarios(d); renderList(); renderBets(); renderSheet();
+    renderPlan(d); renderTiles(d); renderScenarios(d); renderList(); renderBets(); renderRecord(); renderSheet();
   }
   function renderAll() {
     $("setup").hidden = !!S.key;
