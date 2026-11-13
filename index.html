@@ -575,7 +575,7 @@ input, select, textarea { color: var(--ink); }
     <section class="panel" id="settings">
       <h2>Settings</h2>
       <h3>Leagues and sports</h3>
-      <p>Tick anything here: football leagues, tennis, basketball, US football, ice hockey and more. Every league costs the same per refresh. Outside football, handicaps are the only extra market, the "bets like this" history does not apply, and tennis results may need marking by hand.</p>
+      <p>Tick anything here: football leagues, tennis, basketball, US football, ice hockey and more, or press "Use recommended sports" below for football, tennis and basketball. Horse racing is not offered by this data source at the moment; if that changes it will appear in this list and in the recommended set. Every league costs the same per refresh. Outside football, handicaps are the only extra market, the "bets like this" history does not apply, and tennis results may need marking by hand.</p>
       <p id="costNote"></p>
       <div class="leagues" id="leagues"></div>
       <label class="check"><input type="checkbox" id="totalsOn"> Include over/under goals prices (doubles the credit cost)</label>
@@ -632,6 +632,7 @@ input, select, textarea { color: var(--ink); }
       <div class="row">
         <button class="btn primary small" id="settingsDone">Save and load prices</button>
         <button class="btn small" id="reloadSports">Reload leagues</button>
+        <button class="btn small" id="useRecommended">Use recommended sports</button>
         <button class="btn small" id="changeKey">Change key</button>
       </div>
     </section>
@@ -800,15 +801,22 @@ input, select, textarea { color: var(--ink); }
     return "The Odds API returned an error (" + (e.status || "unknown") + ").";
   }
 
+  /* The recommended set: four football leagues, the first two tennis tournaments, the NBA (or the first basketball league), and horse racing if the data source ever lists it. */
+  function recommendedKeys() {
+    var keys = S.sports.filter(function (s) { return DEFAULT_FOOTBALL.indexOf(s.key) > -1; }).map(function (s) { return s.key; });
+    S.sports.filter(function (s) { return s.group === "Tennis"; }).slice(0, 2).forEach(function (s) { keys.push(s.key); });
+    var bb = S.sports.filter(function (s) { return s.key === "basketball_nba"; })[0] || S.sports.filter(function (s) { return s.group === "Basketball"; })[0];
+    if (bb) keys.push(bb.key);
+    S.sports.filter(function (s) { return /horse|racing/i.test(s.group || "") || /horse_racing|horseracing/.test(s.key); }).slice(0, 2).forEach(function (s) { keys.push(s.key); });
+    return keys;
+  }
   function fetchSports() {
     return api("/sports/", {}).then(function (list) {
       S.sports = list.filter(function (s) { return s.active && !s.has_outrights; })
         .map(function (s) { return { key: s.key, title: s.title, group: s.group }; });
       S.sportsAt = Date.now();
       if (!S.picked) {
-        var def = S.sports.filter(function (s) { return DEFAULT_FOOTBALL.indexOf(s.key) > -1; }).map(function (s) { return s.key; });
-        var tennis = S.sports.filter(function (s) { return s.group === "Tennis"; }).slice(0, 2).map(function (s) { return s.key; });
-        S.selected = def.concat(tennis);
+        S.selected = recommendedKeys();
       } else {
         S.selected = S.selected.filter(function (k) { return S.sports.some(function (s) { return s.key === k; }); });
       }
@@ -2718,6 +2726,11 @@ input, select, textarea { color: var(--ink); }
     setTab("today"); renderAll();
     var any = S.selected.some(function (k) { return S.cache[k]; });
     if (!any && S.selected.length) refreshAll();
+  });
+  $("useRecommended").addEventListener("click", function () {
+    var go = function () { S.selected = recommendedKeys(); S.picked = true; save(); renderSettings(); renderAll();
+      showAlert("Recommended sports ticked: " + S.selected.length + " leagues (football, tennis, basketball" + (S.selected.some(function (k) { return /horse|racing/.test(k); }) ? ", horse racing" : "") + "). Horse racing is only included when the data source offers it. Press Refresh to load prices.", true); };
+    if (S.sports.length) go(); else fetchSports().then(go, function (e) { showAlert(errText(e), false); });
   });
   $("reloadSports").addEventListener("click", function () {
     fetchSports().then(function () { renderSettings(); renderAll(); }, function (e) { showAlert(errText(e), false); });
