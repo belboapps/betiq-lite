@@ -598,6 +598,7 @@ input, select, textarea { color: var(--ink); }
       <h2>My bookmakers</h2>
       <p>Tick the ones you have accounts with. Suggested bets only use these. Load odds once to see the list.</p>
       <div class="chips" id="bookChips"></div>
+      <p class="subnote">The past edge only existed at the best price across several bookmakers, so accounts with three or more make a real difference. Each one needs its own sign-up and ID check.</p>
       <h2>Practice mode</h2>
       <p>Logs pretend bets instead of real ones, kept completely separate from your real record. Good for learning how this works before spending anything.</p>
       <label class="check"><input type="checkbox" id="practiceOn"> Practice mode (no real money)</label>
@@ -610,8 +611,13 @@ input, select, textarea { color: var(--ink); }
       <h2>Weekly budget</h2>
       <p>The most you want to spend in a week (Monday to Sunday). Stakes are shared across the best bets and never go over it. Leave empty for no limit. You do not have to spend it all: if few bets have an edge, the rest stays in your pocket.</p>
       <label class="check" for="weeklyIn">Weekly budget £ <input id="weeklyIn" type="number" inputmode="decimal" min="0" step="1" placeholder="no limit"></label>
+      <h2>Fair price yardstick</h2>
+      <p>Normally the fair price is the average of the UK bookmakers with their margins removed. Pinnacle is the bookmaker professionals use and has the smallest margin, so its prices make a better yardstick. It doubles the cost of the main prices and is never a price to bet at.</p>
+      <label class="check"><input type="checkbox" id="sharpOn"> Use Pinnacle as the yardstick (doubles main-price credits)</label>
+      <div id="sharpMsg"></div>
       <h2>Automatic</h2>
       <label class="check"><input type="checkbox" id="autoOn"> Refresh odds when I open this page</label>
+      <label class="check"><input type="checkbox" id="autoKick"> Also refresh a league's prices when I open the page within an hour of one of its matches (1 credit per league, 2 with goals)</label>
       <div class="filters">
         <label for="autoHours">Only if the odds are older than
           <select id="autoHours">
@@ -721,7 +727,7 @@ input, select, textarea { color: var(--ink); }
   var API = "https://api.the-odds-api.com/v4";
   var DEFAULTS = { key: "", selected: [], mode: "value", minOdds: 1.3, windowH: 72, group: "all",
                    sports: [], sportsAt: 0, cache: {}, remaining: null, used: null, picked: false,
-                   bankroll: 100, weekly: 0, league: "all", sugg: [], live: null, tomb: [], sb: { url: "", key: "", email: "", session: null, last: 0, status: "" }, extras: true, extraMax: 12, extraFreshH: 3, lossLimit: 0, lossStreak: 5, tour: false, afKey: "", newsOn: true, news: {}, afUse: { d: "", n: 0 }, afStatus: "", xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
+                   bankroll: 100, weekly: 0, league: "all", sugg: [], live: null, autoKick: true, sharp: false, sharpBad: false, placeMin: 60, tuneN: 0, tomb: [], sb: { url: "", key: "", email: "", session: null, last: 0, status: "" }, extras: true, extraMax: 12, extraFreshH: 3, lossLimit: 0, lossStreak: 5, tour: false, afKey: "", newsOn: true, news: {}, afUse: { d: "", n: 0 }, afStatus: "", xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
   var GROUPS = { "Soccer": "Football", "American Football": "US football", "Ice Hockey": "Ice hockey",
                  "Mixed Martial Arts": "MMA", "Rugby League": "Rugby", "Rugby Union": "Rugby", "Aussie Rules": "Aussie rules" };
   var DEFAULT_FOOTBALL = ["soccer_epl", "soccer_efl_champ", "soccer_uefa_champs_league", "soccer_uefa_europa_league"];
@@ -832,11 +838,30 @@ input, select, textarea { color: var(--ink); }
       throw e;
     });
   }
+  /* Pinnacle's prices as the yardstick for the fair price. Pinnacle is the bookmaker professionals use and has the smallest margin,
+     so its prices are a better "truth" than an average of UK bookmakers. One extra credit per market per league. Never used as the price to bet at. */
+  function sharpOn() { return !!(S.sharp && !S.sharpBad); }
+  function fetchSharp(key) {
+    if (!sharpOn()) return Promise.resolve(null);
+    return api("/sports/" + key + "/odds/", { bookmakers: "pinnacle", markets: S.totals ? "h2h,totals" : "h2h", oddsFormat: "decimal" })
+      .then(null, function (e) { if (e.code === "http") { S.sharpBad = true; return null; } throw e; });
+  }
+  function foldSharp(evs, sharpEvents) {
+    if (!sharpEvents) return;
+    var byId = {}; sharpEvents.forEach(function (e) { byId[e.id] = e; });
+    evs.forEach(function (ev) {
+      var se = byId[ev.id]; if (!se) return;
+      var sl = slim(se);
+      sl.books.forEach(function (b) { if (b.k === "pinnacle") { b.sharp = true; ev.books = ev.books.filter(function (x) { return x.k !== "pinnacle"; }); ev.books.push(b); } });
+      sl.tb.forEach(function (b) { if (b.k === "pinnacle") { b.sharp = true; ev.tb = (ev.tb || []).filter(function (x) { return x.k !== "pinnacle"; }); ev.tb.push(b); } });
+    });
+  }
   function loadLeague(key, errors) {
-    return fetchOdds(key).then(function (events) {
-      var old = S.cache[key]; if (old) snapshot(old);
+    return Promise.all([fetchOdds(key), fetchSharp(key)]).then(function (res) {
+      var events = res[0], old = S.cache[key]; if (old) snapshot(old);
       var oldX = {}; if (old) old.events.forEach(function (e) { if (e.x) oldX[e.id] = e.x; });
       var evs = events.map(slim); evs.forEach(function (e) { if (oldX[e.id]) e.x = oldX[e.id]; });
+      foldSharp(evs, res[1]);
       S.cache[key] = { at: Date.now(), events: evs };
     }, function (e) { errors.push(e); });
   }
@@ -982,9 +1007,10 @@ input, select, textarea { color: var(--ink); }
     return q.map(function (x) { return Math.pow(x, k); });
   }
   function analyse(ev) {
-    var map = {}, order = [], nBooks = 0;
+    var map = {}, order = [], nBooks = 0, sharpFair = {};
     ev.books.forEach(function (b) {
       var fairs = demargin(b.o.map(function (x) { return 1 / x[1]; }));
+      if (b.sharp) { b.o.forEach(function (x, i) { sharpFair[x[0]] = fairs[i]; }); return; }   /* the yardstick, never a price to bet at */
       nBooks++;
       b.o.forEach(function (x, i) {
         var n = x[0];
@@ -999,13 +1025,14 @@ input, select, textarea { color: var(--ink); }
     order.forEach(function (n) {
       var s = map[n];
       if (s.fair.length < need) return;
-      var fair = s.fair.reduce(function (p, c) { return p + c; }, 0) / s.fair.length;
+      var fair = s.fair.reduce(function (p, c) { return p + c; }, 0) / s.fair.length, viaSharp = false;
+      if (sharpFair[n] !== undefined) { fair = sharpFair[n]; viaSharp = true; }
       s.prices.sort(function (a, b) { return b.price - a.price; });
       var best = null;
       for (var i = 0; i < s.prices.length; i++) { if (s.prices[i].ok) { best = s.prices[i]; break; } }
       if (!best) return;
       sels.push({ name: s.name, fair: fair, fairOdds: 1 / fair, best: best.price, bestBook: best.book, bestEx: best.ex, bestComm: best.comm, bestLink: best.link,
-                  prices: s.prices, ev: fair * best.price - 1 });
+                  prices: s.prices, ev: fair * best.price - 1, sharp: viaSharp });
     });
     return sels.length >= 2 ? { sels: sels, nBooks: nBooks } : null;
   }
@@ -1017,13 +1044,14 @@ input, select, textarea { color: var(--ink); }
       Object.keys(b.p).forEach(function (k) {
         var o = b.p[k][0], u = b.p[k][1], fp = demargin([1 / o, 1 / u]);
         var L = lines[k] || (lines[k] = { point: +k, fo: [], ov: [], un: [] });
+        if (b.sharp) { L.sf = fp[0]; return; }
         L.fo.push(fp[0]);
         L.ov.push({ book: b.t, price: eff(o, b.k), ex: !!EXCH[b.k], comm: EXCH[b.k] || 0, ok: allowed(b.t) });
         L.un.push({ book: b.t, price: eff(u, b.k), ex: !!EXCH[b.k], comm: EXCH[b.k] || 0, ok: allowed(b.t) });
       });
     });
     var arr = Object.keys(lines).map(function (k) { return lines[k]; }).filter(function (L) { return L.fo.length >= 3; });
-    arr.forEach(function (L) { L.fair = L.fo.reduce(function (p, c) { return p + c; }, 0) / L.fo.length; });
+    arr.forEach(function (L) { L.fair = L.sf !== undefined ? L.sf : L.fo.reduce(function (p, c) { return p + c; }, 0) / L.fo.length; });
     arr.sort(function (a, b) { return Math.abs(a.fair - 0.5) - Math.abs(b.fair - 0.5); });
     arr = arr.slice(0, 3).sort(function (a, b) { return a.point - b.point; });
     var rows = [];
@@ -1280,8 +1308,8 @@ input, select, textarea { color: var(--ink); }
     if (p.suspect) return { k: "check", label: "CHECK FIRST", why: "edge too big to trust, probably a stale price" };
     var act = timingFor(p).action, sc = scoreFor(p).total, st = stakeFor(p.pick).amount, age = priceAge(p);
     if (st < 0.5) return { k: "skip", label: "SKIP", why: stakeFor(p.pick).kind.toLowerCase() };
-    if (p.isValue && act === "now" && sc >= 60 && (age === null || age < 3 * 3600000)) return { k: "place", label: "PLACE THIS BET", why: "check the price is " + minRaw(p.pick).toFixed(2) + " or better first" };
-    if (p.isValue && (act === "now" || act === "wait") && sc >= 45) return { k: "consider", label: "CONSIDER", why: age !== null && age >= 3 * 3600000 ? "refresh first, the prices are old" : sc < 60 ? "value, but the evidence score is only " + sc : "value, but check nearer kick-off" };
+    if (p.isValue && act === "now" && sc >= (S.placeMin || 60) && (age === null || age < 3 * 3600000)) return { k: "place", label: "PLACE THIS BET", why: "check the price is " + minRaw(p.pick).toFixed(2) + " or better first" };
+    if (p.isValue && (act === "now" || act === "wait") && sc >= 45) return { k: "consider", label: "CONSIDER", why: age !== null && age >= 3 * 3600000 ? "refresh first, the prices are old" : sc < (S.placeMin || 60) ? "value, but the evidence score is only " + sc : "value, but check nearer kick-off" };
     if (act === "wait") return { k: "wait", label: "WAIT", why: "nothing beats the market yet, check 1 h before kick-off" };
     return { k: "skip", label: "SKIP", why: p.pick.ev > 0 ? "the edge is too small" : "no edge over the market" };
   }
@@ -1552,7 +1580,7 @@ input, select, textarea { color: var(--ink); }
       if (S.sugg.some(function (x) { return x.pid === p.id; })) return;
       var s = p.pick, sc = scoreFor(p);
       S.sugg.push({ sugg: true, pid: p.id, evId: p.ev.id, key: p.key, league: p.league, h: p.ev.h, a: p.ev.a, sel: s.name, odds: s.best, book: s.bestBook,
-        fair: s.fair, ev: s.ev, score: sc.total, stake: 1, time: p.time, at: now, mkt: s.market || "", point: s.point, side: s.side, rule: s.rule, status: "open", profit: 0 });
+        fair: s.fair, ev: s.ev, score: sc.total, v: decision(p).k, stake: 1, time: p.time, at: now, mkt: s.market || "", point: s.point, side: s.side, rule: s.rule, status: "open", profit: 0 });
       added++;
     });
     if (S.sugg.length > 400) S.sugg = S.sugg.slice(-400);
@@ -1654,7 +1682,7 @@ input, select, textarea { color: var(--ink); }
     $("updated").textContent = busy ? (busyMsg || "Working…") : times.length ? "Odds updated " + ago(Math.min.apply(null, times)) : "No odds loaded yet";
     var rb = $("refreshBtn");
     rb.disabled = busy || !S.selected.length;
-    var cost = S.selected.length * (S.totals ? 2 : 1), xe = extraEstimate();
+    var cost = S.selected.length * (S.totals ? 2 : 1) * (sharpOn() ? 2 : 1), xe = extraEstimate();
     rb.textContent = busy ? "Working…" : "Refresh · " + (xe ? "about " + (cost + xe) + " credits" : cost + (cost === 1 ? " credit" : " credits"));
   }
   function renderChips() {
@@ -1928,6 +1956,7 @@ input, select, textarea { color: var(--ink); }
       });
       box.appendChild(lp);
     }
+    if (S.myBooks && S.myBooks.length < 3) box.appendChild(el("div", "msg", "You have " + S.myBooks.length + " bookmaker" + (S.myBooks.length === 1 ? "" : "s") + " ticked. On past matches the edge only existed at the best price across several bookmakers: at a single bookmaker's prices it was roughly break-even. More accounts matter more than any setting here."));
     var picks = d.ranked.length ? d.ranked.slice(0, 6) : d.likely;
     box.appendChild(el("h2", null, "Today's level board"));
     if (d.value.length) {
@@ -2122,6 +2151,7 @@ input, select, textarea { color: var(--ink); }
     var pa = el("div", "pickactions"); pa.appendChild(actionsFor(p, st)); root.appendChild(pa);
     var grid = el("div", "stats");
     grid.appendChild(statBox("Bet with", s.bestBook, "odds " + s.best.toFixed(2) + (s.bestEx ? " after commission" : "")));
+    if (s.sharp) grid.appendChild(statBox("Fair price from", "Pinnacle", "the sharpest bookmaker's price, margin removed"));
     grid.appendChild(statBox("Suggested stake", st.amount >= 0.5 ? gbp(st.amount) : "–", st.kind));
     grid.appendChild(statBox("If it wins", sgbp(st.amount * (s.best - 1)), "profit", "pos"));
     grid.appendChild(statBox("If it loses", sgbp(-st.amount), "your stake", "neg"));
@@ -2335,6 +2365,19 @@ input, select, textarea { color: var(--ink); }
     var z = mk("text", { x: pad, y: Y(0) - 4 }); z.textContent = "£0";
     return svg;
   }
+  /* Lets the record move the PLACE threshold, slowly and visibly: at most one step of 5 points per 30 newly settled results. */
+  function tuneThreshold(done) {
+    var vP = done.filter(function (b) { return b.v === "place"; }), vC = done.filter(function (b) { return b.v === "consider"; });
+    if (vP.length < 30 || vC.length < 30) return;
+    var seen = S.tuneSeen || 0; if (done.length - seen < 30) return;
+    function per(rows) { return rows.reduce(function (t, b) { return t + b.profit; }, 0) / rows.length; }
+    var pP = per(vP), pC = per(vC), min = S.placeMin || 60, next = min;
+    if (pC > pP + 0.02 && min > 45) next = min - 5;            /* the weaker bets are doing better: PLACE is too strict */
+    else if (pP < 0 && pC < pP && min < 75) next = min + 5;      /* PLACE bets are losing and CONSIDER worse still: be stricter */
+    S.tuneSeen = done.length;
+    if (next !== min) { S.placeMin = next; S.tuneN = (S.tuneN || 0) + 1; }
+    save();
+  }
   function renderRecord() {
     var body = $("recordBody"); body.textContent = "";
     var all = S.sugg, done = all.filter(function (b) { return b.status === "won" || b.status === "lost"; }), open = all.filter(function (b) { return b.status === "open"; });
@@ -2362,6 +2405,14 @@ input, select, textarea { color: var(--ink); }
       g.appendChild(statBox("Won", pct(won / done.length), "expected " + pct(done.reduce(function (t, b) { return t + b.fair; }, 0) / done.length)));
       g.appendChild(statBox("Per £1 staked", sgbp(pr / done.length), "at the flagged price", pr >= 0 ? "pos" : "neg"));
       body.appendChild(g);
+      tuneThreshold(done);
+      var vP = done.filter(function (b) { return b.v === "place"; }), vC = done.filter(function (b) { return b.v === "consider"; });
+      if (vP.length || vC.length) {
+        body.appendChild(el("h3", null, "By verdict"));
+        var lp = line("PLACE", vP); if (lp) body.appendChild(lp);
+        var lc = line("CONSIDER", vC); if (lc) body.appendChild(lc);
+        body.appendChild(el("p", "subnote", "PLACE needs a score of " + (S.placeMin || 60) + " or more. " + (S.tuneN ? "That threshold has been adjusted from this record " + S.tuneN + (S.tuneN === 1 ? " time" : " times") + "." : "It adjusts itself once both verdicts have 30 or more results, moving by 5 points if CONSIDER bets are doing better than PLACE bets, or if PLACE bets are losing.")));
+      }
       body.appendChild(el("h3", null, "By BetIQ score"));
       [["80 and over", 80, 101], ["60 to 79", 60, 80], ["40 to 59", 40, 60], ["under 40", 0, 40]].forEach(function (bnd) {
         var l = line("Score " + bnd[0], done.filter(function (b) { return (b.score || 0) >= bnd[1] && (b.score || 0) < bnd[2]; })); if (l) body.appendChild(l);
@@ -2477,11 +2528,17 @@ input, select, textarea { color: var(--ink); }
     });
     if (!order.length) box.appendChild(el("p", null, "No leagues loaded yet. Press Reload leagues."));
     $("autoOn").checked = !!S.auto; $("autoHours").value = String(S.autoHours); $("totalsOn").checked = !!S.totals;
+    $("sharpOn").checked = !!S.sharp; $("autoKick").checked = !!S.autoKick; renderSharpMsg();
     $("extrasOn").checked = !!S.extras; $("extraMax").value = String(S.extraMax); $("extraFresh").value = String(S.extraFreshH);
     $("lossLimit").value = S.lossLimit ? String(S.lossLimit) : ""; $("lossStreak").value = String(S.lossStreak);
     $("sbUrl").value = S.sb.url || ""; $("sbKey").value = S.sb.key || ""; $("sbEmail").value = S.sb.email || ""; renderSb();
     $("newsOn").checked = !!S.newsOn; $("afKey").value = S.afKey || ""; renderAfMsg();
     renderCost(); renderBooks(); renderMkCheck(); renderCreditLog();
+  }
+  function renderSharpMsg() {
+    var m = $("sharpMsg"); if (!m) return; m.textContent = "";
+    if (S.sharp && S.sharpBad) m.appendChild(el("div", "msg", "The API refused Pinnacle prices, so this is switched off for now. It may not be included in your plan. Untick and tick again to retry."));
+    else if (S.sharp) m.appendChild(el("div", "msg info", "On. Bets whose fair price came from Pinnacle say so in their details."));
   }
   function renderCreditLog() {
     var box = $("creditLog"); box.textContent = "";
@@ -2532,8 +2589,8 @@ input, select, textarea { color: var(--ink); }
     });
   }
   function renderCost() {
-    var cost = S.selected.length * (S.totals ? 2 : 1), xe = extraEstimate();
-    $("costNote").textContent = "Each refresh uses about " + (cost + xe) + " credits: " + cost + " for the main prices (" + (S.totals ? "two" : "one") + " per league)" +
+    var cost = S.selected.length * (S.totals ? 2 : 1) * (sharpOn() ? 2 : 1), xe = extraEstimate();
+    $("costNote").textContent = "Each refresh uses about " + (cost + xe) + " credits: " + cost + " for the main prices (" + (S.totals ? "two" : "one") + " per league" + (sharpOn() ? ", doubled for the Pinnacle yardstick" : "") + ")" +
       (xe ? " plus about " + xe + " for extra markets (" + pickExtraTargets().length + " matches x " + extraMarkets().length + " markets)" : "") +
       ". The free plan gives 500 a month. Opening the page only refreshes the main prices, never the extras.";
   }
@@ -2578,9 +2635,28 @@ input, select, textarea { color: var(--ink); }
     return Date.now() - Math.min.apply(null, times) > S.autoHours * 3600000;
   }
   function creditsOk() { return S.remaining === null || S.remaining >= MIN_CREDITS; }
+  /* Leagues with a match starting within 75 minutes whose prices are over 20 minutes old. */
+  function kickoffKeys() {
+    var now = Date.now(), out = [];
+    S.selected.forEach(function (k) {
+      var c = S.cache[k]; if (!c || now - c.at < 20 * 60000) return;
+      if (c.events.some(function (ev) { var t = Date.parse(ev.c); return t > now && t - now < 75 * 60000; })) out.push(k);
+    });
+    return out;
+  }
+  function refreshLeagues(keys, label) {
+    if (busy || !keys.length) return Promise.resolve();
+    busy = true; busyMsg = "Refreshing " + keys.length + (keys.length === 1 ? " league" : " leagues") + " near kick-off…"; renderStatus();
+    var errors = [], before = S.remaining, startCount = spentCounter;
+    return Promise.all(keys.map(function (k) { return loadLeague(k, errors); })).then(function () {
+      busy = false; busyMsg = ""; captureClosings(); recordSuggestions(); logCredits(before, startCount, label || "Kick-off refresh"); save(); renderAll();
+      if (errors[0]) showAlert(errText(errors[0]), false);
+      else showAlert("Prices refreshed for " + keys.map(function (k) { return (S.sports.filter(function (x) { return x.key === k; })[0] || {}).title || k; }).join(", ") + " because a match starts within the hour. Verdicts are up to date.", true);
+    });
+  }
   function autoRun() {
     if (!S.key || !S.auto || busy || !creditsOk()) return Promise.resolve();
-    var p = stale() ? refreshAll({ extras: false }) : Promise.resolve();
+    var p = stale() ? refreshAll({ extras: false }) : (S.autoKick ? refreshLeagues(kickoffKeys()) : Promise.resolve());
     return p.then(function () { if (creditsOk() && dueBets().length) return checkResults(); });
   }
 
@@ -2626,12 +2702,14 @@ input, select, textarea { color: var(--ink); }
   $("sbSignIn").addEventListener("click", sbSignIn);
   $("sbSync").addEventListener("click", function () { syncNow(false); });
   $("sbOut").addEventListener("click", function () { S.sb.session = null; S.sb.status = "Signed out. Your bets stay on this phone."; save(); renderSb(); });
+  $("sharpOn").addEventListener("change", function (e) { S.sharp = e.target.checked; if (S.sharp) S.sharpBad = false; save(); renderCost(); renderStatus(); renderSharpMsg(); });
+  $("autoKick").addEventListener("change", function (e) { S.autoKick = e.target.checked; save(); });
   $("autoOn").addEventListener("change", function (e) { S.auto = e.target.checked; save(); });
   $("totalsOn").addEventListener("change", function (e) { S.totals = e.target.checked; save(); renderCost(); renderStatus(); });
   $("autoHours").addEventListener("change", function (e) { S.autoHours = +e.target.value; save(); });
   $("refreshBtn").addEventListener("click", function () {
     showAlert("");
-    var est = S.selected.length * (S.totals ? 2 : 1) + extraEstimate();
+    var est = S.selected.length * (S.totals ? 2 : 1) * (sharpOn() ? 2 : 1) + extraEstimate();
     if ((est >= 40 || (S.remaining !== null && est >= S.remaining * 0.15)) &&
         !window.confirm("This refresh will use about " + est + " credits" + (S.remaining !== null ? " and you have " + S.remaining + " left" : "") + ". Continue?")) return;
     refreshAll();
