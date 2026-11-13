@@ -457,6 +457,13 @@ input, select, textarea { color: var(--ink); }
 .cmore { font-size: 12px; color: var(--muted); text-align: center; }
 #liveBox { border: 1.5px solid var(--blue); }
 .lrow { cursor: default; } .lrow::after { content: none; }
+.verdict { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border-radius: 12px; padding: 9px 12px; font-size: 13px; color: var(--muted); border: 1px solid var(--line); background: var(--bg); }
+.verdict b { font: 800 15px/1 var(--display); letter-spacing: .06em; color: var(--ink); }
+.verdict.place { background: var(--accent-soft); border-color: var(--accent); } .verdict.place b { color: var(--accent); }
+.verdict.consider { background: var(--value-bg); border-color: var(--value); } .verdict.consider b { color: var(--value); }
+.verdict.wait { background: #1c2230; border-color: #2c3a55; } .verdict.wait b { color: var(--blue); }
+.verdict.skip, .verdict.check { background: var(--warn-bg); border-color: var(--warn); } .verdict.skip b, .verdict.check b { color: var(--warn); }
+.detail .verdict { margin-top: -2px; }
 .cdo { font-size: 14px; color: var(--ink); background: var(--accent-soft); border-radius: 10px; padding: 7px 10px; }
 .cdo.wait { background: #1c2230; } .cdo.skip, .cdo.check { background: var(--warn-bg); }
 .cdo b { font-weight: 700; }
@@ -567,7 +574,8 @@ input, select, textarea { color: var(--ink); }
     <div class="tab" id="tab-more" hidden>
     <section class="panel" id="settings">
       <h2>Settings</h2>
-      <h3>Leagues</h3>
+      <h3>Leagues and sports</h3>
+      <p>Tick anything here: football leagues, tennis, basketball, US football, ice hockey and more. Every league costs the same per refresh. Outside football, handicaps are the only extra market, the "bets like this" history does not apply, and tennis results may need marking by hand.</p>
       <p id="costNote"></p>
       <div class="leagues" id="leagues"></div>
       <label class="check"><input type="checkbox" id="totalsOn"> Include over/under goals prices (doubles the credit cost)</label>
@@ -870,6 +878,8 @@ input, select, textarea { color: var(--ink); }
   var EXTRA_MKTS = ["btts", "double_chance", "draw_no_bet", "spreads"];
   var EXTRA_NAMES = { btts: "Both teams to score", double_chance: "Double chance", draw_no_bet: "Draw no bet", spreads: "Handicap" };
   function extraMarkets() { return EXTRA_MKTS.filter(function (m) { return S.xmBad.indexOf(m) < 0; }); }
+  function unitForKey(k) { k = String(k || ""); return k.indexOf("soccer") === 0 || k.indexOf("icehockey") === 0 ? " goals" : k.indexOf("tennis") === 0 ? " games" : " points"; }
+  function liveMins(group) { return { "Football": 130, "Basketball": 170, "US football": 240, "Tennis": 240, "Ice hockey": 180 }[group] || 180; }
   function isFootball(ev) { return ev.books.some(function (b) { return b.o.some(function (o) { return o[0] === "Draw"; }); }); }
   function pickExtraTargets() {
     var now = Date.now(), end = now + S.windowH * 3600000, list = [];
@@ -877,7 +887,7 @@ input, select, textarea { color: var(--ink); }
       var c = S.cache[k]; if (!c) return;
       c.events.forEach(function (ev) {
         var t = Date.parse(ev.c);
-        if (t > now && t <= end && isFootball(ev) && !(ev.x && now - ev.x.at < S.extraFreshH * 3600000)) list.push({ key: k, ev: ev, t: t });
+        if (t > now && t <= end && !(ev.x && now - ev.x.at < S.extraFreshH * 3600000) && (isFootball(ev) || S.xmBad.indexOf("spreads") < 0)) list.push({ key: k, ev: ev, t: t });
       });
     });
     var mine = {}; BETS().forEach(function (b) { if (b.status === "open") mine[b.evId] = 1; });
@@ -901,7 +911,8 @@ input, select, textarea { color: var(--ink); }
     });
   }
   function fetchExtraFor(t) {
-    var x = { at: Date.now(), m: {} }, path = "/sports/" + t.key + "/events/" + t.ev.id + "/odds", list = extraMarkets();
+    var x = { at: Date.now(), m: {} }, path = "/sports/" + t.key + "/events/" + t.ev.id + "/odds";
+    var list = isFootball(t.ev) ? extraMarkets() : extraMarkets().filter(function (m) { return m === "spreads"; });   /* other sports: handicaps only */
     if (!list.length) return Promise.resolve(null);
     function call(l) { return api(path, { regions: "uk", markets: l.join(","), oddsFormat: "decimal" }); }
     return call(list).then(function (r) { addExtra(x, r); return x; }, function (e) {
@@ -1110,9 +1121,10 @@ input, select, textarea { color: var(--ink); }
     arr.sort(function (a, b) { return Math.abs(a.fair - 0.5) - Math.abs(b.fair - 0.5); });
     arr.slice(0, 3).forEach(function (L) {
       function sgn(v) { return (v > 0 ? "+" : "") + v; }
+      var un = isFootball(ev) ? "goal" : "point";
       function d(team, p) { var half = (p * 2) % 2 !== 0;
-        return half ? (p < 0 ? "Wins if " + team + " win by " + Math.ceil(-p) + " or more goals." : "Wins unless " + team + " lose by " + Math.ceil(p) + " or more goals.")
-                    : team + " start with a " + sgn(p) + " goal handicap. Your stake comes back if the result lands exactly on the line."; }
+        return half ? (p < 0 ? "Wins if " + team + " win by " + Math.ceil(-p) + " or more " + un + "s." : "Wins unless " + team + " lose by " + Math.ceil(p) + " or more " + un + "s.")
+                    : team + " start with a " + sgn(p) + " " + un + " handicap. Your stake comes back if the result lands exactly on the line."; }
       out = out.concat(twoWay(L.items,
         { label: ev.h + " " + sgn(L.p) + " handicap", market: "spread", rule: { t: "spread", team: ev.h, point: L.p }, desc: d(ev.h, L.p) },
         { label: ev.a + " " + sgn(-L.p) + " handicap", market: "spread", rule: { t: "spread", team: ev.a, point: -L.p }, desc: d(ev.a, -L.p) }));
@@ -1165,8 +1177,8 @@ input, select, textarea { color: var(--ink); }
           out.push(p);
         }
         add(pick, a.nBooks);
-        if (mode === "value" && S.totals && a.sels.some(function (x) { return x.name === "Draw"; })) {
-          analyseTotals(ev, " goals").forEach(function (r) {
+        if (mode === "value" && S.totals) {
+          analyseTotals(ev, unitForKey(key)).forEach(function (r) {
             if (r.best > LONGSHOT) return;
             add({ name: r.label, fair: r.fair, fairOdds: r.fairOdds, best: r.best, bestBook: r.book, bestEx: r.ex, bestComm: r.comm, bestLink: "",
                   prices: r.prices, ev: r.ev, market: "totals", point: r.point, side: r.side }, r.n);
@@ -1262,6 +1274,22 @@ input, select, textarea { color: var(--ink); }
     return { total: total, best: best, worst: -total, exp: exp, chance: chance };
   }
 
+  /* The clear answer: PLACE, CONSIDER, WAIT or SKIP. Thresholds are judgement, stated on the card, to be tuned from the track record. */
+  function decision(p) {
+    var ls = lossState(); if (ls.on) return { k: "skip", label: "PAUSED", why: ls.kind.replace("Paused: ", "") };
+    if (p.suspect) return { k: "check", label: "CHECK FIRST", why: "edge too big to trust, probably a stale price" };
+    var act = timingFor(p).action, sc = scoreFor(p).total, st = stakeFor(p.pick).amount, age = priceAge(p);
+    if (st < 0.5) return { k: "skip", label: "SKIP", why: stakeFor(p.pick).kind.toLowerCase() };
+    if (p.isValue && act === "now" && sc >= 60 && (age === null || age < 3 * 3600000)) return { k: "place", label: "PLACE THIS BET", why: "check the price is " + minRaw(p.pick).toFixed(2) + " or better first" };
+    if (p.isValue && (act === "now" || act === "wait") && sc >= 45) return { k: "consider", label: "CONSIDER", why: age !== null && age >= 3 * 3600000 ? "refresh first, the prices are old" : sc < 60 ? "value, but the evidence score is only " + sc : "value, but check nearer kick-off" };
+    if (act === "wait") return { k: "wait", label: "WAIT", why: "nothing beats the market yet, check 1 h before kick-off" };
+    return { k: "skip", label: "SKIP", why: p.pick.ev > 0 ? "the edge is too small" : "no edge over the market" };
+  }
+  function verdictStrip(p) {
+    var d = decision(p), v = el("span", "verdict " + d.k);
+    v.appendChild(el("b", null, (d.k === "place" ? "✓ " : d.k === "consider" ? "? " : d.k === "wait" ? "⏱ " : d.k === "check" ? "! " : "✗ ") + d.label));
+    v.appendChild(el("span", null, d.why)); return v;
+  }
   function doLine(p) {
     var tm = timingFor(p);
     return tm.action === "now" ? "Bet now, check the price first" : tm.action === "wait" ? "Wait, check about 1 h before kick-off" : tm.action === "skip" ? "Skip, or small stake only" : "Check the price carefully first";
@@ -1314,7 +1342,7 @@ input, select, textarea { color: var(--ink); }
   var EV_TIER = { safer: "50% or better", mid: "30% to 50%", long: "under 30%" };
   var EV_EDGE = { none: "no price edge", tiny: "an edge of up to 1%", small: "an edge of 1% to 3%", value: "an edge of 3% to 6%", big: "an edge of 6% to 12%", huge: "an edge over 12%" };
   function evidBox(p) {
-    var s = p.pick, key = s.market === "totals" ? "goals" : s.market ? null : "h2h"; if (!key) return null;
+    var s = p.pick, key = p.group !== "Football" ? null : s.market === "totals" ? "goals" : s.market ? null : "h2h"; if (!key) return null;
     var tier = s.fair >= 0.5 ? "safer" : s.fair >= 0.3 ? "mid" : "long", c = EVID[key + "|" + tier + "|" + evidBucket(s.ev)];
     if (!c || c.n < 100) return null;
     function sp(x) { return (x >= 0 ? "+" : "") + (x * 100).toFixed(1) + "%"; }
@@ -1452,7 +1480,7 @@ input, select, textarea { color: var(--ink); }
   function currentRow(ev, bet) {
     var a = analyse(ev); if (!a) return null;
     if (!bet.mkt) { var sl = a.sels.filter(function (x) { return x.name === bet.sel; })[0]; return sl ? { fair: sl.fair, refund: 0 } : null; }
-    var rows = bet.mkt === "totals" ? analyseTotals(ev, " goals") : analyseExtras(ev).concat(derivedMarkets(a, ev));
+    var rows = bet.mkt === "totals" ? analyseTotals(ev, unitForKey(bet.key)) : analyseExtras(ev).concat(derivedMarkets(a, ev));
     var r = rows.filter(function (x) { return x.label === bet.sel; })[0];
     return r ? { fair: r.fair, refund: r.refund || 0 } : null;
   }
@@ -1774,7 +1802,7 @@ input, select, textarea { color: var(--ink); }
     return el("p", "legend", "Chance: how likely it is to win. Reward: profit as a % of your stake if it wins. Value: how much better than the market average the price is.");
   }
   function legend2() {
-    return el("p", "legend", "BetIQ score: 0 to 100, half price edge and half evidence. Tap a bet to see why. EV is how far the price beats the market average.");
+    return el("p", "legend", "PLACE: value, score 60 or more, bet-now timing, fresh prices. CONSIDER: value but weaker. WAIT: check nearer kick-off. SKIP: no edge. Tap a bet to see why.");
   }
   /* The BetIQ score, 0 to 100. Half is the price edge, half is the evidence behind it.
      The evidence weights are starting values chosen by judgement, to be tuned once the app has its own track record. */
@@ -1783,14 +1811,15 @@ input, select, textarea { color: var(--ink); }
     if (p.sc) return p.sc;
     var s = p.pick, why = [], edge = Math.round(Math.max(0, Math.min(1, s.ev / 0.08)) * 100), ev = 40;
     var nb = Math.min(p.nBooks || 0, 10); ev += nb * 2; why.push([nb >= 6 ? 1 : 0, (p.nBooks || 0) + " bookmakers compared"]);
-    var key = s.market === "totals" ? "goals" : s.market ? null : "h2h";
+    var key = p.group !== "Football" ? null : s.market === "totals" ? "goals" : s.market ? null : "h2h";
+    if (p.group !== "Football") why.push([0, "No past-results test for this sport yet: the history covers football only"]);
     var c = key ? EVID[key + "|" + (s.fair >= 0.5 ? "safer" : s.fair >= 0.3 ? "mid" : "long") + "|" + evidBucket(s.ev)] : null;
     if (c && c.n >= 100) {
       if (c.roi - c.ci > 0) { ev += 25; why.push([1, "Bets like this made money on past matches"]); }
       else if (c.roi > 0) { ev += 12; why.push([1, "Bets like this were slightly ahead on past matches"]); }
       else if (c.roi + c.ci < 0) { ev -= 15; why.push([-1, "Bets like this lost money on past matches"]); }
       else why.push([0, "Past results for bets like this were about level"]);
-    } else why.push([0, "Not enough past bets of this kind to judge"]);
+    } else if (key) why.push([0, "Not enough past bets of this kind to judge"]);
     var mv = moveInfo(p);
     if (mv) {
       if (mv.kind === "better") { ev += 10; why.push([1, "The market is moving towards this bet"]); }
@@ -1842,7 +1871,7 @@ input, select, textarea { color: var(--ink); }
     var pills = el("span", "cpills"); badgesFor(p, pills);
     pills.appendChild(el("span", "pillev " + (s.ev > 0 ? "pos" : "neg"), signed(s.ev) + " EV")); top.appendChild(pills); main.appendChild(top);
     main.appendChild(el("span", "cmatch", p.ev.h + " vs " + p.ev.a));
-    var dl = el("span", "cdo " + timingFor(p).action); dl.appendChild(el("b", null, "What to do: ")); dl.appendChild(document.createTextNode(doLine(p))); main.appendChild(dl);
+    main.appendChild(verdictStrip(p));
     var when = el("span", "cwhen", "Starts " + TF.format(new Date(p.time)));
     if (age !== null) when.appendChild(el("span", age > 3 * 3600000 ? "old" : null, " · " + ageText(p)));
     main.appendChild(when);
@@ -1861,7 +1890,7 @@ input, select, textarea { color: var(--ink); }
     main.addEventListener("click", function () { openSheet(p, main); });
     wrap.appendChild(main);
     var acts = el("div", "bacts"); acts.appendChild(actionsFor(p, st)); var rb = remindBtn(p); if (rb) acts.appendChild(rb);
-    if (liveWindow(p) && p.group === "Football") { var wl = el("button", "accbtn", "Watch this match live · about " + liveCostPerCheck() + " credit" + (liveCostPerCheck() === 1 ? "" : "s") + " a check"); wl.type = "button"; wl.addEventListener("click", function () { startLive(p); setTab("today"); }); acts.appendChild(wl); }
+    if (liveWindow(p)) { var wl = el("button", "accbtn", "Watch this match live · about " + liveCostPerCheck() + " credit" + (liveCostPerCheck() === 1 ? "" : "s") + " a check"); wl.type = "button"; wl.addEventListener("click", function () { startLive(p); setTab("today"); }); acts.appendChild(wl); }
     wrap.appendChild(acts);
     return wrap;
   }
@@ -1890,7 +1919,8 @@ input, select, textarea { color: var(--ink); }
       box.appendChild(nb);
     }
     var inPlay = [];
-    S.selected.forEach(function (k) { var c = S.cache[k]; if (!c) return; c.events.forEach(function (ev) { var t = Date.parse(ev.c); if (liveWindow({ time: t }) && isFootball(ev)) inPlay.push({ key: k, ev: ev, time: t, league: (S.sports.filter(function (x) { return x.key === k; })[0] || {}).title || k, group: "Football" }); }); });
+    S.selected.forEach(function (k) { var c = S.cache[k]; if (!c) return; var meta = S.sports.filter(function (x) { return x.key === k; })[0] || {}, grp = groupLabel(meta.group);
+      c.events.forEach(function (ev) { var t = Date.parse(ev.c); if (liveWindow({ time: t, group: grp })) inPlay.push({ key: k, ev: ev, time: t, league: meta.title || k, group: grp }); }); });
     if (inPlay.length && !liveActive()) {
       var lp = el("div", "plain"); lp.appendChild(el("b", null, "In play now"));
       inPlay.slice(0, 6).forEach(function (m) {
@@ -1901,10 +1931,10 @@ input, select, textarea { color: var(--ink); }
     var picks = d.ranked.length ? d.ranked.slice(0, 6) : d.likely;
     box.appendChild(el("h2", null, "Today's level board"));
     if (d.value.length) {
-      var nowN = 0, later = null;
-      d.ranked.forEach(function (p) { var a = timingFor(p).action; if (a === "now") nowN++; else if (a === "wait" && (!later || p.time < later)) later = p.time; });
-      box.appendChild(el("p", "subnote", (nowN ? nowN + (nowN === 1 ? " bet to place now, after checking the price. " : " bets to place now, after checking the prices. ") : "Nothing to place right now. ") +
-        (later ? "Next check: about an hour before " + TF.format(new Date(later)) + "." : "") + " Ranked by BetIQ score."));
+      var nowN = 0, cons = 0, later = null;
+      d.ranked.forEach(function (p) { var k = decision(p).k; if (k === "place") nowN++; else if (k === "consider") cons++; else if (k === "wait" && (!later || p.time < later)) later = p.time; });
+      box.appendChild(el("p", "subnote", (nowN ? nowN + (nowN === 1 ? " bet marked PLACE" : " bets marked PLACE") + (cons ? ", " + cons + " to consider. " : ". ") : cons ? cons + " to consider, none marked PLACE. " : "Nothing marked PLACE right now. ") +
+        (later ? "Next check: about an hour before " + TF.format(new Date(later)) + ". " : "") + "PLACE means value, a score of 60 or more, bet-now timing and fresh prices. Always check the price first."));
     }
     else {
       var steady = d.plans.filter(function (x) { return x.id === "steady"; })[0];
@@ -1958,7 +1988,7 @@ input, select, textarea { color: var(--ink); }
 
   function otherRows(p) {
     var foot = p.a.sels.some(function (x) { return x.name === "Draw"; });
-    var tot = analyseTotals(p.ev, foot ? " goals" : ""), ex = analyseExtras(p.ev), have = {};
+    var tot = analyseTotals(p.ev, unitForKey(p.key)), ex = analyseExtras(p.ev), have = {};
     ex.forEach(function (r) { have[r.label] = 1; });
     var der = (foot ? derivedMarkets(p.a, p.ev) : []).filter(function (r) { return !have[r.label]; });
     return tot.concat(ex).concat(der);
@@ -2027,7 +2057,8 @@ input, select, textarea { color: var(--ink); }
       var nm = el("span", "mkname", r.label);
       if (r.best && r.ev >= VALUE_MIN && r.ev <= VALUE_MAX && r.n >= 4) nm.appendChild(el("span", "badge value", "VALUE"));
       left.appendChild(nm);
-      var desc = r.desc || (r.side === "Over" ? "Wins if the match has " + (Math.floor(r.point) + 1) + " or more goals." : "Wins if the match has " + Math.floor(r.point) + " or fewer goals.");
+      var un2 = unitForKey(p.key).trim();
+      var desc = r.desc || (r.side === "Over" ? "Wins if the match has " + (Math.floor(r.point) + 1) + " or more " + un2 + "." : "Wins if the match has " + Math.floor(r.point) + " or fewer " + un2 + ".");
       left.appendChild(el("small", null, desc));
       left.appendChild(el("small", null, r.best
         ? "Best odds " + r.best.toFixed(2) + " with " + r.book + (r.ex ? " (after commission)" : "") + ", " + signed(r.ev) + " vs the market."
@@ -2079,6 +2110,7 @@ input, select, textarea { color: var(--ink); }
     ht.appendChild(el("div", "dsub", p.ev.h + " v " + p.ev.a + " · " + p.league + " · " + TF.format(new Date(p.time))));
     ht.appendChild(el("div", "dsub", likeWord(s.fair) + " · " + inN(s.fair)));
     head.appendChild(ht); root.appendChild(head);
+    root.appendChild(verdictStrip(p));
     var mv = moveInfo(p); if (mv) root.appendChild(el("div", "msg", "Price moved. " + mv.text));
     var nb2 = newsBox(p); if (nb2) root.appendChild(nb2);
     root.appendChild(trio(p)); root.appendChild(legend());
@@ -2102,7 +2134,7 @@ input, select, textarea { color: var(--ink); }
     tb.appendChild(el("p", null, tm.text));
     if (tm.move) tb.appendChild(el("p", null, tm.move));
     var rb2 = remindBtn(p); if (rb2) tb.appendChild(rb2);
-    if (liveWindow(p) && p.group === "Football" && !p.live) { var wl2 = el("button", "accbtn", "Watch this match live"); wl2.type = "button"; wl2.addEventListener("click", function () { closeSheet(); startLive(p); setTab("today"); }); tb.appendChild(wl2); }
+    if (liveWindow(p) && !p.live) { var wl2 = el("button", "accbtn", "Watch this match live"); wl2.type = "button"; wl2.addEventListener("click", function () { closeSheet(); startLive(p); setTab("today"); }); tb.appendChild(wl2); }
     root.appendChild(tb);
     var mkb = p.sub ? null : marketsBox(p); if (mkb) root.appendChild(mkb);
 
@@ -2804,14 +2836,14 @@ input, select, textarea { color: var(--ink); }
      Each check costs about 1 credit (2 with goals prices). The score is fetched every 5 minutes for 2 credits. There is a cap, and it stops at full time.
      Not tested against real in-play prices: the first trial will show how often the bookmakers update them. */
   var liveTimer = null, liveBusy = false;
-  function liveWindow(p) { var d = Date.now() - p.time; return d > -15 * 60000 && d < 130 * 60000; }
+  function liveWindow(p) { var d = Date.now() - p.time; return d > -15 * 60000 && d < liveMins(p.group) * 60000; }
   function liveActive() { return !!(S.live && !S.live.stopped); }
   function liveCostPerCheck() { return S.totals ? 2 : 1; }
   function startLive(p) {
     if (liveActive() && S.live.evId !== p.ev.id && !window.confirm("You are already watching " + S.live.h + " v " + S.live.a + ". Stop that and watch this match instead?")) return;
     var per = liveCostPerCheck(), est = Math.round(per * 60 + 2 * 12 / 1), cap = Math.min(S.live && S.live.cap || 40, S.remaining !== null ? Math.max(5, S.remaining - 25) : 40);
     if (!window.confirm("Watch " + p.ev.h + " v " + p.ev.a + " live?\n\nEvery check costs about " + per + (per === 1 ? " credit" : " credits") + ", the score 2 credits every 5 minutes. A whole match at one check a minute would use about " + est + " credits. It will stop by itself at " + cap + " credits or at full time, and only runs while this page is open.\n\nIn-play prices move in seconds and a standout price usually means a slow bookmaker. Bets may be delayed or refused. Try this in practice mode first.")) return;
-    S.live = { key: p.key, evId: p.ev.id, h: p.ev.h, a: p.ev.a, time: p.time, league: p.league, startedAt: Date.now(), checks: 0, spent: 0, cap: cap, every: 60, score: null, scoreAt: 0, last: null, prev: null, log: [], stopped: false, note: "" };
+    S.live = { key: p.key, evId: p.ev.id, h: p.ev.h, a: p.ev.a, time: p.time, league: p.league, group: p.group, startedAt: Date.now(), checks: 0, spent: 0, cap: cap, every: 60, score: null, scoreAt: 0, last: null, prev: null, log: [], stopped: false, note: "" };
     save(); renderLive(); liveCheck(); scheduleLive();
   }
   function stopLive(reason) {
@@ -2825,7 +2857,7 @@ input, select, textarea { color: var(--ink); }
   }
   function liveCheck() {
     var L = S.live; if (!liveActive() || liveBusy || busy) return Promise.resolve();
-    if (Date.now() - L.time > 130 * 60000) { stopLive("Stopped at full time."); return Promise.resolve(); }
+    if (Date.now() - L.time > liveMins(L.group) * 60000) { stopLive("Stopped at full time."); return Promise.resolve(); }
     if (L.spent >= L.cap) { stopLive("Stopped: credit cap of " + L.cap + " reached."); return Promise.resolve(); }
     if (S.remaining !== null && S.remaining < 25) { stopLive("Stopped: fewer than 25 credits left."); return Promise.resolve(); }
     liveBusy = true; var start = spentCounter, before = S.remaining;
@@ -2834,7 +2866,7 @@ input, select, textarea { color: var(--ink); }
     return api("/sports/" + L.key + "/events/" + L.evId + "/odds", p).then(function (evFull) {
       var ev = slim(evFull), a = analyse(ev), snap = { at: Date.now(), sels: [], nBooks: a ? a.nBooks : 0 };
       if (a) a.sels.forEach(function (x) { snap.sels.push({ name: x.name, fair: x.fair, best: x.best, bestBook: x.bestBook, bestEx: x.bestEx, bestComm: x.bestComm, bestLink: x.bestLink, ev: x.ev, prices: x.prices.slice(0, 8) }); });
-      analyseTotals(ev, " goals").forEach(function (r) { snap.sels.push({ name: r.label, fair: r.fair, best: r.best, bestBook: r.book, bestEx: r.ex, bestComm: r.comm, ev: r.ev, market: "totals", point: r.point, side: r.side, prices: r.prices.slice(0, 8) }); });
+      analyseTotals(ev, unitForKey(L.key)).forEach(function (r) { snap.sels.push({ name: r.label, fair: r.fair, best: r.best, bestBook: r.book, bestEx: r.ex, bestComm: r.comm, ev: r.ev, market: "totals", point: r.point, side: r.side, prices: r.prices.slice(0, 8) }); });
       L.prev = L.last; L.last = snap; L.checks++;
       if (!L.first) L.first = snap;
       L.log.push({ at: snap.at, best: snap.sels.map(function (x) { return [x.name, x.best]; }) }); if (L.log.length > 200) L.log.shift();
@@ -2861,7 +2893,7 @@ input, select, textarea { color: var(--ink); }
   function livePick(sel) {
     var L = S.live, ev = { id: L.evId, h: L.h, a: L.a, c: new Date(L.time).toISOString(), books: [], tb: [] };
     var pk = { name: sel.name, fair: sel.fair, fairOdds: 1 / sel.fair, best: sel.best, bestBook: sel.bestBook, bestEx: sel.bestEx, bestComm: sel.bestComm, bestLink: sel.bestLink || "", prices: sel.prices, ev: sel.ev, market: sel.market, point: sel.point, side: sel.side };
-    var p = { ev: ev, key: L.key, league: L.league, group: "Football", time: L.time, pick: pk, nBooks: L.last.nBooks, a: null, id: L.evId + "|live|" + sel.name, at: L.last.at, live: true };
+    var p = { ev: ev, key: L.key, league: L.league, group: L.group || "Football", time: L.time, pick: pk, nBooks: L.last.nBooks, a: null, id: L.evId + "|live|" + sel.name, at: L.last.at, live: true };
     pk.pid = p.id; p.isValue = sel.ev >= 0.05 && L.last.nBooks >= 4 && sel.best <= LONGSHOT; p.suspect = sel.ev > 0.2;
     return p;
   }
@@ -2915,7 +2947,7 @@ input, select, textarea { color: var(--ink); }
   renderAll();
   if (S.key) renderSettings();
   if (S.sb.session && S.sb.url) { if (sbArrived) setTab("more"); syncNow(true); }
-  if (S.live) { if (liveActive() && Date.now() - S.live.time > 130 * 60000) S.live.stopped = true; renderLive(); if (liveActive()) { scheduleLive(); liveCheck(); } }
+  if (S.live) { if (liveActive() && Date.now() - S.live.time > liveMins(S.live.group) * 60000) S.live.stopped = true; renderLive(); if (liveActive()) { scheduleLive(); liveCheck(); } }
   if (S.key && !S.tour && !S.booksSet && !S.bets.length && !S.pbets.length && !S.sb.session) openTour();
   if (S.key) {
     var boot = S.sports.length ? Promise.resolve() : fetchSports();
