@@ -1,6 +1,8 @@
 // BetIQ Lite helper: a tiny Cloudflare Worker.
 //  1. GET /fixtures  -> this week's free prices file from football-data.co.uk, passed on so the app can load it by itself.
 //                       Kept for 3 hours, so the source site is asked at most 8 times a day however often the app opens.
+//  1b. GET /results?div=E0 -> the latest results for one league from the same site (last 80 matches), so the app can settle
+//                       bets without spending credits. Also kept for 3 hours.
 //  2. Once a day (cron) -> if a new file has appeared in the last 24 hours and it contains value bets, send one phone
 //                       notification through ntfy.sh. Needs the NTFY_TOPIC secret; without it the cron does nothing.
 // It holds no betting account details and no API keys. Optional settings: NTFY_TOPIC (secret), BOOKS (comma list of the
@@ -9,6 +11,25 @@ const SOURCE = "https://www.football-data.co.uk/fixtures.csv";
 const BOOKS = { B365: "Bet365", BFD: "Betfred", BV: "BetVictor", BW: "Bwin", PP: "Paddy Power", SKB: "Sky Bet" };
 const CORS = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET", "cache-control": "public, max-age=600" };
 
+const DIVS = ["E0", "E1", "E2", "E3", "EC", "SC0", "SC1", "SC2", "SC3", "D1", "D2", "I1", "I2", "SP1", "SP2", "F1", "F2", "N1", "B1", "P1", "T1", "G1"];
+export function seasonCode(now) {       // the football season runs from August: Nov 2026 -> "2627", Mar 2027 -> "2627"
+  const d = new Date(now), y = d.getUTCFullYear() % 100, start = d.getUTCMonth() >= 7 ? y : y - 1;
+  return String(start).padStart(2, "0") + String((start + 1) % 100).padStart(2, "0");
+}
+async function getResults(div, ctx) {
+  const season = seasonCode(Date.now()), key = new Request("https://betiq-helper.invalid/results-v1/" + season + "/" + div);
+  const store = typeof caches !== "undefined" && caches.default ? caches.default : null;
+  if (store) { const hit = await store.match(key); if (hit) return hit; }
+  const r = await fetch("https://www.football-data.co.uk/mmz4281/" + season + "/" + div + ".csv", { headers: { "user-agent": "betiq-lite-helper (personal use)" } });
+  if (!r.ok) return new Response("source unavailable", { status: 502 });
+  const lines = (await r.text()).replace(/^\ufeff/, "").split(/\r?\n/).filter(Boolean), head = lines[0].split(",");
+  const keep = ["Div", "Date", "Time", "HomeTeam", "AwayTeam", "FTHG", "FTAG", "FTR"].map((n) => head.indexOf(n));
+  if (keep[3] < 0 || keep[5] < 0) return new Response("unexpected format", { status: 502 });
+  const slim = [lines[0]].concat(lines.slice(1).slice(-80)).map((l) => { const c = l.split(","); return keep.map((i) => (i < 0 ? "" : c[i] || "")).join(","); }).join("\n");
+  const out = new Response(slim, { headers: { "content-type": "text/csv; charset=utf-8", "cache-control": "public, max-age=10800" } });
+  if (store) { const put = store.put(key, out.clone()); if (ctx && ctx.waitUntil) ctx.waitUntil(put); else await put; }
+  return out;
+}
 async function getFile(ctx) {
   const key = new Request("https://betiq-helper.invalid/fixtures-v1");
   const store = typeof caches !== "undefined" && caches.default ? caches.default : null;
@@ -71,7 +92,12 @@ export default {
     const url = new URL(req.url);
     if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
     if (url.pathname === "/fixtures") { const r = await getFile(ctx); const h = new Headers(r.headers); Object.entries(CORS).forEach(([k, v]) => h.set(k, v)); return new Response(r.body, { status: r.status, headers: h }); }
-    if (url.pathname === "/") return new Response("BetIQ Lite helper is running. The app reads /fixtures.", { headers: { "content-type": "text/plain", ...CORS } });
+    if (url.pathname === "/results") {
+      const div = url.searchParams.get("div") || "";
+      if (!DIVS.includes(div)) return new Response("unknown league", { status: 400, headers: CORS });
+      const r = await getResults(div, ctx); const h = new Headers(r.headers); Object.entries(CORS).forEach(([k, v]) => h.set(k, v)); return new Response(r.body, { status: r.status, headers: h });
+    }
+    if (url.pathname === "/") return new Response("BetIQ Lite helper is running. The app reads /fixtures and /results (v2).", { headers: { "content-type": "text/plain", ...CORS } });
     return new Response("not found", { status: 404, headers: CORS });
   },
   async scheduled(event, env, ctx) {
