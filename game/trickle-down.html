@@ -29,7 +29,6 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 h1,h2,h3,p{margin:0}
 button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--demand);outline-offset:2px}
-.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 .up{color:var(--giro)} .down{color:var(--demand)}
 .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);font-weight:600}
 
@@ -62,22 +61,27 @@ button:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var
 /* paperwork */
 .card{background:var(--card);border:1px solid var(--rule);border-radius:2px;padding:14px;display:flex;flex-direction:column;gap:10px}
 .slip{border-top:2px dashed var(--rule)}
-.lines{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-family:var(--f-mono);font-size:14px;font-variant-numeric:tabular-nums}
+.lines{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-family:var(--f-mono);font-size:14px;font-variant-numeric:tabular-nums;margin:0}
 .lines .tot{border-top:1px solid var(--ink);padding-top:4px;font-weight:600}
 .lines dt,.lines dd{margin:0}.lines dd{text-align:right}
 .small{font-size:13px;color:var(--mute)}
 .letter{border-top:6px solid var(--demand)}
-.letter h2{font-size:18px}
+.chance{border-top:6px solid var(--giro)}
+.card h2{font-size:18px}
 .opts{display:flex;flex-direction:column;gap:8px}
 .opt{display:flex;justify-content:space-between;gap:12px;text-align:left;background:transparent;border:1px solid var(--rule);border-radius:2px;padding:10px 12px}
 .opt[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 4px 0 0 var(--ink);background:var(--paper)}
-.opt em{font-style:normal;font-family:var(--f-mono);font-size:13px;color:var(--mute);flex:none;text-align:right}
+.opt em{font-style:normal;font-family:var(--f-mono);font-size:13px;color:var(--mute);flex:none;text-align:right;max-width:55%}
 .row{display:flex;flex-direction:column;gap:6px}
-.row-h{display:flex;justify-content:space-between;gap:10px;font-weight:600}
+.row-h{font-weight:600}
 .seg{display:flex;gap:6px;flex-wrap:wrap}
 .seg button{flex:1 1 150px;min-width:0;background:transparent;border:1px solid var(--rule);border-radius:2px;padding:8px 10px;text-align:left;font-size:14px}
 .seg button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--card)}
 .seg small{display:block;font-family:var(--f-mono);font-size:12px;opacity:.8}
+details.card > summary{cursor:pointer;display:flex;justify-content:space-between;gap:12px;font-weight:600}
+details.card > summary span{font-family:var(--f-mono);font-weight:400;font-size:13px;color:var(--mute)}
+details.card[open] > summary{margin-bottom:10px}
+details.card .body{display:flex;flex-direction:column;gap:12px}
 
 .meters{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
 .meter{display:flex;flex-direction:column;gap:4px;min-width:0}
@@ -85,10 +89,26 @@ button:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var
 .bar{height:8px;background:var(--rule);border-radius:1px;overflow:hidden}
 .bar i{display:block;height:100%;background:var(--giro)}
 .bar i.low{background:var(--demand)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:12px;border:1px solid var(--rule);border-radius:999px;padding:2px 9px;color:var(--mute)}
+.chip.bad{border-color:var(--demand);color:var(--demand)} .chip.good{border-color:var(--giro);color:var(--giro)}
+
+/* the year, month by month */
+.months{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+@media (max-width:440px){ .months{grid-template-columns:repeat(4,1fr)} }
+.mo{background:var(--card);border:1px solid var(--rule);border-bottom:4px solid var(--giro);padding:6px 4px;text-align:center;min-width:0}
+.mo span{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.mo b{font:600 13px var(--f-mono);font-variant-numeric:tabular-nums}
+.mo.neg{border-bottom-color:var(--demand)} .mo.neg b{color:var(--demand)}
+.mo.ev{outline:2px solid var(--ink);outline-offset:-2px}
+.mo.bust{background:var(--demand);border-color:var(--demand)} .mo.bust span,.mo.bust b{color:#fff}
+.mo.void{opacity:.3;border-bottom-color:var(--rule)}
+.after{display:flex;flex-direction:column;gap:16px}
 
 .foot{position:sticky;bottom:0;background:var(--paper);padding-block:10px calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:12px;align-items:center;justify-content:space-between;border-top:2px solid var(--ink)}
+.foot .left{min-width:0}
 .foot .left b{display:block;font:600 22px var(--f-mono);font-variant-numeric:tabular-nums}
-.go{background:var(--ink);color:var(--card);border:0;border-radius:2px;padding:14px 16px;font-family:var(--f-head);font-size:19px;letter-spacing:.04em;text-transform:uppercase}
+.go{background:var(--ink);color:var(--card);border:0;border-radius:2px;padding:14px 16px;font-family:var(--f-head);font-size:19px;letter-spacing:.04em;text-transform:uppercase;flex:none}
 .go[disabled]{opacity:.4;cursor:not-allowed}
 .ghost{background:transparent;border:1px solid var(--ink);border-radius:2px;padding:10px 14px;font-weight:600}
 .btns{display:flex;gap:10px;flex-wrap:wrap}
@@ -96,11 +116,15 @@ button:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var
 .stamp{font-family:var(--f-head);font-size:clamp(40px,12vw,72px);line-height:.9;text-transform:uppercase;color:var(--demand);border:5px solid var(--demand);padding:10px 14px;transform:rotate(-2deg);align-self:flex-start;margin-top:28px;text-wrap:balance}
 .stamp.win{color:var(--giro);border-color:var(--giro)}
 .share{font-family:var(--f-mono);font-size:13px;background:var(--paper);border:1px dashed var(--rule);padding:10px;-webkit-user-select:all;user-select:all;white-space:pre-wrap}
-details{border-top:1px solid var(--rule);padding-top:10px}
-summary{cursor:pointer;font-weight:600}
-details ul{margin:8px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--mute)}
-details a{color:var(--ink)}
-@media (prefers-reduced-motion:no-preference){ .tick-in{animation:tick .35s ease-out} @keyframes tick{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}} }
+details.src{border-top:1px solid var(--rule);padding-top:10px}
+details.src summary{cursor:pointer;font-weight:600}
+details.src ul{margin:8px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--mute)}
+details.src a{color:var(--ink)}
+@media (prefers-reduced-motion:no-preference){
+  .tick-in{animation:tick .35s ease-out} @keyframes tick{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .mo{animation:pop .28s both;animation-delay:calc(var(--i) * 130ms)} @keyframes pop{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:none}}
+  .after{animation:tick .4s both;animation-delay:1.75s}
+}
 </style>
 
 <div id="app"></div>
@@ -148,13 +172,15 @@ const Y0 = 2008, YN = Y0 + DATA.pay.length - 1, YEND = 2040;
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const $ = id => document.getElementById(id);
 const money = n => (n < 0 ? '−' : '') + '£' + Math.abs(Math.round(n)).toLocaleString('en-GB');
-const big = n => n >= 1e6 ? '£' + (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + 'm' : money(n);
+const signed = n => (n < 0 ? '−' : '+') + '£' + Math.abs(Math.round(n)).toLocaleString('en-GB');
+const big = n => Math.abs(n) >= 1e6 ? (n < 0 ? '−' : '') + '£' + (Math.abs(n) / 1e6).toFixed(Math.abs(n) >= 1e7 ? 0 : 1) + 'm' : money(n);
 const pct = n => (n >= 0 ? '+' : '−') + Math.abs(n * 100).toFixed(1) + '%';
+const pm = n => (n > 0 ? '+' : '−') + Math.abs(n);
 
-// A series value for any year. After the last real year, each series carries on at its own 2008-to-latest average growth rate.
+// A series value for any year. After the last real year, each series carries on at its own average growth rate.
 function v(key, y){
-  const s = DATA[key], n = s.length - 1;
-  let last = n, first = 0; while (s[last] == null) last--; while (s[first] == null) first++;
+  const s = DATA[key];
+  let last = s.length - 1, first = 0; while (s[last] == null) last--; while (s[first] == null) first++;
   if (y - Y0 <= last) return s[y - Y0];
   const g = Math.pow(s[last] / s[first], 1 / (last - first));
   return s[last] * Math.pow(g, y - Y0 - last);
@@ -177,7 +203,7 @@ function taxOn(g, y){
 
 // ---- cast (all fictional) -------------------------------------------
 const CH = {
-  dee:  {name:'Dee', job:'Care worker', blurb:'Full time on the legal minimum wage. Called a hero roughly once a decade.', start:300, home:0,
+  dee:  {name:'Dee', job:'Care worker', blurb:'Full time on the legal minimum wage. Called a hero roughly once a decade. Hard.', start:300, home:0,
          gross:y => v('minWage', y) * 37.5 * 52},
   sam:  {name:'Sam', job:'Office administrator', blurb:'Paid exactly the national average wage. Statistically, doing fine.', start:1500, home:1,
          gross:y => v('pay', y)},
@@ -190,36 +216,36 @@ const CH = {
 const B = DATA.base;
 const CHOICES = [
   {k:'home', label:'Home', opts:[
-    {l:'Room in a shared house', rent:.38, en:.4, ess:.7, wb:-2},
-    {l:'One-bed flat', rent:.8, en:.7, ess:1, wb:0},
-    {l:'Two-bed house', rent:1.15, en:1, ess:1.1, wb:3}]},
+    {l:'Room in a shared house', s:'shared room', rent:.38, en:.4, ess:.7, wb:-2},
+    {l:'One-bed flat', s:'one-bed flat', rent:.8, en:.7, ess:1, wb:0},
+    {l:'Two-bed house', s:'two-bed house', rent:1.15, en:1, ess:1.1, wb:3}]},
   {k:'heat', label:'Heating', opts:[
-    {l:'Off. Wear the coat', f:.55, wb:-8},
-    {l:'An hour, morning and night', f:.8, wb:-1},
-    {l:'Actually warm', f:1, wb:2}]},
+    {l:'Off. Wear the coat', s:'heating off', f:.55, wb:-8},
+    {l:'An hour, morning and night', s:'heating rationed', f:.8, wb:-1},
+    {l:'Actually warm', s:'warm', f:1, wb:2}]},
   {k:'food', label:'Food', opts:[
-    {l:'Yellow stickers and beans', f:.7, wb:-5},
-    {l:'A normal shop', f:1, wb:0},
-    {l:'Nice things sometimes', f:1.3, wb:3}]},
+    {l:'Yellow stickers and beans', s:'beans', f:.7, wb:-5},
+    {l:'A normal shop', s:'normal shop', f:1, wb:0},
+    {l:'Nice things sometimes', s:'nice food', f:1.3, wb:3}]},
   {k:'travel', label:'Getting about', opts:[
-    {l:'Walk and bus', c:B.bus, wb:-1},
-    {l:'Run a car', c:B.car, wb:2}]},
+    {l:'Walk and bus', s:'bus', c:B.bus, bus:true, wb:-1},
+    {l:'Run a car', s:'car', c:B.car, wb:2}]},
   {k:'life', label:'A life', opts:[
-    {l:'Nothing. Stay in', c:0, wb:-8},
-    {l:'A pint and a takeaway now and then', c:B.social, wb:2},
-    {l:'A proper holiday too', c:B.holiday, wb:6}]}
+    {l:'Nothing. Stay in', s:'no social life', c:0, wb:-8},
+    {l:'A pint and a takeaway now and then', s:'the odd pint', c:B.social, wb:2},
+    {l:'A proper holiday too', s:'a holiday', c:B.holiday, wb:6}]}
 ];
 const RICH_CHOICES = [
   {k:'home', label:'Homes', opts:[
-    {l:'Just the Mayfair townhouse', c:12000, wb:0},
-    {l:'Add the Cotswolds estate', c:30000, wb:3},
-    {l:'Add the yacht, Trickle Down II', c:70000, wb:6}]},
+    {l:'Just the Mayfair townhouse', s:'one house', c:12000, wb:0},
+    {l:'Add the Cotswolds estate', s:'two houses', c:30000, wb:3},
+    {l:'Add the yacht, Trickle Down II', s:'the yacht', c:70000, wb:6}]},
   {k:'tax', label:'Tax affairs', opts:[
-    {l:'Pay it all, like staff do', c:0, cut:0, wb:-2},
-    {l:'A tasteful offshore "arrangement"', c:9000, cut:.4, wb:3}]},
+    {l:'Pay it all, like staff do', s:'paying tax', c:0, cut:0, wb:-2},
+    {l:'A tasteful offshore "arrangement"', s:'offshore', c:9000, cut:.4, wb:3}]},
   {k:'give', label:'Giving back', opts:[
-    {l:'Thoughts and prayers', c:0, wb:0},
-    {l:'A gala with your name on it', c:4000, wb:4}]}
+    {l:'Thoughts and prayers', s:'thoughts and prayers', c:0, wb:0},
+    {l:'A gala with your name on it', s:'a gala', c:4000, wb:4}]}
 ];
 
 const EVENTS = [
@@ -238,7 +264,7 @@ const EVENTS = [
   {t:'Your phone has given up', from:'A black screen', body:'Your shifts, your bank and your bus tickets all live in it.',
    opts:[{l:'New contract', cost:190},{l:'Second-hand with a cracked corner', cost:60, wb:-2}]},
   {t:'Pay review', from:'Head office', body:'In recognition of a record year, the company is delighted to offer you a pizza party.',
-   opts:[{l:'Eat the pizza', wb:-3},{l:'Ask for an actual raise', luck:{p:.4, pay:1.03, win:'They gave you 3%. Do not tell the others.', lose:'"Now is not the right time." It is never the right time.', loseWb:-5}}]},
+   opts:[{l:'Eat the pizza', wb:-3},{l:'Ask for an actual raise', luck:{p:.4, pay:1.03, win:'You asked for a raise and got 3%. Do not tell the others.', lose:'You asked for a raise. "Now is not the right time." It is never the right time.', loseWb:-5}}]},
   {t:'Overtime is available', from:'Your manager', body:'Every weekend until further notice. Entirely voluntary. Rota attached.',
    opts:[{l:'Take it', gain:900, wb:-8},{l:'Keep your weekends'}]},
   {t:'Deposit deductions', from:'LettItRot Lettings', body:'£400 has been kept for "wear" on a carpet that predates decimal currency.',
@@ -262,7 +288,7 @@ const EVENTS = [
 ];
 const RICH_EVENTS = [
   {t:'Shareholders query your bonus', from:'The remuneration committee (your friends)', body:'A few small investors feel 190 times the average worker is "a lot".',
-   opts:[{l:'Commission a report into it', gain:0, wb:1},{l:'Award yourself a retention bonus', gain:900000, wb:3}]},
+   opts:[{l:'Commission a report into it', wb:1},{l:'Award yourself a retention bonus', gain:900000, wb:3}]},
   {t:'Efficiency drive', from:'Strategy consultants', body:'Removing 600 jobs would delight the markets.',
    opts:[{l:'Do it by email', gain:1200000, wb:1},{l:'Do it by email, with a sad emoji', gain:1200000, wb:2}]},
   {t:'A call from the Minister', from:'Rt Hon Rupert Tightbelt', body:'He wonders whether you would like to advise on living standards.',
@@ -271,6 +297,30 @@ const RICH_EVENTS = [
    opts:[{l:'Take the dividend', gain:700000, wb:2},{l:'Take it in shares', gain:800000, wb:2}]},
   {t:'Staff ask for a pay rise', from:'Human Resources', body:'They mention something called "rent".',
    opts:[{l:'Send a pizza', cost:400, wb:1},{l:'Send a motivational email', wb:2}]}
+];
+
+// Chances to get ahead. Effects last for the rest of the game and start the following year.
+const OPPS = [
+  {t:'Night school', from:'Northfield College', body:'A Level 3 diploma. Two evenings a week for a year, after work, in a portable cabin.',
+   l:'Enrol', cost:450, wb:-6, eff:{pay:1.06}, perk:'Qualified'},
+  {t:'Someone needs a sofa', from:'A friend of a friend', body:'They will pay a share of the rent. They also own a drum kit.',
+   l:'Take a lodger', eff:{rent:.8, drift:-1}, perk:'Lodger on the sofa bed'},
+  {t:'Join the union', from:'The rep, by the kettle', body:'Subs every month. In return, pay talks that involve more than pizza.',
+   l:'Sign up', eff:{pay:1.03, fixed:12}, perk:'Union member'},
+  {t:'A recruiter calls', from:'An unknown number', body:'The rival firm is hiring. It might pay 8% more. It might also be "last in, first out".',
+   l:'Jump ship', luck:{p:.6, eff:{pay:1.08}, perk:'Better-paid job', win:'The new job pays 8% more.', lose:'Last in, first out. Six weeks without pay between jobs.', loseCost:900, loseWb:-4}},
+  {t:'A cheaper town', from:'A lettings advert', body:'Rents are 15% lower two counties away. So is everyone you know.',
+   l:'Move away', cost:900, wb:-8, eff:{rent:.85}, perk:'Moved somewhere cheaper'},
+  {t:'A bike in a shed', from:'Your neighbour', body:'Three gears, one of which works. Yours for cash.',
+   l:'Buy the bike', cost:150, wb:2, eff:{travel:.4}, perk:'Cycles everywhere'},
+  {t:'Draught-proofing', from:'A hardware shop leaflet', body:'Foam strip, thick curtains and a sausage dog for the door.',
+   l:'Do the lot', cost:90, eff:{energy:.9}, perk:'Draught-proofed'},
+  {t:'Team leader', from:'Your manager', body:'More responsibility, a lanyard, and 5%. The responsibility is the main part.',
+   l:'Accept', eff:{pay:1.05, drift:-1}, perk:'Team leader'},
+  {t:'Sunday cooking club', from:'The neighbours’ group chat', body:'Four households, one enormous pot, shared in tubs.',
+   l:'Join in', wb:2, eff:{food:.9}, perk:'Cooking club'},
+  {t:'Loyalty Saver account', from:'Northern Crock bank', body:'Earn 2% a year on anything you manage to keep. Terms apply. Then change.',
+   l:'Open it', eff:{isa:1}, perk:'Savings earn 2%'}
 ];
 
 const HEADLINES = {
@@ -325,8 +375,10 @@ try { Object.assign(meta, JSON.parse(localStorage.getItem('trickle-down') || '{}
 const persist = () => { try { localStorage.setItem('trickle-down', JSON.stringify(meta)); } catch (e) {} };
 let S = null, tickI = 0, tickTimer = 0;
 
-const choicesFor = () => CH[S.ck].rich ? RICH_CHOICES : CHOICES;
-const eventsFor = () => CH[S.ck].rich ? RICH_EVENTS : EVENTS;
+const rich = () => !!CH[S.ck].rich;
+const startYear = () => CH[S.ck].y0 || Y0;
+const choicesFor = () => rich() ? RICH_CHOICES : CHOICES;
+const eventsFor = () => rich() ? RICH_EVENTS : EVENTS;
 const evOpt = () => S.ev.pick == null ? null : eventsFor()[S.ev.id].opts[S.ev.pick];
 
 function deal(){
@@ -335,83 +387,128 @@ function deal(){
   let id; do { id = Math.floor(Math.random() * pool.length); } while (S.used.includes(id));
   S.used.push(id);
   S.ev = {id, pick:null, month:1 + Math.floor(Math.random() * 12)};
+  S.opp = null;
+  if (!rich() && (S.year - startYear()) % 2 === 1 && S.oppUsed.length < OPPS.length){
+    let o; do { o = Math.floor(Math.random() * OPPS.length); } while (S.oppUsed.includes(o));
+    S.oppUsed.push(o); S.opp = {id:o, pick:null};
+  }
 }
 function newGame(ck){
   const ch = CH[ck];
-  S = {ck, year:ch.y0 || Y0, bal:ch.start, wb:70, picks: ch.rich ? {home:0, tax:0, give:0} : {home:ch.home, heat:1, food:1, travel:0, life:1},
-       livedHome: ch.rich ? 0 : ch.home, rentMult:1, payMult:1, owed:0, used:[], ev:null, note:'', earned:0, giles:0, gYears:0, over:null};
+  S = {ck, phase:'plan', year:ch.y0 || Y0, bal:ch.start, wb:70,
+       picks: ch.rich ? {home:0, tax:0, give:0} : {home:ch.home, heat:1, food:1, travel:0, life:1},
+       livedHome: ch.rich ? 0 : ch.home, m:{pay:1, rent:1, energy:1, food:1, travel:1, fixed:0, drift:0, isa:0}, perks:[],
+       owed:0, used:[], oppUsed:[], ev:null, opp:null, open:true, review:null, earned:0, giles:0, gYears:0, over:null};
   deal(); tickI = 0; render(); scrollTo(0, 0);
 }
-
-function optCost(c, o, y){                 // the headline monthly cost shown on a choice button
-  const ci = idx('cpi', y);
-  if (o.rent != null) return v('rent', y) * o.rent * S.rentMult * ((evOpt() || {}).rent || 1);
-  if (c.k === 'heat') return v('energy', y) / 12 * CHOICES[0].opts[S.picks.home].en * o.f;
-  if (c.k === 'food') return B.food * idx('food', y) * o.f;
-  return (o.c || 0) * ci;
+function applyEff(e){
+  for (const k of ['pay', 'rent', 'energy', 'food', 'travel']) if (e[k]) S.m[k] *= e[k];
+  if (e.fixed) S.m.fixed += e.fixed; if (e.drift) S.m.drift += e.drift; if (e.isa) S.m.isa = 1;
 }
-function calc(){
-  const y = S.year, ch = CH[S.ck], ci = idx('cpi', y), eo = evOpt() || {};
-  const gross = ch.gross(y) * S.payMult;
+function effBits(e){
+  const b = [];
+  if (e.pay) b.push('pay ' + pct(e.pay - 1)); if (e.rent) b.push('rent ' + pct(e.rent - 1));
+  if (e.energy) b.push('energy ' + pct(e.energy - 1)); if (e.food) b.push('food ' + pct(e.food - 1));
+  if (e.travel) b.push('bus fares ' + pct(e.travel - 1)); if (e.fixed) b.push(money(e.fixed) + ' a month');
+  if (e.drift) b.push('wellbeing ' + pm(e.drift) + ' every year'); if (e.isa) b.push('2% on savings');
+  return b;
+}
+
+function optCost(c, o, y, withEv){         // the monthly cost of one choice
+  const ci = idx('cpi', y);
+  if (o.rent != null) return v('rent', y) * o.rent * S.m.rent * ((withEv && (evOpt() || {}).rent) || 1);
+  if (c.k === 'heat') return v('energy', y) / 12 * CHOICES[0].opts[S.picks.home].en * o.f * S.m.energy;
+  if (c.k === 'food') return B.food * idx('food', y) * o.f * S.m.food;
+  return (o.c || 0) * ci * (o.bus ? S.m.travel : 1);
+}
+function calc(y, withEv){
+  if (y == null){ y = S.year; withEv = true; }
+  const ch = CH[S.ck], ci = idx('cpi', y), eo = (withEv && evOpt()) || {};
+  const gross = ch.gross(y) * S.m.pay;
   let tx = taxOn(gross, y);
-  const rows = [];
+  const rows = [], parts = [];
   for (const c of choicesFor()){
     const o = c.opts[S.picks[c.k]];
-    rows.push({k:c.k, label:c.label, amt:optCost(c, o, y)});
+    rows.push({k:c.k, label:c.label, amt:optCost(c, o, y, withEv)});
     if (o.cut) tx *= 1 - o.cut;
+    if (o.wb) parts.push({l:o.s, n:o.wb});
   }
   if (!ch.rich) rows.push({k:'ess', label:'Council tax, water, phone, the rest', amt:B.essentials * ci * CHOICES[0].opts[S.picks.home].ess});
-  if (S.bal < 0) rows.push({k:'debt', label:'Interest on what you owe', amt:-S.bal * .25 / 12});
-  const net = (gross - tx) / 12, out = rows.reduce((a, r) => a + r.amt, 0);
-  let wb = (S.bal < 0 ? -4 : 0) + (eo.wb || 0);
-  for (const c of choicesFor()) wb += c.opts[S.picks[c.k]].wb;
-  return {gross, tx, net, rows, out, left:net - out, limit:net * 3, wb, ci};
+  if (S.m.fixed) rows.push({k:'fixed', label:'Union subs', amt:S.m.fixed * ci});
+  if (withEv && S.bal < 0){ rows.push({k:'debt', label:'Interest on what you owe', amt:-S.bal * .25 / 12}); parts.push({l:'owing money', n:-4}); }
+  if (S.m.drift) parts.push({l:'no peace', n:S.m.drift});
+  if (eo.wb) parts.push({l:eventsFor()[S.ev.id].t.toLowerCase(), n:eo.wb});
+  if (withEv && S.opp && S.opp.pick === 0 && OPPS[S.opp.id].wb) parts.push({l:OPPS[S.opp.id].t.toLowerCase(), n:OPPS[S.opp.id].wb});
+  const sick = !ch.rich && S.wb < 30;
+  const net = (gross - tx) / 12 * (sick ? .96 : 1), out = rows.reduce((a, r) => a + r.amt, 0);
+  return {gross, tx, net, rows, out, left:net - out, limit:net * 3, parts, wb:parts.reduce((a, p) => a + p.n, 0), ci, sick};
+}
+// One-off money at the start of the year, and the letter's cost in its month.
+function oneOffs(c){
+  const ch = CH[S.ck], eo = evOpt() || {}, k = ch.rich ? 1 : c.ci;
+  let m1 = S.owed + (!ch.rich && S.picks.home !== S.livedHome ? 350 * c.ci : 0);
+  if (S.opp && S.opp.pick === 0) m1 += (OPPS[S.opp.id].cost || 0) * c.ci;
+  return {m1, ev:((eo.cost || 0) - (eo.gain || 0)) * k};
+}
+function simulate(c, m1, ev){
+  let bal = S.bal - m1, bust = 0; const months = [];
+  for (let m = 1; m <= 12; m++){
+    bal += c.left; if (m === S.ev.month) bal -= ev;
+    if (!rich() && bal < -c.limit){ bust = m; months.push(-c.limit); break; }
+    months.push(bal);
+  }
+  return {months, bust, bal};
 }
 
 function liveYear(){
-  const c = calc(), ch = CH[S.ck], eo = evOpt(), y = S.year;
-  let one = ((eo.cost || 0) - (eo.gain || 0)) * (ch.rich ? 1 : c.ci), wb = c.wb, note = '';
+  const c = calc(), ch = CH[S.ck], eo = evOpt(), y = S.year, one = oneOffs(c), notes = [];
+  let wb = c.wb; const parts = c.parts.slice();
   if (eo.luck){
-    if (Math.random() < eo.luck.p){ S.payMult *= eo.luck.pay; note = eo.luck.win; }
-    else { wb += eo.luck.loseWb; note = eo.luck.lose; }
+    if (Math.random() < eo.luck.p){ S.m.pay *= eo.luck.pay; notes.push(eo.luck.win); }
+    else { wb += eo.luck.loseWb; parts.push({l:'turned down', n:eo.luck.loseWb}); notes.push(eo.luck.lose); }
   }
-  const moved = !ch.rich && S.picks.home !== S.livedHome;
-  let bal = S.bal - (moved ? 350 * c.ci : 0) - S.owed, bust = 0;
+  const op = S.opp && S.opp.pick === 0 ? OPPS[S.opp.id] : null;
+  if (op){
+    if (op.luck){
+      if (Math.random() < op.luck.p){ applyEff(op.luck.eff); S.perks.push(op.luck.perk); notes.push(op.luck.win); }
+      else { one.m1 += op.luck.loseCost * c.ci; wb += op.luck.loseWb; parts.push({l:'the job fell through', n:op.luck.loseWb}); notes.push(op.luck.lose); }
+    } else { applyEff(op.eff); S.perks.push(op.perk); notes.push(op.perk + ': ' + effBits(op.eff).join(', ') + ' from now on.'); }
+  }
   S.owed = eo.later ? eo.later * c.ci : 0;
-  for (let m = 1; m <= 12; m++){
-    bal += c.left; if (m === S.ev.month) bal -= one;
-    if (!ch.rich && bal < -c.limit){ bust = m; break; }
-  }
-  if (eo.rent) S.rentMult *= eo.rent;
+  const sim = simulate(c, one.m1, one.ev), from = S.bal, wbFrom = S.wb;
+  if (eo.rent) S.m.rent *= eo.rent;
   S.livedHome = S.picks.home;
   S.earned += c.net * 12; S.giles += v('ceo', y) || 0; if (v('ceo', y)) S.gYears++;
-  const diff = bal - S.bal;
   S.wb = Math.max(ch.rich ? 50 : 0, Math.min(100, S.wb + wb));
-  if (bust){
+  let bal = sim.bal;
+  if (!sim.bust && S.m.isa && bal > 0){ notes.push('Loyalty Saver interest: ' + money(bal * .02) + '.'); bal *= 1.02; }
+  if (ch.rich && !sim.bust) bal *= v('house', y + 1) / v('house', y);
+  if (sim.bust){
     const worst = c.rows.slice().sort((a, b) => b.amt - a.amt)[0];
-    S.over = {kind:'bust', month:bust, cause: bust === S.ev.month && one > 0 ? eventsFor()[S.ev.id].t.toLowerCase() : worst.label.toLowerCase() + ' (' + money(worst.amt) + ' a month)'};
-  } else if (S.wb <= 0){
-    S.over = {kind:'burnout', month:12, cause:'years of going without'};
-  } else if (y >= YEND){
-    S.over = {kind:'survived'};
-  }
-  S.bal = bust ? -c.limit : (ch.rich ? bal * v('house', y + 1) / v('house', y) : bal);
+    S.over = {kind:'bust', month:sim.bust, cause: sim.bust === S.ev.month && one.ev > 0 ? eventsFor()[S.ev.id].t.toLowerCase() : worst.label.toLowerCase() + ' (' + money(worst.amt) + ' a month)'};
+  } else if (S.wb <= 0) S.over = {kind:'burnout', month:12, cause:'years of going without'};
+  else if (y >= YEND) S.over = {kind:'survived'};
+  S.bal = sim.bust ? -c.limit : bal;
+  S.review = {year:y, from, to:S.bal, months:sim.months, bust:sim.bust, evMonth:S.ev.month, evTitle:eventsFor()[S.ev.id].t, evCost:one.ev, m1:one.m1,
+              wbFrom, wbTo:S.wb, parts, notes, left:c.left};
   if (S.over){
     meta.unlocked = true;
-    const yrs = y - (ch.y0 || Y0) + (S.over.kind === 'survived' ? 1 : 0);
+    const yrs = y - startYear() + (S.over.kind === 'survived' ? 1 : 0);
     meta.best[S.ck] = Math.max(meta.best[S.ck] || 0, yrs); persist();
-  } else {
-    S.note = y + ': ' + (diff >= 0 ? 'you put away ' + money(diff) : 'you went ' + money(-diff) + ' backwards') + '. ' + note;
-    S.year++; deal(); tickI = 0;
   }
+  if (c.left >= 0) S.open = false;
+  S.phase = 'review'; render(); scrollTo(0, 0);
+}
+function next(){
+  if (S.over) S.phase = 'end';
+  else { S.year++; deal(); S.phase = 'plan'; tickI = 0; }
   render(); scrollTo(0, 0);
 }
 
 // ---- screens ---------------------------------------------------------
 function tickerLines(){
   const y = S.year, ch = CH[S.ck], c = calc(), lines = HEADLINES[y].slice();
-  const real = idx('pay', y) / idx('cpi', y) - 1;
-  if (y > Y0) lines.push('Average pay, after inflation: ' + pct(real) + ' since 2008.');
+  if (y > Y0) lines.push('Average pay, after inflation: ' + pct(idx('pay', y) / idx('cpi', y) - 1) + ' since 2008.');
   if (!ch.rich && v('ceo', y)){
     const d = new Date(y, 0, 1 + Math.floor(365 / (v('ceo', y) / c.gross)));
     lines.push('The median FTSE 100 boss made ' + big(v('ceo', y)) + '. That covered your whole year by ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + '.');
@@ -424,10 +521,15 @@ function tickerLines(){
 }
 function sourcesHTML(){
   const li = DATA.sources.map(s => '<li><a href="' + s.url + '" target="_blank" rel="noopener">' + s.title + '</a>. ' + s.note + '</li>').join('');
-  return '<details><summary>Where the numbers come from</summary><ul>' + li +
+  return '<details class="src"><summary>Where the numbers come from</summary><ul>' + li +
     '<li>People, companies and headlines are invented. Pay, prices, rents, bills and tax rules for ' + Y0 + ' to ' + YN + ' come from the sources above; each note says how closely it was checked.</li>' +
     '<li>Years after ' + YN + ' are a projection, not a forecast: each series simply carries on at its own average rate since ' + Y0 + '.</li>' +
-    '<li>Simplified: one adult, no children, no benefits or pension, renting privately. Housing sizes, lifestyle costs, the caf\u00e9\u2019s accounts, the boss\u2019s spending and one-off events are illustrative, not data.</li></ul></details>';
+    '<li>Simplified: one adult, no children, no benefits or pension, renting privately. Housing sizes, lifestyle costs, the café’s accounts, the boss’s spending, the letters and the opportunities are illustrative, not data.</li></ul></details>';
+}
+function mastHTML(sub){
+  const y = S.year, ch = CH[S.ck];
+  return '<div class="mast"><div class="mast-row"><div><div class="year">' + y + '</div>' + (y > YN ? '<span class="proj">Projection</span>' : '') + '</div>' +
+    '<div class="who"><b>' + ch.name + '</b><span>' + ch.job + '</span></div></div>' + sub + '</div>';
 }
 function renderStart(){
   const cards = Object.keys(CH).map(k => {
@@ -438,88 +540,141 @@ function renderStart(){
   }).join('');
   $('app').innerHTML =
     '<h1 class="title">Trickle <i>Down</i></h1>' +
-    '<p class="lede">It is 2008. You have a job, a landlord and a boss who earns your year\u2019s pay in a few days. Make it to 2040. The wages, prices, rents and tax rules come from published UK figures. The people are invented.</p>' +
+    '<p class="lede">It is 2008. You have a job, a landlord and a boss who earns your year’s pay in a few days. Make it to 2040. The wages, prices, rents and tax rules come from published UK figures. The people are invented.</p>' +
+    '<p class="small">Each year: answer your post, set your budget, then watch the twelve months play out. You are finished if the credit runs out or your wellbeing hits zero.</p>' +
     '<p class="eyebrow">Choose who to be</p><div class="chars">' + cards + '</div>' + sourcesHTML();
   for (const k of Object.keys(CH)) $('pick-' + k).addEventListener('click', () => newGame(k));
 }
-function renderGame(){
+
+function changesHTML(){                     // what moved since last year, before the player touches anything
+  const y = S.year; if (rich() || y <= startYear()) return '';
+  const a = calc(y, false), b = calc(y - 1, false), d = k => a.rows.filter(r => k.includes(r.k)).reduce((s, r) => s + r.amt, 0) - b.rows.filter(r => k.includes(r.k)).reduce((s, r) => s + r.amt, 0);
+  const pay = a.net - b.net, lines = [['Rent', d(['home'])], ['Gas and electricity', d(['heat'])], ['Food', d(['food'])], ['Everything else', d(['travel', 'life', 'ess', 'fixed'])]];
+  const net = pay - lines.reduce((s, l) => s + l[1], 0);
+  return '<section class="card"><p class="eyebrow">Since last year, each month</p><dl class="lines">' +
+    '<dt>Your take-home pay</dt><dd class="' + (pay >= 0 ? 'up' : 'down') + '">' + signed(pay) + '</dd>' +
+    lines.map(l => '<dt>' + l[0] + '</dt><dd class="' + (l[1] > 0 ? 'down' : 'up') + '">' + signed(l[1]) + '</dd>').join('') +
+    '<dt class="tot">Before you change a thing</dt><dd class="tot ' + (net >= 0 ? 'up' : 'down') + '">' + signed(net) + '</dd></dl>' +
+    '<p class="small">' + (net >= 0 ? 'A rare year: your pay rise beat your bills.' : 'Your pay rise has already been spent for you.') + '</p></section>';
+}
+function renderPlan(){
   const y = S.year, ch = CH[S.ck], c = calc(), ev = eventsFor()[S.ev.id], lines = tickerLines();
-  const prevG = y > (ch.y0 || Y0) ? ch.gross(y - 1) * S.payMult : 0;
+  const one = oneOffs(c), sim = simulate(c, one.m1, one.ev);
+  const prevG = y > startYear() ? ch.gross(y - 1) * S.m.pay : 0;
   const payCh = prevG ? c.gross / prevG - 1 : 0, priceCh = y > Y0 ? v('cpi', y) / v('cpi', y - 1) - 1 : 0;
-  const dep = v('house', y) * .1, lend = c.gross * 4.5;
-  let h = '<div class="mast"><div class="mast-row"><div><div class="year">' + y + '</div>' + (y > YN ? '<span class="proj">Projection</span>' : '') + '</div>' +
-    '<div class="who"><b>' + ch.name + '</b><span>' + ch.job + '</span></div></div>' +
-    '<div class="ticker"><b>LATEST</b><span id="tick" class="tick-in">' + lines[tickI % lines.length] + '</span></div></div>';
-  if (S.note) h += '<p class="small">' + S.note + '</p>';
+  const dep = v('house', y) * .1, lend = c.gross * 4.5, k = ch.rich ? 1 : c.ci;
+  const ready = S.ev.pick != null && (!S.opp || S.opp.pick != null);
+  let h = mastHTML('<div class="ticker"><b>LATEST</b><span id="tick" class="tick-in">' + lines[tickI % lines.length] + '</span></div>');
   h += '<div class="meters">' +
     '<div class="meter"><span class="eyebrow">' + (S.bal < 0 ? 'You owe' : 'In the bank') + '</span><b class="' + (S.bal < 0 ? 'down' : '') + '">' + big(Math.abs(S.bal)) + '</b>' +
       (ch.rich ? '' : '<span class="small">Credit runs out at ' + money(c.limit) + ' owed</span>') + '</div>' +
-    '<div class="meter"><span class="eyebrow">' + (ch.rich ? 'Smugness' : 'Wellbeing') + '</span><b>' + Math.round(S.wb) + '<span class="small"> ' + (c.wb >= 0 ? '+' : '−') + Math.abs(c.wb) + ' this year</span></b><div class="bar"><i class="' + (S.wb < 30 ? 'low' : '') + '" style="width:' + S.wb + '%"></i></div></div>' +
+    '<div class="meter"><span class="eyebrow">' + (ch.rich ? 'Smugness' : 'Wellbeing') + '</span><b>' + Math.round(S.wb) + '<span class="small"> ' + (c.wb >= 0 ? '+' : '−') + Math.abs(c.wb) + ' this year</span></b><div class="bar"><i class="' + (S.wb < 30 ? 'low' : '') + '" style="width:' + S.wb + '%"></i></div>' +
+      (c.sick ? '<span class="small down">Run down: you are off sick more, so pay is 4% lower.</span>' : '') + '</div>' +
     (ch.rich ? '' : '<div class="meter"><span class="eyebrow">Deposit on the average home</span><b>' + money(dep) + '</b><span class="small">You have ' + Math.max(0, Math.round(S.bal / dep * 100)) + '%. A bank would lend you ' + big(lend) + ' of the ' + big(v('house', y) * .9) + ' you would need.</span></div>') +
     '</div>';
+  if (S.perks.length) h += '<div class="chips">' + S.perks.map(p => '<span class="chip">' + p + '</span>').join('') + '</div>';
+  h += changesHTML();
   h += '<section class="card slip"><p class="eyebrow">Payslip ' + y + (S.ck === 'priya' ? ' (what the café leaves you)' : '') + '</p><dl class="lines">' +
-    '<dt>Gross for the year</dt><dd>' + money(c.gross) + '</dd><dt>Income tax and NI</dt><dd>' + money(-c.tx) + '</dd>' +
-    '<dt class="tot">Take-home each month</dt><dd class="tot">' + money(c.net) + '</dd></dl>' +
+    '<dt>Gross for the year</dt><dd>' + big(c.gross) + '</dd><dt>Income tax and NI</dt><dd>' + big(-c.tx) + '</dd>' +
+    '<dt class="tot">Take-home each month</dt><dd class="tot">' + big(c.net) + '</dd></dl>' +
     (prevG ? '<p class="small">Your pay: <b class="' + (payCh >= priceCh ? 'up' : 'down') + '">' + pct(payCh) + '</b> on last year. Prices: ' + pct(priceCh) + '.</p>' : '') + '</section>';
-  h += '<section class="card letter"><p class="eyebrow">From: ' + ev.from + '</p><h2>' + ev.t + '</h2><p>' + ev.body + '</p><div class="opts">' +
+  h += '<section class="card letter"><p class="eyebrow">Post from: ' + ev.from + '</p><h2>' + ev.t + '</h2><p>' + ev.body + '</p><div class="opts">' +
     ev.opts.map((o, i) => {
       const bits = [];
-      const k = ch.rich ? 1 : c.ci;
       if (o.cost) bits.push(money(-o.cost * k)); if (o.gain) bits.push('+' + big(o.gain * k));
       if (o.later) bits.push('repay ' + money(o.later * k) + ' next year');
-      if (o.rent) bits.push('rent ' + pct(o.rent - 1) + ' for good'); if (o.wb) bits.push((ch.rich ? 'smug ' : 'wellbeing ') + (o.wb > 0 ? '+' : '−') + Math.abs(o.wb)); if (o.luck) bits.push('a gamble');
+      if (o.rent) bits.push('rent ' + pct(o.rent - 1) + ' for good'); if (o.wb) bits.push((ch.rich ? 'smug ' : 'wellbeing ') + pm(o.wb)); if (o.luck) bits.push('a gamble');
       return '<button class="opt" id="ev-' + i + '" type="button" aria-pressed="' + (S.ev.pick === i) + '"><span>' + o.l + '</span><em>' + (bits.join(', ') || 'no cost') + '</em></button>';
     }).join('') + '</div></section>';
-  h += '<section class="card"><p class="eyebrow">Your month</p>';
-  for (const cdef of choicesFor()){
-    h += '<div class="row"><div class="row-h"><span>' + cdef.label + '</span></div><div class="seg">' +
-      cdef.opts.map((o, i) => '<button id="c-' + cdef.k + '-' + i + '" type="button" aria-pressed="' + (S.picks[cdef.k] === i) + '">' + o.l +
-        '<small>' + money(optCost(cdef, o, y)) + (cdef.k === 'home' && !ch.rich && i !== S.livedHome ? ' + ' + money(350 * c.ci) + ' to move' : '') + '</small></button>').join('') + '</div></div>';
+  if (S.opp){
+    const o = OPPS[S.opp.id], bits = [];
+    if (o.cost) bits.push(money(-o.cost * c.ci)); if (o.wb) bits.push('wellbeing ' + pm(o.wb) + ' this year');
+    if (o.luck) bits.push('a gamble: ' + effBits(o.luck.eff).join(', ') + ' or ' + money(-o.luck.loseCost * c.ci)); else bits.push(effBits(o.eff).join(', ') + ' for good');
+    h += '<section class="card chance"><p class="eyebrow">A chance from: ' + o.from + '</p><h2>' + o.t + '</h2><p>' + o.body + '</p><div class="opts">' +
+      '<button class="opt" id="op-0" type="button" aria-pressed="' + (S.opp.pick === 0) + '"><span>' + o.l + '</span><em>' + bits.join(', ') + '</em></button>' +
+      '<button class="opt" id="op-1" type="button" aria-pressed="' + (S.opp.pick === 1) + '"><span>Not this year</span><em>no change</em></button></div></section>';
   }
-  h += '<dl class="lines">' + c.rows.filter(r => r.k === 'ess' || r.k === 'debt').map(r => '<dt>' + r.label + '</dt><dd>' + money(r.amt) + '</dd>').join('') +
-    '<dt class="tot">Going out each month</dt><dd class="tot">' + money(c.out) + '</dd></dl>' +
-    (ch.rich ? '' : '<p class="small">Official advice from the Department for Belt-Tightening: ' + TIPS[(y + S.ck.length) % TIPS.length] + '</p>') + '</section>';
-  h += '<div class="foot"><div class="left"><span class="eyebrow">Left each month</span><b class="' + (c.left < 0 ? 'down' : 'up') + '">' + big(c.left).replace('£', c.left < 0 ? '£' : '+£') + '</b></div>' +
-    '<button class="go" id="go" type="button"' + (S.ev.pick == null ? ' disabled' : '') + '>' + (S.ev.pick == null ? 'Answer the letter' : 'Live through ' + y) + '</button></div>';
+  const open = S.open || c.left < 0;
+  h += '<details class="card" id="budget"' + (open ? ' open' : '') + '><summary>Your budget<span>' + choicesFor().map(cd => cd.opts[S.picks[cd.k]].s).join(' · ') + '</span></summary><div class="body">';
+  for (const cdef of choicesFor()){
+    h += '<div class="row"><div class="row-h">' + cdef.label + '</div><div class="seg">' +
+      cdef.opts.map((o, i) => '<button id="c-' + cdef.k + '-' + i + '" type="button" aria-pressed="' + (S.picks[cdef.k] === i) + '">' + o.l +
+        '<small>' + money(optCost(cdef, o, y, true)) + (o.wb ? ', ' + (ch.rich ? 'smug ' : 'wellbeing ') + pm(o.wb) : '') + (cdef.k === 'home' && !ch.rich && i !== S.livedHome ? ', ' + money(350 * c.ci) + ' to move' : '') + '</small></button>').join('') + '</div></div>';
+  }
+  h += '<dl class="lines">' + c.rows.filter(r => ['ess', 'debt', 'fixed'].includes(r.k)).map(r => '<dt>' + r.label + '</dt><dd>' + money(r.amt) + '</dd>').join('') +
+    '<dt class="tot">Going out each month</dt><dd class="tot">' + big(c.out) + '</dd></dl>' +
+    (ch.rich ? '' : '<p class="small">Official advice from the Department for Belt-Tightening: ' + TIPS[(y + S.ck.length) % TIPS.length] + '</p>') + '</div></details>';
+  const warn = sim.bust ? '<span class="small down">Credit runs out in ' + MONTHS[sim.bust - 1] + '</span>' : (S.wb + c.wb <= 0 && !ch.rich ? '<span class="small down">You will burn out this year</span>' : '');
+  h += '<div class="foot"><div class="left"><span class="eyebrow">Left each month</span><b class="' + (c.left < 0 ? 'down' : 'up') + '">' + (c.left < 0 ? '' : '+') + big(c.left) + '</b>' + warn + '</div>' +
+    '<button class="go" id="go" type="button"' + (ready ? '' : ' disabled') + '>' + (ready ? 'Live through ' + y : 'Answer your post') + '</button></div>';
   $('app').innerHTML = h;
   ev.opts.forEach((o, i) => $('ev-' + i).addEventListener('click', () => { S.ev.pick = i; keepScroll(render); }));
-  for (const cdef of choicesFor()) cdef.opts.forEach((o, i) => $('c-' + cdef.k + '-' + i).addEventListener('click', () => { S.picks[cdef.k] = i; keepScroll(render); }));
+  if (S.opp) [0, 1].forEach(i => $('op-' + i).addEventListener('click', () => { S.opp.pick = i; keepScroll(render); }));
+  for (const cdef of choicesFor()) cdef.opts.forEach((o, i) => $('c-' + cdef.k + '-' + i).addEventListener('click', () => { S.picks[cdef.k] = i; S.open = true; keepScroll(render); }));
+  $('budget').addEventListener('toggle', e => { if (S && e.currentTarget.isConnected) S.open = e.currentTarget.open; });
   $('go').addEventListener('click', liveYear);
   clearInterval(tickTimer);
   tickTimer = setInterval(() => { const el = $('tick'); if (!el) return; tickI++; el.textContent = lines[tickI % lines.length]; el.classList.remove('tick-in'); void el.offsetWidth; el.classList.add('tick-in'); }, 5000);
 }
 function keepScroll(fn){ const y = scrollY; fn(); scrollTo(0, y); }
 
+function renderReview(){
+  clearInterval(tickTimer);
+  const r = S.review, ch = CH[S.ck], diff = r.to - r.from;
+  let cells = '';
+  for (let m = 0; m < 12; m++){
+    const b = r.months[m], isBust = r.bust === m + 1, gone = b == null;
+    cells += '<div class="mo' + (gone ? ' void' : isBust ? ' bust' : b < 0 ? ' neg' : '') + (m + 1 === r.evMonth && !gone ? ' ev' : '') + '" style="--i:' + m + '"><span>' + MONTHS[m].slice(0, 3) + '</span><b>' + (gone ? '—' : isBust ? 'BUST' : big(b)) + '</b></div>';
+  }
+  const evLine = r.evCost ? MONTHS[r.evMonth - 1] + ': ' + r.evTitle.toLowerCase() + ' (' + signed(-r.evCost).replace('+£', '+£') + ').' : '';
+  let h = mastHTML('<p class="eyebrow">Your bank balance, month by month</p>') + '<div class="months">' + cells + '</div><div class="after">';
+  h += '<p class="small">' + (r.m1 > 0 ? 'January: ' + money(r.m1) + ' in one-off costs. ' : '') + evLine + '</p>';
+  h += '<section class="card slip"><p class="eyebrow">' + r.year + ' in review</p><dl class="lines">' +
+    '<dt>Bank, start of year</dt><dd>' + big(r.from) + '</dd><dt>Bank, end of year</dt><dd>' + big(r.to) + '</dd>' +
+    '<dt class="tot">' + (diff >= 0 ? 'Put away' : 'Lost') + '</dt><dd class="tot ' + (diff >= 0 ? 'up' : 'down') + '">' + signed(diff) + '</dd></dl>' +
+    '<p><b>' + (ch.rich ? 'Smugness' : 'Wellbeing') + ': ' + Math.round(r.wbFrom) + ' → ' + Math.round(r.wbTo) + '</b></p>' +
+    (r.parts.length ? '<div class="chips">' + r.parts.map(p => '<span class="chip ' + (p.n < 0 ? 'bad' : 'good') + '">' + p.l + ' ' + pm(p.n) + '</span>').join('') + '</div>' : '') +
+    r.notes.map(n => '<p>' + n + '</p>').join('') + '</section>';
+  h += '<div class="btns"><button class="go" id="next" type="button">' + (S.over ? 'See how it ended' : 'On to ' + (r.year + 1)) + '</button></div></div>';
+  $('app').innerHTML = h;
+  $('next').addEventListener('click', next);
+}
+
+function rank(yrs, kind){
+  if (kind === 'survived') return 'Still standing. Still renting.';
+  return yrs < 5 ? 'Official verdict: should have budgeted better.' : yrs < 12 ? 'Official verdict: just about managing.' : yrs < 24 ? 'Official verdict: resilient, the government’s favourite word.' : 'Official verdict: so close to the nothing waiting at the end.';
+}
 function renderEnd(){
   clearInterval(tickTimer);
-  const ch = CH[S.ck], o = S.over, y = S.year, first = ch.name.split(' ')[0] === 'Sir' ? 'Sir Giles' : ch.name;
+  const ch = CH[S.ck], o = S.over, y = S.year, first = ch.rich ? 'Sir Giles' : ch.name;
+  const y0 = startYear(), yrs = y - y0 + 1;
+  const gTot = S.giles || v('ceo', 2015), gLabel = S.giles ? (S.gYears < yrs ? 'Median FTSE 100 boss was paid, 2015 onwards' : 'Median FTSE 100 boss was paid, same years') : 'Median FTSE 100 boss was paid in 2015 alone';
   let stamp, line, share;
   if (ch.rich){
+    const deeNet = CH.dee.gross(YEND) - taxOn(CH.dee.gross(YEND), YEND);
     stamp = 'Sir Giles won. Obviously.';
-    line = 'He finished ' + YEND + ' worth ' + big(S.bal) + ' without once looking at a price. Dee would need ' + Math.round(S.bal / ((CH.dee.gross(YEND) - taxOn(CH.dee.gross(YEND), YEND)))).toLocaleString('en-GB') + ' years of take-home pay to match it.';
+    line = 'He finished ' + YEND + ' worth ' + big(S.bal) + ' without once looking at a price. Dee would need ' + Math.round(S.bal / deeNet).toLocaleString('en-GB') + ' years of take-home pay to match it.';
     share = 'I played Trickle Down as a FTSE 100 boss and finished 2040 worth ' + big(S.bal) + '. It was not hard. That is the joke.';
   } else if (o.kind === 'survived'){
     stamp = first + ' made it to ' + YEND;
-    line = 'Thirty-three years of work, ' + (S.bal >= 0 ? money(S.bal) + ' in the bank' : money(-S.bal) + ' in debt') + ' and no home of their own. A 10% deposit on the average house is now ' + money(v('house', YEND) * .1) + '.';
+    line = 'Thirty-three years of work, ' + (S.bal >= 0 ? money(S.bal) + ' in the bank' : money(-S.bal) + ' in debt') + ' and no home of their own. A 10% deposit on the average house is now ' + money(v('house', YEND) * .1) + '. ' + rank(yrs, o.kind);
     share = 'I played Trickle Down as ' + first + ', a ' + ch.job.toLowerCase() + ', and survived to 2040 with ' + money(S.bal) + ' and no house.';
   } else {
     stamp = first + ' lasted until ' + MONTHS[o.month - 1] + ' ' + y;
-    line = o.kind === 'bust' ? 'The credit ran out. Finished off by ' + o.cause + '.' : 'Not the money in the end. Burnt out after ' + o.cause + '.';
+    line = (o.kind === 'bust' ? 'The credit ran out. Finished off by ' + o.cause + '. ' : 'Not the money in the end. Burnt out after ' + o.cause + '. ') + rank(yrs, o.kind);
     share = 'I played Trickle Down as ' + first + ', a ' + ch.job.toLowerCase() + '. I lasted until ' + MONTHS[o.month - 1] + ' ' + y + '. Finished off by ' + o.cause + '.';
   }
-  const y0 = ch.y0 || Y0, yrs = y - y0 + 1, gTot = S.giles || v('ceo', 2015), gLabel = S.giles ? (S.gYears < yrs ? 'Median FTSE 100 boss was paid, 2015 onwards' : 'Median FTSE 100 boss was paid, same years') : 'Median FTSE 100 boss was paid in 2015 alone';
   $('app').innerHTML =
     '<div class="stamp' + (o.kind === 'survived' ? ' win' : '') + '">' + stamp + '</div>' +
     '<p class="lede">' + line + '</p>' +
-    '<section class="card slip" id="stmt"><p class="eyebrow">Final statement, ' + y0 + ' to ' + y + (y > YN ? ' (later years projected)' : '') + '</p><dl class="lines">' +
+    (ch.rich ? '' : '<section class="card slip"><p class="eyebrow">Final statement, ' + y0 + ' to ' + y + (y > YN ? ' (later years projected)' : '') + '</p><dl class="lines">' +
     '<dt>' + first + ' took home, in total</dt><dd>' + big(S.earned) + '</dd>' +
     '<dt>' + gLabel + '</dt><dd>' + big(gTot) + '</dd>' +
-    '<dt class="tot">Years ' + first + ' would need to work for that</dt><dd class="tot">' + Math.round(gTot / (S.earned / yrs)).toLocaleString('en-GB') + '</dd></dl></section>' +
+    '<dt class="tot">Years ' + first + ' would need to work for that</dt><dd class="tot">' + Math.round(gTot / (S.earned / yrs)).toLocaleString('en-GB') + '</dd></dl></section>') +
     '<section class="card"><p class="eyebrow">Tell someone</p><p class="share" id="share">' + share + '</p>' +
     '<div class="btns"><button class="ghost" id="copy" type="button">Copy result</button></div></section>' +
     '<div class="btns"><button class="go" id="again" type="button">Play again</button>' +
     (ch.rich ? '' : '<button class="ghost" id="asgiles" type="button">Now play the same years as the boss</button>') + '</div>' + sourcesHTML();
-  if (ch.rich) $('stmt').hidden = true;
   $('again').addEventListener('click', () => { S = null; render(); scrollTo(0, 0); });
   if (!ch.rich) $('asgiles').addEventListener('click', () => newGame('giles'));
   $('copy').addEventListener('click', () => {
@@ -528,10 +683,12 @@ function renderEnd(){
     try { navigator.clipboard.writeText(share).then(done, fallback); } catch (e) { fallback(); }
   });
 }
-function render(){ if (!S) renderStart(); else if (S.over) renderEnd(); else renderGame(); }
+function render(){
+  if (!S) renderStart(); else if (S.phase === 'end') renderEnd(); else if (S.phase === 'review') renderReview(); else renderPlan();
+}
 
-window.__td = {v, idx, taxOn, CH, get S(){ return S; }, newGame, liveYear, calc, pick:(k, i) => { S.picks[k] = i; }, answer:i => { S.ev.pick = i; }};
-const boot = d => { if (d && d.S) S = d.S; render(); };
+window.__td = {v, idx, taxOn, CH, OPPS, get S(){ return S; }, newGame, liveYear, next, calc, answer:i => { S.ev.pick = i; }, opp:i => { if (S.opp) S.opp.pick = i; }};
+const boot = d => { if (d && d.S && d.S.m) S = d.S; render(); };
 window.claude?.hot?.snapshot?.(() => ({S}));
 window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});
 })();
