@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
-/* Layout: the game is one full-height play column (max 520px): HUD strip, yellow ticker, then the canvas. Title and result screens are a single reading column of paperwork. */
+/* Layout: the game is a full-height column. A short scene strip where you walk through the years, a permanent pay-versus-bills gauge under it, then a lower panel that shows either the month counter or the crossroads cards. Title and result screens are one reading column. */
 :root{
   --paper:#e6ecf2; --card:#f9fbfd; --ink:#14213d; --mute:#56637b; --rule:#c2cddb;
   --demand:#c8102e; --tab:#ffd400; --tabink:#14213d; --giro:#12715b; --gold:#f5b800; --heart:#d6336c; --fuel:#d9480f;
@@ -18,19 +18,22 @@
   --demand:#ff5d70; --tab:#ffd400; --tabink:#14213d; --giro:#4fd1a8; --gold:#ffc933; --heart:#ff6b9d; --fuel:#ff8a4c; color-scheme:dark }
 
 html,body{height:100%}
-body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.4}
 h1,h2,p{margin:0}
 button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--demand);outline-offset:2px}
 .up{color:var(--giro)} .down{color:var(--demand)}
 .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);font-weight:600}
 .small{font-size:13px;color:var(--mute)}
+.ic{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
 
 /* reading screens */
 #app{max-width:620px;margin:0 auto;padding-block:0 28px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:16px}
 .title{font-family:var(--f-head);font-size:clamp(64px,22vw,128px);line-height:.82;text-transform:uppercase;padding-top:28px}
 .title i{font-style:normal;color:var(--demand);display:block}
-.lede{font-size:17px;max-width:52ch}
+.lede{font-size:18px;max-width:46ch}
+.how{display:grid;grid-template-columns:auto 1fr;gap:10px 14px;align-items:center}
+.how .ic{font-size:30px;color:var(--ink)}
 .chars{display:flex;flex-direction:column;gap:10px}
 .char{display:grid;grid-template-columns:1fr auto;gap:2px 12px;text-align:left;background:var(--card);border:1px solid var(--rule);border-left:6px solid var(--ink);padding:12px 14px;border-radius:2px}
 .char:hover{border-left-color:var(--demand)}
@@ -55,39 +58,53 @@ details.src{border-top:1px solid var(--rule);padding-top:10px}
 details.src summary{cursor:pointer;font-weight:600}
 details.src ul{margin:8px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--mute)}
 details.src a{color:var(--ink)}
+.idx{display:flex;flex-direction:column;gap:6px}
+.idx-row{display:grid;grid-template-columns:70px 1fr 44px;align-items:center;gap:8px;font:600 12px var(--f-mono)}
+.idx-bar{height:16px;background:var(--rule)} .idx-bar i{display:block;height:100%;background:var(--mute)}
+.idx-bar i.hot{background:var(--demand)} .idx-bar i.pay{background:var(--giro)}
+.verdict{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.verdict div{border:1px solid var(--rule);background:var(--card);padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.verdict b{font:400 38px var(--f-head);line-height:1}
 
 /* the game */
-#stage{position:relative;height:100%;max-width:520px;margin:0 auto;display:flex;flex-direction:column;overflow:hidden;-webkit-user-select:none;user-select:none}
+#stage{height:100%;max-width:520px;margin:0 auto;display:flex;flex-direction:column;overflow:hidden;-webkit-user-select:none;user-select:none}
 .hud{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding-block:8px 6px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .hud .year{font-family:var(--f-head);font-size:40px;line-height:.9}
 .hud .mid{display:flex;flex-direction:column;gap:4px;min-width:0}
 .hud .bank{font:600 20px var(--f-mono);font-variant-numeric:tabular-nums}
+.hud .bank small{font:400 11px var(--f-body);color:var(--mute);margin-left:6px}
 .bar{height:9px;background:var(--rule);border-radius:1px;overflow:hidden}
-.bar i{display:block;height:100%;background:var(--heart)}
+.bar i{display:block;height:100%;background:var(--heart);transition:width .3s}
 .icon-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--rule);background:var(--card);font:600 11px var(--f-mono)}
 .ticker{background:var(--tab);color:var(--tabink);font-weight:600;font-size:13px;padding-block:5px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-canvas{display:block;flex:1;min-height:0;width:100%;touch-action:none}
-.inter{position:absolute;inset:0;background:var(--paper);overflow:auto;display:flex;flex-direction:column;gap:14px;padding-block:18px calc(18px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-.inter .big{font-family:var(--f-head);font-size:88px;line-height:.85}
-.proj{display:inline-block;background:var(--demand);color:var(--card);font:600 10px var(--f-body);letter-spacing:.12em;padding:2px 6px;text-transform:uppercase;align-self:flex-start}
-.head{background:var(--tab);color:var(--tabink);font-weight:600;padding:8px 10px}
-.gauge{display:flex;flex-direction:column;gap:8px}
-.g-row{display:grid;grid-template-columns:52px 1fr;align-items:center;gap:8px;font:600 12px var(--f-mono)}
-.g-bar{height:26px;display:flex;align-items:center;padding:0 8px;color:var(--card);white-space:nowrap;min-width:0;font-variant-numeric:tabular-nums}
-.g-bar.pay{background:var(--giro)} .g-bar.bills{background:var(--demand)} .g-bar.boss{background:var(--gold);color:var(--tabink)}
-.legend{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;align-items:center}
-.lg{width:38px;height:24px;display:grid;place-items:center;font:600 11px var(--f-mono);border-radius:3px;justify-self:center}
-.lg.coin{background:var(--gold);color:var(--tabink);border-radius:50%;width:26px;height:26px}
-.lg.bill{background:var(--ink);color:var(--card)}
-.lg.red{background:var(--demand);color:var(--card)}
-.lg.hrt{color:var(--heart);font-size:26px}
-.perks{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.perk{display:flex;flex-direction:column;gap:4px;text-align:left;background:var(--card);border:1px solid var(--rule);border-top:5px solid var(--giro);border-radius:2px;padding:10px;min-width:0}
-.perk b{font-size:15px}
-.perk span{font-size:13px;color:var(--mute)}
-.perk em{font:600 12px var(--f-mono);font-style:normal}
-.perk[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--card)}
-.perk[aria-pressed="true"] span{color:var(--card)}
+canvas{display:block;flex:0 0 clamp(190px,36vh,330px);width:100%;touch-action:manipulation}
+.gap{padding-block:10px 8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));border-block:2px solid var(--ink);display:flex;flex-direction:column;gap:6px;background:var(--card)}
+.gr{display:grid;grid-template-columns:44px 1fr auto;gap:8px;align-items:center;font:600 12px var(--f-mono)}
+.gr .trk{height:18px;display:flex;background:var(--rule)}
+.gr .trk i{display:block;height:100%}
+.gr .val{font-variant-numeric:tabular-nums;text-align:right;min-width:92px}
+.gr .val small{font:600 11px var(--f-mono)}
+.gtail{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font:400 11px var(--f-body);color:var(--mute)}
+.legend span::before{content:"";display:inline-block;width:8px;height:8px;margin-right:4px;background:var(--c)}
+.pill{font:600 13px var(--f-mono);padding:2px 10px;border-radius:999px;border:2px solid currentColor}
+.low{flex:1;min-height:0;overflow:auto;padding-block:12px calc(12px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:10px}
+.months{display:grid;grid-template-columns:repeat(12,1fr);gap:4px}
+.months i{height:8px;background:var(--rule)} .months i.on{background:var(--ink)}
+.walkline{display:flex;justify-content:space-between;align-items:baseline}
+.walkline b{font:400 30px var(--f-head);letter-spacing:.02em}
+.low h2{font:400 28px/1 var(--f-head);text-transform:uppercase;text-wrap:balance}
+.cards{display:grid;gap:8px}
+.cards.n2{grid-template-columns:1fr 1fr} .cards.n3{grid-template-columns:repeat(3,1fr)}
+.opt{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;background:var(--card);border:2px solid var(--ink);border-radius:2px;padding:8px;min-width:0;box-shadow:0 4px 0 var(--ink)}
+.opt:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+.opt .ic{font-size:28px}
+.opt b{font-size:15px;line-height:1.15}
+.opt .now{font:600 10px var(--f-mono);letter-spacing:.1em;color:var(--mute)}
+.chips{display:flex;flex-direction:column;gap:3px;align-items:flex-start}
+.chip{font:600 11px var(--f-mono);padding:1px 5px;border-radius:2px;background:var(--paper);color:var(--ink)}
+.chip.bad{color:var(--demand)} .chip.good{color:var(--giro)}
+@media (prefers-reduced-motion:reduce){ .bar i{transition:none} }
 </style>
 
 <div id="app"></div>
@@ -98,8 +115,9 @@ canvas{display:block;flex:1;min-height:0;width:100%;touch-action:none}
     <button class="icon-btn" id="mute" type="button" aria-label="Toggle sound">SND</button>
   </div>
   <div class="ticker" id="hTick"></div>
-  <canvas id="cv" aria-label="Play area: move left and right to catch falling pay and bills"></canvas>
-  <div class="inter" id="inter" hidden></div>
+  <canvas id="cv" aria-label="You walking through the years. Tap and hold to hurry."></canvas>
+  <div class="gap" id="gap"></div>
+  <div class="low" id="low"></div>
 </div>
 
 <script>
@@ -125,7 +143,7 @@ const DATA = {
   uel:[40040,43875,43875,42475,42475,41450,41865,42385,43000,45000,46350,50000,50000,50270,50270,50270,50270,50270],
   ni2:[.01,.01,.01,.02,.02,.02,.02,.02,.02,.02,.02,.02,.02,.02,.0273,.02,.02,.02],
   freezeUntil: 2030,
-  base: { food:165, essentials:175, bus:50, pint:30, holiday:320 },   // 2008 pounds, one adult; illustrative
+  base: { food:185, essentials:200, bus:75 },   // 2008 pounds a month, one adult; illustrative
   sources: [
     {title:'ONS Consumer Prices Index: all items (D7BT) and food (D7BU)', url:'https://www.ons.gov.uk/economy/inflationandpriceindices/timeseries/d7bt/mm23', note:'Annual averages, read direct.'},
     {title:'ONS CPI: actual rents for housing (D7CE)', url:'https://www.ons.gov.uk/economy/inflationandpriceindices/timeseries/d7ce/mm23', note:'Read direct. Turned into pounds using the ONS UK average private rent of £1,368 (December 2025). This index includes social rents and existing tenancies, so it understates how fast new private rents rose.'},
@@ -145,8 +163,8 @@ const $ = id => document.getElementById(id);
 const money = n => (n < 0 ? '−' : '') + '£' + Math.abs(Math.round(n)).toLocaleString('en-GB');
 const signed = n => (n < 0 ? '−' : '+') + '£' + Math.abs(Math.round(n)).toLocaleString('en-GB');
 const big = n => Math.abs(n) >= 1e6 ? (n < 0 ? '−' : '') + '£' + (Math.abs(n) / 1e6).toFixed(Math.abs(n) >= 1e7 ? 0 : 1) + 'm' : money(n);
-const pct = n => (n >= 0 ? '▲' : '▼') + Math.abs(n * 100).toFixed(1) + '%';
-const rnd = (a, b) => a + Math.random() * (b - a);
+const arrow = n => (n >= 0 ? '▲' : '▼') + Math.abs(n * 100).toFixed(1) + '%';
+const hash = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
 
 // A series value for any year. After the last real year, each series carries on at its own average growth rate.
 function v(key, y){
@@ -157,7 +175,8 @@ function v(key, y){
   return s[last] * Math.pow(g, y - Y0 - last);
 }
 const idx = (key, y) => v(key, y) / v(key, Y0);
-function threshold(key, y){               // tax thresholds: real values, then frozen, then rising with prices
+const minWage = y => y <= YN ? v('minWage', y) : v('minWage', YN) * v('pay', y) / v('pay', YN);   // after 2025 it keeps its share of average pay
+function threshold(key, y){
   if (y <= YN) return DATA[key][y - Y0];
   const lastV = DATA[key][YN - Y0];
   return y <= DATA.freezeUntil ? lastV : lastV * v('cpi', y) / v('cpi', DATA.freezeUntil);
@@ -172,66 +191,117 @@ function taxOn(g, y){
   return it + ni;
 }
 
-// After the last real year the minimum wage keeps its share of average pay, rather than racing ahead of it.
-const minWage = y => y <= YN ? v('minWage', y) : v('minWage', YN) * v('pay', y) / v('pay', YN);
+// ---- icons: simple line drawings, 24 by 24 -----------------------------
+const ICON = {
+  wrench:'<path d="M15 4a5 5 0 0 0-4.5 6.8L3.5 17.8 6 20.3l7-7A5 5 0 0 0 20 8.800l-3 3-2.500-.8-.8-2.500z"/>',
+  flame:'<path d="M12 3c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10z"/>',
+  home:'<path d="M3 11l9-8 9 8M5 10v10h14V10M10 20v-6h4v6"/>',
+  snow:'<path d="M12 3v18M4.500 7.500l15 9M19.500 7.500l-15 9"/>',
+  tooth:'<path d="M7 4c-3 0-3 5-1 8 1 3 1 8 3 8s1-5 3-5 1 5 3 5 2-5 3-8c2-3 2-8-1-8-3 0-3 2-5 2S10 4 7 4z"/>',
+  phone:'<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>',
+  bus:'<rect x="4" y="4" width="16" height="13" rx="2"/><path d="M4 11h16M7 20v-3M17 20v-3"/><circle cx="8" cy="14" r="1"/><circle cx="16" cy="14" r="1"/>',
+  cart:'<path d="M3 4h3l2 11h10l2-8H7"/><circle cx="9" cy="19" r="1.500"/><circle cx="17" cy="19" r="1.500"/>',
+  heart:'<path d="M12 20s-8-5-8-11a4.500 4.500 0 0 1 8-2 4.500 4.500 0 0 1 8 2c0 6-8 11-8 11z"/>',
+  pint:'<path d="M6 4h10l-1 16H7zM16 8h3v6h-3"/>',
+  plane:'<path d="M2 14l20-8-8 16-3-7z"/>',
+  book:'<path d="M4 5h7a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4zM20 5h-7a2 2 0 0 0-2 2"/><path d="M20 5v13h-7"/>',
+  coins:'<circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.500 9.500c0-2 5-2 5 0s-5 2-5 4 5 2 5 0"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  drop:'<path d="M12 3c4 5 6 8 6 11a6 6 0 0 1-12 0c0-3 2-6 6-11z"/>',
+  bike:'<circle cx="6" cy="16" r="4"/><circle cx="18" cy="16" r="4"/><path d="M6 16l4-8h5l3 8M10 8H8"/>',
+  people:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.500"/><path d="M3 20c0-4 3-6 6-6s6 2 6 6M15 14c3 0 6 1.500 6 5"/>',
+  mail:'<rect x="3" y="5" width="18" height="14" rx="1"/><path d="M3 6l9 7 9-7"/>',
+  no:'<circle cx="12" cy="12" r="9"/><path d="M5.500 5.500l13 13"/>',
+  up:'<path d="M12 20V5M6 11l6-6 6 6"/>',
+  key:'<circle cx="8" cy="12" r="4"/><path d="M12 12h9M18 12v4"/>',
+  bolt:'<path d="M13 2L5 14h6l-1 8 8-12h-6z"/>',
+  yacht:'<path d="M3 17h18l-3 4H6zM12 3v12M12 4l7 10h-7"/>',
+  crown:'<path d="M3 8l5 4 4-7 4 7 5-4-2 11H5z"/>',
+  brief:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V4h6v3"/>',
+  gift:'<rect x="4" y="10" width="16" height="10"/><path d="M12 10v10M3 7h18v3H3zM12 7c-3-4-6-1-4 0M12 7c3-4 6-1 4 0"/>',
+  bag:'<path d="M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2"/>',
+  bed:'<path d="M3 18V8M3 14h18v4M21 14v-3a3 3 0 0 0-3-3h-7v6"/>',
+  fork:'<path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 2-3 5-3 8h3v10"/>'
+};
+const ico = (n, cls) => '<svg class="ic ' + (cls || '') + '" viewBox="0 0 24 24" aria-hidden="true">' + (ICON[n] || ICON.coins) + '</svg>';
 
 // ---- cast (all fictional) -------------------------------------------
 const B = DATA.base;
+const HOMES = [{n:'Shared room', ic:'bed', rent:.38, en:.4, ess:.7, wb:-2}, {n:'One-bed flat', ic:'key', rent:1, en:.7, ess:1, wb:0}, {n:'Two-bed house', ic:'home', rent:1.4, en:1, ess:1.1, wb:3}];
+const HEATS = [{n:'Heating off', ic:'snow', f:.55, wb:-8}, {n:'Half on', ic:'flame', f:.8, wb:-1}, {n:'Warm', ic:'flame', f:1, wb:2}];
+const FOODS = [{n:'Basics', ic:'cart', f:.7, wb:-5}, {n:'Normal shop', ic:'cart', f:1, wb:0}, {n:'Treats too', ic:'fork', f:1.3, wb:3}];
 const CH = {
-  dee:  {name:'Dee', job:'Care worker', blurb:'Minimum wage, room in a shared house. Hard.', start:300, home:{rent:.38, en:.4, ess:.7},
+  dee:  {name:'Dee', job:'Care worker', blurb:'Minimum wage, room in a shared house. Hard.', start:300, home:0, col:'#2f7dd1',
          gross:y => minWage(y) * 37.5 * 52},
-  sam:  {name:'Sam', job:'Office administrator', blurb:'The national average wage, one-bed flat.', start:1500, home:{rent:.8, en:.7, ess:1},
+  sam:  {name:'Sam', job:'Office administrator', blurb:'The national average wage, one-bed flat.', start:1500, home:1, col:'#12715b',
          gross:y => v('pay', y)},
-  priya:{name:'Priya', job:'Café owner', blurb:'A small business. Her costs rise before her prices can.', start:1000, home:{rent:.8, en:.7, ess:1},
+  priya:{name:'Priya', job:'Café owner', blurb:'A small business. Her costs rise before her prices can.', start:1000, home:1, col:'#d9480f',
          gross:y => Math.max(0, 78000 * idx('cpi', y) - minWage(y) * 37.5 * 52 * 1.1 - 14000 * idx('rent', y) - 6000 * idx('energy', y) - 22000 * idx('food', y))},
-  giles:{name:'Sir Giles Hoard-Whittle', job:'Chief executive, OmniGrab plc', blurb:'The real median pay of a FTSE 100 boss. Starts in 2015. Easy.', start:2000000, rich:true, y0:2015,
+  giles:{name:'Sir Giles Hoard-Whittle', job:'Chief executive, OmniGrab plc', blurb:'The real median pay of a FTSE 100 boss. Starts in 2015. Easy.', start:2000000, rich:true, y0:2015, home:2, col:'#f5b800',
          gross:y => v('ceo', y)}
 };
-const HAZARDS = [['BOILER', 180], ['DENTIST', 220], ['PHONE', 190], ['MOULD', 130], ['TAXI', 120], ['WASHER', 250], ['FINE', 100], ['VET', 160], ['RENT HIKE', 0]];
+
+// ---- the crossroads --------------------------------------------------
+const EVENTS = [
+  {t:'The boiler dies', sub:'Your landlord will "look into it".', ic:'wrench', opts:[{l:'Fix it', ic:'wrench', cost:180}, {l:'Wear a coat', ic:'snow', wb:-8}]},
+  {t:'Rent review', sub:'"Market conditions". Meaning: because he can.', ic:'key', opts:[{l:'Pay more', ic:'coins', rent:1.08}, {l:'Move out', ic:'bag', cost:600, wb:-5}]},
+  {t:'Toothache', sub:'No NHS dentist within 40 miles.', ic:'tooth', opts:[{l:'Go private', ic:'coins', cost:220}, {l:'Chew left', ic:'no', wb:-7}]},
+  {t:'Hours cut', sub:'You are thanked for your flexibility.', ic:'clock', opts:[{l:'Cover it', ic:'coins', cost:420}, {l:'Night shifts', ic:'clock', wb:-9}]},
+  {t:'Bus route cut', sub:'Replaced by a consultation.', ic:'bus', opts:[{l:'Taxis', ic:'coins', cost:300}, {l:'Walk it', ic:'no', wb:-5}]},
+  {t:'Wedding in Tuscany', sub:'Your oldest friend. On a Tuesday.', ic:'plane', opts:[{l:'Go', ic:'plane', cost:450, wb:6}, {l:'Send a card', ic:'mail', wb:-6}]},
+  {t:'Phone dies', sub:'Your shifts, bank and bus pass live in it.', ic:'phone', opts:[{l:'New one', ic:'phone', cost:190}, {l:'Cracked, second-hand', ic:'phone', cost:60, wb:-2}]},
+  {t:'Pay review', sub:'Your reward: a pizza party.', ic:'brief', opts:[{l:'Eat the pizza', ic:'fork', wb:-3}, {l:'Ask for a raise', ic:'up', luck:{p:.4, pay:1.03, win:'Got 3%. Tell nobody.', lose:'"Not the right time."', loseWb:-5}}]},
+  {t:'Weekend overtime', sub:'Voluntary. Rota attached.', ic:'clock', opts:[{l:'Take it', ic:'clock', gain:900, wb:-8}, {l:'Weekends off', ic:'heart'}]},
+  {t:'Deposit kept', sub:'£400 for "wear" on an ancient carpet.', ic:'key', opts:[{l:'Let it go', ic:'no', cost:400}, {l:'Fight it', ic:'brief', cost:100, wb:-5}]},
+  {t:'Black mould', sub:'Landlord: try breathing less.', ic:'drop', opts:[{l:'Dehumidifier', ic:'drop', cost:130}, {l:'Live with it', ic:'no', wb:-7}]},
+  {t:'Catch-up bill', sub:'Your meter was "estimated" for a year.', ic:'bolt', opts:[{l:'Pay it', ic:'coins', cost:260}, {l:'Dispute it', ic:'phone', wb:-6}]},
+  {t:'Delivery gig', sub:'Be your own boss. The boss is an app.', ic:'bike', opts:[{l:'Ride evenings', ic:'bike', gain:1200, wb:-9}, {l:'No thanks', ic:'no'}]},
+  {t:'Properly ill', sub:'Sick pay would not cover the bus.', ic:'heart', opts:[{l:'Rest', ic:'bed', cost:320}, {l:'Work through', ic:'brief', wb:-9}]},
+  {t:'A mate is short', sub:'They would do it for you.', ic:'people', opts:[{l:'Lend £200', ic:'people', cost:200, wb:3}, {l:'Say no', ic:'no', wb:-4}]},
+  {t:'December', sub:'Everyone on TV is happy.', ic:'gift', opts:[{l:'Do Christmas', ic:'gift', cost:300, wb:5}, {l:'Skip it', ic:'no', wb:-6}]},
+  {t:'Washer floods', sub:'The warranty ended on Thursday.', ic:'drop', opts:[{l:'Replace it', ic:'coins', cost:250}, {l:'Launderette', ic:'bag', cost:90, wb:-4}]},
+  {t:'Loan flyer', sub:'Cash by lunch. Four-digit APR.', ic:'mail', opts:[{l:'Borrow £500', ic:'coins', gain:500, later:900, wb:-2}, {l:'Bin it', ic:'no'}]}
+];
+const RICH_EVENTS = [
+  {t:'Bonus query', sub:'Small investors think 190 times the average is "a lot".', ic:'crown', opts:[{l:'Commission a report', ic:'book', wb:1}, {l:'Retention bonus', ic:'coins', gain:900000, wb:3}]},
+  {t:'Efficiency drive', sub:'Cut 600 jobs. The markets will be delighted.', ic:'brief', opts:[{l:'By email', ic:'mail', gain:1200000, wb:1}, {l:'By email, sad emoji', ic:'mail', gain:1200000, wb:2}]},
+  {t:'Call from the Minister', sub:'Fancy advising on living standards?', ic:'phone', opts:[{l:'Chair the review', ic:'book', gain:150000, wb:4}, {l:'Take a peerage', ic:'crown', wb:6}]},
+  {t:'Record profits', sub:'A hard winter for customers. A warm one for dividends.', ic:'bolt', opts:[{l:'Take cash', ic:'coins', gain:700000, wb:2}, {l:'Take shares', ic:'coins', gain:800000, wb:2}]},
+  {t:'Staff want a rise', sub:'They keep saying "rent".', ic:'people', opts:[{l:'Send pizza', ic:'fork', cost:400, wb:1}, {l:'Send an email', ic:'mail', wb:2}]}
+];
 const PERKS = [
-  {name:'Night school', line:'Pay +6% for good', cost:450, wb:-10, eff:{pay:1.06}},
-  {name:'Take a lodger', line:'Rent −20%. Tires you 10% faster', eff:{rent:.8, drain:1.1}},
-  {name:'Join the union', line:'Pay +3%. Subs £12 a month', eff:{pay:1.03, fixed:12}},
-  {name:'Cheaper town', line:'Rent −15%. You miss everyone', cost:900, wb:-15, eff:{rent:.85}},
-  {name:'A bike', line:'Other bills −10%', cost:150, eff:{rest:.9}},
-  {name:'Draught-proofing', line:'Energy −10%', cost:90, eff:{energy:.9}},
-  {name:'Overtime', line:'Wider bucket. Tires you 15% faster', eff:{bucket:1.3, drain:1.15}},
-  {name:'Cooking club', line:'Food −10%', eff:{food:.9}},
-  {name:'Savings account', line:'2% a year on what you keep', eff:{isa:1}}
+  {name:'Night school', line:'Pay +6% for good. A year of evenings.', ic:'book', cost:450, wb:-10, eff:{pay:1.06}},
+  {name:'Take a lodger', line:'Rent −20%. Less peace.', ic:'people', wbyr:-1, eff:{rent:.8}},
+  {name:'Join the union', line:'Pay +3% for good. £12 a month.', ic:'people', eff:{pay:1.03, fixed:12}},
+  {name:'A cheaper town', line:'Rent −15%. You miss everyone.', ic:'home', cost:900, wb:-15, eff:{rent:.85}},
+  {name:'A bike', line:'Other bills −10% for good.', ic:'bike', cost:150, eff:{rest:.9}},
+  {name:'Draught-proofing', line:'Energy bill −10% for good.', ic:'flame', cost:90, eff:{energy:.9}},
+  {name:'Team leader', line:'Pay +5% for good. More stress.', ic:'brief', wbyr:-1, eff:{pay:1.05}},
+  {name:'Cooking club', line:'Food bill −10% for good.', ic:'fork', eff:{food:.9}},
+  {name:'Savings account', line:'Earn 2% a year on what you keep.', ic:'coins', eff:{isa:1}}
+];
+const SETTINGS = [
+  {k:'home', t:'Where will you live?', sub:'Rent is your biggest bill.', list:HOMES},
+  {k:'heat', t:'Winter is coming', sub:'How warm can you afford to be?', list:HEATS},
+  {k:'food', t:'The weekly shop', sub:'What goes in the basket?', list:FOODS}
 ];
 const HEADLINES = {
-  2008:'Northern Crock bank rescued with public money. Bonuses "contractual".',
-  2009:'Interest rates cut to the floor. Savers told to "think positive".',
-  2010:'Chancellor Tightbelt: "We are all in this together."',
-  2011:'Public sector pay frozen. Boardroom pay left out to thaw.',
-  2012:'Top rate of tax trimmed "to lift morale".',
-  2013:'Payday lender WongaWonga sponsors a football shirt.',
-  2014:'Recovery declared. Check behind the sofa for yours.',
-  2015:'Zero-hours contracts rebranded "flexi-freedom".',
-  2016:'Referendum held. Pound falls. Imports cost more.',
-  2017:'Minister: no magic money tree. Tree later found for other things.',
-  2018:'Rail fares rise again. Trains remain theoretical.',
-  2019:'The Daily Blame: "Why can\'t the young stop buying coffee?"',
-  2020:'Nation claps for carers. Landlords do not accept claps.',
-  2021:'Shelves empty in supply crisis. Yachts unaffected.',
-  2022:'EnergiSqueeze posts record profit: "cuddle a pet for warmth".',
-  2023:'Mortgage rates jump. Landlords pass it on with a sad emoji.',
-  2024:'Tidewater Utilities raises bills to fix what it did not fix.',
-  2025:'Tax thresholds frozen. Part of your pay rise goes straight back.',
-  2026:'Government launches Help to Rent a Shed.',
-  2027:'OmniGrab trials a subscription for the staff toilets.',
-  2028:'First-time buyer, 61, makes the front page.',
-  2029:'Minister suggests the young try "having wealthier parents".',
-  2030:'Avocado toast cleared after a 15-year inquiry.',
-  2031:'Heating reclassified as a luxury good.',
-  2032:'Landlord of the Year: "most creative use of a cupboard".',
-  2033:'OmniGrab acquires the weather. Rain now Premium.',
-  2034:'Retirement age raised to "we will let you know".',
-  2035:'National clap for renters announced.',
-  2036:'Bus route replaced by a motivational poster.',
-  2037:'Sir Giles knighted again, for services to Sir Giles.',
-  2038:'Economists: wealth will trickle down "any decade now".',
-  2039:'Lord Hoard-Whittle unveils a personal moon.',
+  2008:'Northern Crock bank rescued with public money. Bonuses "contractual".', 2009:'Interest rates cut to the floor. Savers told to "think positive".',
+  2010:'Chancellor Tightbelt: "We are all in this together."', 2011:'Public sector pay frozen. Boardroom pay left out to thaw.',
+  2012:'Top rate of tax trimmed "to lift morale".', 2013:'Payday lender WongaWonga sponsors a football shirt.',
+  2014:'Recovery declared. Check behind the sofa for yours.', 2015:'Zero-hours contracts rebranded "flexi-freedom".',
+  2016:'Referendum held. Pound falls. Imports cost more.', 2017:'Minister: no magic money tree. Tree later found for other things.',
+  2018:'Rail fares rise again. Trains remain theoretical.', 2019:'The Daily Blame: "Why can\'t the young stop buying coffee?"',
+  2020:'Nation claps for carers. Landlords do not accept claps.', 2021:'Shelves empty in supply crisis. Yachts unaffected.',
+  2022:'EnergiSqueeze posts record profit: "cuddle a pet for warmth".', 2023:'Mortgage rates jump. Landlords pass it on with a sad emoji.',
+  2024:'Tidewater Utilities raises bills to fix what it did not fix.', 2025:'Tax thresholds frozen. Part of your pay rise goes straight back.',
+  2026:'Government launches Help to Rent a Shed.', 2027:'OmniGrab trials a subscription for the staff toilets.',
+  2028:'First-time buyer, 61, makes the front page.', 2029:'Minister suggests the young try "having wealthier parents".',
+  2030:'Avocado toast cleared after a 15-year inquiry.', 2031:'Heating reclassified as a luxury good.',
+  2032:'Landlord of the Year: "most creative use of a cupboard".', 2033:'OmniGrab acquires the weather. Rain now Premium.',
+  2034:'Retirement age raised to "we will let you know".', 2035:'National clap for renters announced.',
+  2036:'Bus route replaced by a motivational poster.', 2037:'Sir Giles knighted again, for services to Sir Giles.',
+  2038:'Economists: wealth will trickle down "any decade now".', 2039:'Lord Hoard-Whittle unveils a personal moon.',
   2040:'Official report: people "could have budgeted better".'
 };
 
@@ -247,16 +317,16 @@ function beep(f, d, type, vol, slide){
     const o = ac.createOscillator(), g = ac.createGain(), n = ac.currentTime;
     o.type = type || 'sine'; o.frequency.setValueAtTime(f, n);
     if (slide) o.frequency.exponentialRampToValueAtTime(f * slide, n + d);
-    g.gain.setValueAtTime(vol || .05, n); g.gain.exponentialRampToValueAtTime(.0001, n + d);
+    g.gain.setValueAtTime(vol || .04, n); g.gain.exponentialRampToValueAtTime(.0001, n + d);
     o.connect(g); g.connect(ac.destination); o.start(); o.stop(n + d);
   } catch (e) {}
 }
 
-// ---- game state ------------------------------------------------------
-const W = 400;                           // logical play width; height follows the screen
-let H = 560, scale = 1, dpr = 1, C = {};
-let S = null;                            // the run: survives from year to year
-let G = null;                            // the year being played
+// ---- state -----------------------------------------------------------
+const W = 400, CX = 110, DY = 430, WALK_T = 6.5;
+let H = 260, scale = 1, dpr = 1, C = {};
+let S = null;          // the whole run
+let G = null;          // the year currently being walked; null while at a crossroads
 const cv = $('cv'), ctx = cv.getContext('2d');
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const rich = () => !!CH[S.ck].rich;
@@ -272,108 +342,168 @@ function resize(){
 }
 addEventListener('resize', resize);
 
-// The year's money, from the data. Everything the canvas drops is built from this.
+// The money for one year, built from the data and what you have chosen so far.
 function yearMoney(y){
   const ch = CH[S.ck], ci = idx('cpi', y), m = S.m;
   const gross = ch.gross(y) * m.pay, net = gross - taxOn(gross, y);
-  if (ch.rich) return {gross, net, ci, rent:0, energy:0, food:0, rest:90000 * ci * 4, bills:90000 * ci * 4};
-  const rent = v('rent', y) * ch.home.rent * m.rent * 12, energy = v('energy', y) * ch.home.en * .8 * m.energy;
-  const food = B.food * idx('food', y) * m.food * 12, rest = ((B.essentials * ch.home.ess + B.bus) * m.rest + m.fixed) * ci * 12;
+  if (ch.rich){ const yacht = 360000 * ci; return {gross, net, ci, rent:0, energy:0, food:0, rest:yacht, bills:yacht}; }
+  const home = HOMES[S.set.home], heat = HEATS[S.set.heat], fd = FOODS[S.set.food];
+  const rent = v('rent', y) * home.rent * m.rent * 12, energy = v('energy', y) * home.en * heat.f * m.energy;
+  const food = B.food * idx('food', y) * fd.f * m.food * 12, rest = ((B.essentials * home.ess + B.bus) * m.rest + m.fixed) * ci * 12;
   return {gross, net, ci, rent, energy, food, rest, bills:rent + energy + food + rest};
 }
+const wbPerYear = () => rich() ? 0 : HOMES[S.set.home].wb + HEATS[S.set.heat].wb + FOODS[S.set.food].wb + (-4) + S.m.wbyr + (S.bal < 0 ? -4 : 0);
+const limitFor = y => yearMoney(y).net / 4;      // three months of take-home pay
 
-function setupYear(){
-  const y = S.year, r = rich(), M = yearMoney(y), T = r ? 7 : 14;
-  const fall = Math.max(1.55, 2.5 - .03 * (y - Y0)), span = T - .4, q = [];
-  const add = (t, o) => q.push(Object.assign({t, x:rnd(34, W - 34)}, o));
-  const coins = 24, coinVal = M.net / coins;
-  for (let i = 0; i < coins; i++) add((i + rnd(.2, .8)) / coins * span, {k:'coin', val:coinVal});
-  const bill = (label, val, n, tone) => { for (let i = 0; i < n; i++) add((i + rnd(.25, .75)) / n * span, {k:'bill', label, val:val / n, tone}); };
-  if (r){
-    bill('YACHT', M.rest, 4, 'ink');
-    for (let i = 0; i < 2; i++) add(rnd(.5, span), {k:'bonus', label:'BONUS', val:rnd(4, 9) * 1e5});
+function newGame(ck){
+  const ch = CH[ck];
+  S = {ck, year:ch.y0 || Y0, bal:ch.start, wb:70, dist:0, signX:CX + 130, set:{home:ch.home, heat:1, food:1}, livedHome:ch.home,
+       m:{pay:1, rent:1, energy:1, food:1, rest:1, fixed:0, wbyr:0, isa:0}, perks:[], perkUsed:[], owed:0, used:[], q:null,
+       earned:0, giles:0, gYears:0, hist:[], over:null, last:null};
+  G = null; $('app').hidden = true; $('stage').hidden = false; resize(); showCross(); scrollTo(0, 0);
+}
+
+function makeQuestion(){
+  const n = S.year - startYear(), y = S.year;
+  if (rich()){
+    let i; do { i = Math.floor(Math.random() * RICH_EVENTS.length); } while (S.used.includes('r' + i) && S.used.length < RICH_EVENTS.length); S.used.push('r' + i);
+    return Object.assign({kind:'event'}, RICH_EVENTS[i]);
+  }
+  if (n === 0) return Object.assign({kind:'setting'}, SETTINGS[0]);
+  const slot = n % 4;
+  if (slot === 2 && S.perkUsed.length < PERKS.length - 1){
+    const pool = PERKS.map((p, i) => i).filter(i => !S.perkUsed.includes(i)), id = pool[Math.floor(Math.random() * pool.length)], p = PERKS[id];
+    S.perkUsed.push(id);
+    return {kind:'chance', t:p.name, sub:p.line, ic:p.ic, opts:[{l:'Take it', ic:p.ic, cost:p.cost, wb:p.wb, wbyr:p.wbyr, eff:p.eff, perk:p.name}, {l:'Not now', ic:'no'}]};
+  }
+  if (slot === 0) return Object.assign({kind:'setting'}, SETTINGS[(n / 4 - 1) % 3]);
+  let i; do { i = Math.floor(Math.random() * EVENTS.length); } while (S.used.includes(i) && S.used.length < EVENTS.length); S.used.push(i);
+  if (S.used.length >= EVENTS.length) S.used = [];
+  return Object.assign({kind:'event'}, EVENTS[i]);
+}
+
+// What a card shows underneath its name: money first, then the heart.
+function chipsFor(q, o, i){
+  const y = S.year, ci = idx('cpi', y), k = rich() ? 1 : ci, c = [];
+  const add = (t, cls) => c.push('<span class="chip ' + (cls || '') + '">' + t + '</span>');
+  if (q.kind === 'setting'){
+    const it = q.list[i], m = S.m;
+    let mo;
+    if (q.k === 'home') mo = v('rent', y) * it.rent * m.rent; else if (q.k === 'heat') mo = v('energy', y) * HOMES[S.set.home].en * it.f * m.energy / 12; else mo = B.food * idx('food', y) * it.f * m.food;
+    add(money(mo) + '/mo');
+    if (q.k === 'home' && i !== S.livedHome && !rich()) add('+' + money(350 * ci) + ' move', 'bad');
+    if (it.wb) add('♥ ' + (it.wb > 0 ? '+' : '−') + Math.abs(it.wb) + '/yr', it.wb < 0 ? 'bad' : 'good');
+    return c.join('');
+  }
+  if (o.cost) add(money(-o.cost * k), 'bad');
+  if (o.gain) add('+' + big(o.gain * k), 'good');
+  if (o.rent) add('rent ▲' + Math.round((o.rent - 1) * 100) + '% for good', 'bad');
+  if (o.later) add('repay ' + money(o.later * k) + ' next year', 'bad');
+  if (o.luck) add('a gamble');
+  if (o.eff){
+    const e = o.eff;
+    if (e.pay) add('pay ▲' + Math.round((e.pay - 1) * 100) + '% for good', 'good');
+    if (e.rent < 1) add('rent ▼' + Math.round((1 - e.rent) * 100) + '%', 'good'); if (e.energy) add('energy ▼10%', 'good');
+    if (e.food) add('food ▼10%', 'good'); if (e.rest) add('other bills ▼10%', 'good'); if (e.isa) add('2% on savings', 'good');
+    if (e.fixed) add(money(e.fixed) + ' a month', 'bad');
+  }
+  if (o.wb) add('♥ ' + (o.wb > 0 ? '+' : '−') + Math.abs(o.wb), o.wb < 0 ? 'bad' : 'good');
+  if (o.wbyr) add('♥ −1 every year', 'bad');
+  return c.join('');
+}
+
+function showCross(){
+  const q = S.q = makeQuestion(), y = S.year;
+  const opts = q.kind === 'setting' ? q.list.map(it => ({l:it.n, ic:it.ic})) : q.opts;
+  const cur = q.kind === 'setting' ? S.set[q.k] : -1;
+  let h = '<p class="eyebrow">' + (S.last ? S.last.year + ': ' + signed(S.last.diff) + ' · ' : '') + y + ' ahead</p><h2>' + q.t + '</h2><p class="small">' + q.sub + '</p>' +
+    '<div class="cards n' + opts.length + '">' + opts.map((o, i) =>
+      '<button class="opt" id="o-' + i + '" type="button">' + ico(o.ic) + '<b>' + o.l + '</b>' + (i === cur ? '<span class="now">NOW</span>' : '') + '<span class="chips">' + chipsFor(q, o, i) + '</span></button>').join('') + '</div>';
+  $('low').innerHTML = h; $('low').scrollTop = 0;
+  opts.forEach((o, i) => $('o-' + i).addEventListener('click', () => choose(i)));
+  $('hTick').textContent = HEADLINES[y]; refreshGap(); hud();
+}
+
+function choose(i){
+  if (!S || G || !S.q) return;
+  const q = S.q, y = S.year, ci = idx('cpi', y), k = rich() ? 1 : ci; S.q = null;
+  let banner = q.t;
+  if (q.kind === 'setting'){
+    if (q.k === 'home' && i !== S.livedHome && !rich()){ S.bal -= 350 * ci; banner += ': moved'; }
+    S.set[q.k] = i; if (q.k === 'home') S.livedHome = i; banner = q.list[i].n;
   } else {
-    bill('RENT', M.rent, 6, 'ink'); bill('ENERGY', M.energy, 2, 'fuel'); bill('FOOD', M.food, 2, 'giro'); bill('BILLS', M.rest, 2, 'mute');
-    if (S.bal < 0) add(rnd(1, span - 1), {k:'bill', label:'INTEREST', val:-S.bal * .25, tone:'demand'});
-    const nh = 1 + Math.min(3, Math.floor((y - Y0) / 7));
-    for (let i = 0; i < nh; i++){
-      const h = HAZARDS[Math.floor(Math.random() * HAZARDS.length)];
-      const near = q[Math.floor(Math.random() * coins)];                 // half the red letters shadow a pay coin
-      const o = {k:'haz', label:h[0], val:h[1] * M.ci};
-      if (Math.random() < .5) q.push(Object.assign({t:near.t + .05, x:Math.max(34, Math.min(W - 34, near.x + (Math.random() < .5 ? -58 : 58)))}, o));
-      else add(rnd(.5, span), o);
+    const o = q.opts[i];
+    if (o.cost){ S.bal -= o.cost * k; banner += ': ' + money(-o.cost * k); }
+    if (o.gain){ S.bal += o.gain * k; banner += ': +' + big(o.gain * k); }
+    if (o.wb) S.wb = Math.max(rich() ? 50 : 0, Math.min(100, S.wb + o.wb));
+    if (o.rent) S.m.rent *= o.rent;
+    if (o.later) S.owed = o.later * k;
+    if (o.wbyr) S.m.wbyr += o.wbyr;
+    if (o.luck){
+      if (Math.random() < o.luck.p){ S.m.pay *= o.luck.pay; banner = o.luck.win; } else { S.wb = Math.max(0, S.wb + o.luck.loseWb); banner = o.luck.lose; }
     }
-    for (let i = 0; i < 3; i++) add((i + rnd(.3, .7)) / 3 * span, {k:'treat', label:'PINT', val:B.pint * M.ci, gain:9});
-    if ((y - startYear()) % 2 === 1) add(rnd(2, span - 1), {k:'treat', label:'HOLIDAY', val:B.holiday * M.ci, gain:30, bigT:true});
+    if (o.eff){ const e = o.eff; for (const key of ['pay', 'rent', 'energy', 'food', 'rest']) if (e[key]) S.m[key] *= e[key]; if (e.fixed) S.m.fixed += e.fixed; if (e.isa) S.m.isa = 1; S.perks.push(o.perk); banner = o.perk; }
+    if (o.l === 'Not now') banner = 'Walked on';
   }
-  q.sort((a, b) => a.t - b.t);
-  return {t:0, T, fall, q, objs:[], pops:[], M, coinVal, limit:M.net / 4, px:W / 2, cw:r ? W * .86 : 84 * S.m.bucket,
-          from:S.bal, late:0, missed:0, done:false, overT:0, shake:0, key:0};
+  beep(520, .1, 'triangle', .04, 1.4);
+  if (!rich() && S.bal < -limitFor(y)){
+    S.over = {kind:'bust', month:1, cause:q.t.toLowerCase()}; S.bal = -limitFor(y);
+    G = {t:0, T:WALK_T, done:true, overT:1.2, mi:0, pops:[], sprites:[], M:yearMoney(y), limit:limitFor(y), dist0:S.dist, fast:false, banner:null, bannerT:0, shake:10, pre:true}; $('low').innerHTML = ''; return;
+  }
+  startWalk(banner);
 }
 
-const catchY = () => H - 52, floorY = () => H - 14;
-function pop(x, y, text, tone){ G.pops.push({x:Math.max(60, Math.min(W - 60, x)), y, text, tone, life:1.1}); }
-function charge(amount, label){           // money leaves; this is where a run can end
-  S.bal -= amount; S.lastHit = label;
-  if (!rich() && S.bal < -G.limit && !S.over){
-    S.over = {kind:'bust', month:Math.min(12, Math.floor(G.t / G.T * 12) + 1), cause:label};
-    S.bal = -G.limit; endRun();
-  }
+// ---- walking ---------------------------------------------------------
+function startWalk(banner){
+  const y = S.year, M = yearMoney(y);
+  S.signX = S.dist + DY + 130;
+  G = {t:0, T:WALK_T, mi:0, fast:false, M, limit:limitFor(y), dist0:S.dist, pops:[], sprites:[], banner, bannerT:3, done:false, overT:0, shake:0, from:S.bal, wb0:S.wb, tickLine:0};
+  if (S.owed){ S.bal -= S.owed; G.banner = (banner ? banner + ' · ' : '') + 'Loan repaid ' + money(-S.owed); S.owed = 0; }
+  const ceo = v('ceo', y);
+  G.lines = [HEADLINES[y]];
+  if (!rich() && ceo){ const d = new Date(y, 0, 1 + Math.floor(365 / (ceo / M.gross))); G.lines.push('The median FTSE 100 boss made ' + big(ceo) + '. That covered your whole year by ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + '.'); }
+  G.lines.push('The average house costs ' + money(v('house', y)) + ': ' + (v('house', y) / M.gross).toFixed(1) + ' times your pay.');
+  $('hTick').textContent = G.lines[0];
+  renderLow(); refreshGap(); hud();
 }
-function endRun(){ G.done = true; G.overT = 1.3; G.shake = 14; beep(200, .5, 'sawtooth', .06, .3); }
-
-function caught(o){
-  const y = catchY();
-  if (o.k === 'coin'){ const val = o.val * (S.wb < 30 && !rich() ? .96 : 1); S.bal += val; S.earned += val; beep(880, .06, 'sine', .04, 1.3); }
-  else if (o.k === 'bonus'){ S.bal += o.val; pop(o.x, y - 20, '+' + big(o.val), 'gold'); beep(660, .2, 'sine', .06, 2); }
-  else if (o.k === 'bill'){ pop(o.x, y - 20, money(-o.val), 'ink'); beep(300, .07, 'triangle', .04); charge(o.val, o.label === 'BILLS' ? 'the bills' : 'the ' + o.label.toLowerCase()); }
-  else if (o.k === 'haz'){
-    G.shake = 8; beep(140, .25, 'square', .05, .6);
-    if (o.label === 'RENT HIKE'){ S.m.rent *= 1.05; pop(o.x, y - 20, 'RENT +5% FOR GOOD', 'demand'); }
-    else { pop(o.x, y - 20, o.label + ' ' + money(-o.val), 'demand'); S.wb = Math.max(0, S.wb - 4); charge(o.val, 'the ' + o.label.toLowerCase()); }
-  }
-  else if (o.k === 'treat'){ S.wb = Math.min(100, S.wb + o.gain); pop(o.x, y - 20, o.label + ' ' + money(-o.val), 'heart'); beep(520, .18, 'sine', .05, 1.5); charge(o.val, 'a ' + o.label.toLowerCase()); }
+function monthTick(){
+  const M = G.M, sick = !rich() && S.wb < 30, net = M.net / 12 * (sick ? .96 : 1);
+  let out = M.bills / 12; if (S.bal < 0) out += -S.bal * .25 / 12;
+  S.bal += net - out; S.earned += net;
+  if (!rich()) S.wb = Math.max(0, Math.min(100, S.wb + wbPerYear() / 12)); else S.wb = 100;
+  G.sprites.push({k:'coin', u:0, big:net}, {k:'env', u:0, size:Math.max(.7, Math.min(2.2, out / Math.max(1, net)))});
+  G.mi++; beep(700 + G.mi * 25, .05, 'sine', .025);
+  if (!rich() && S.bal < -G.limit){ S.over = {kind:'bust', month:G.mi, cause:'the bills'}; S.bal = -G.limit; endRun(); }
+  else if (!rich() && S.wb <= 0){ S.over = {kind:'burnout', month:G.mi, cause:'going without for too long'}; endRun(); }
+  hud(); renderMonths();
 }
-function dropped(o){
-  if (o.k === 'bill'){
-    G.late++; S.wb = Math.max(0, S.wb - 3); G.shake = 5;
-    pop(o.x, floorY() - 26, 'LATE FEE ' + money(-o.val * .1), 'demand'); beep(180, .2, 'sawtooth', .04, .7);
-    charge(o.val * 1.1, 'a late fee');
-  } else if (o.k === 'coin') G.missed++;
-}
+function endRun(){ G.done = true; G.overT = 1.3; G.shake = 12; beep(200, .5, 'sawtooth', .05, .3); }
 
 function update(dt){
-  if (!G) return;
-  for (const p of G.pops){ p.y -= 28 * dt; p.life -= dt; }
-  G.pops = G.pops.filter(p => p.life > 0);
-  G.shake = Math.max(0, G.shake - dt * 30);
-  if (G.done){ G.overT -= dt; if (G.overT <= 0) afterYear(); return; }
-  G.t += dt;
-  if (G.key) G.px = Math.max(0, Math.min(W, G.px + G.key * 560 * dt));
-  while (G.q.length && G.q[0].t <= G.t){ const o = G.q.shift(); o.y = 62; G.objs.push(o); }
-  const vy = (catchY() - 62) / G.fall, cy = catchY();
-  for (const o of G.objs){
-    const was = o.y; o.y += vy * dt;
-    const half = G.cw / 2 + (o.k === 'bill' ? 14 : o.k === 'haz' ? 2 : 8);
-    if (was < cy + 6 && o.y >= cy - 10 && Math.abs(o.x - G.px) < half){ o.gone = true; caught(o); }
-    else if (o.y > floorY()){ o.gone = true; dropped(o); }
-    if (G.done) return;
+  if (!S) return;
+  if (G){
+    for (const p of G.sprites) p.u += dt / .9;
+    G.sprites = G.sprites.filter(p => p.u < 1);
+    G.shake = Math.max(0, G.shake - dt * 30); G.bannerT -= dt;
+    if (G.done){ G.overT -= dt; if (G.overT <= 0) finishYear(); return; }
+    dt *= G.fast ? 3.2 : 1;
+    G.t += dt; S.dist = G.dist0 + Math.min(1, G.t / G.T) * DY;
+    const per = G.T * .85 / 12;
+    while (G.mi < 12 && !G.done && G.t >= (G.mi + 1) * per) monthTick();
+    const li = Math.floor(G.t / 2.6) % G.lines.length; if (li !== G.tickLine){ G.tickLine = li; $('hTick').textContent = G.lines[li]; }
+    if (G.t >= G.T && !G.done) finishYear();
   }
-  G.objs = G.objs.filter(o => !o.gone);
-  if (!rich()){
-    S.wb = Math.max(0, S.wb - 20 / G.T * S.m.drain * dt);
-    if (S.wb <= 0){ S.over = {kind:'burnout', month:Math.min(12, Math.floor(G.t / G.T * 12) + 1), cause:'going without for too long'}; endRun(); return; }
-  }
-  if (!G.q.length && !G.objs.length && G.t >= G.T - 1){ G.done = true; G.overT = 0; }
 }
 
-function afterYear(){
-  const y = S.year;
+function finishYear(){
+  const y = S.year, M = G && G.M || yearMoney(y);
+  S.hist.push({y, pay:M.net / 12, bills:M.bills / 12});
   S.giles += v('ceo', y) || 0; if (v('ceo', y)) S.gYears++;
+  const from = G && G.from != null ? G.from : S.bal;
   if (!S.over){
     if (S.m.isa && S.bal > 0) S.bal *= 1.02;
     if (rich()) S.bal *= v('house', y + 1) / v('house', y);
-    S.last = {year:y, diff:S.bal - G.from, late:G.late, missed:G.missed};
+    S.last = {year:y, diff:S.bal - from};
     if (y >= YEND) S.over = {kind:'survived'};
   }
   G = null;
@@ -382,161 +512,141 @@ function afterYear(){
     const yrs = y - startYear() + (S.over.kind === 'survived' ? 1 : 0);
     meta.best[S.ck] = Math.max(meta.best[S.ck] || 0, yrs); persist();
     $('stage').hidden = true; $('app').hidden = false; renderEnd(); scrollTo(0, 0);
-  } else { S.year++; interlude(); }
+  } else { S.year++; showCross(); }
+}
+
+// ---- screen furniture ------------------------------------------------
+function hud(){
+  $('hYear').textContent = S.year;
+  const b = $('hBank'); b.innerHTML = big(S.bal) + '<small>' + (S.bal < 0 ? 'owed' : 'in the bank') + '</small>'; b.className = 'bank ' + (S.bal < 0 ? 'down' : '');
+  $('hHeart').style.width = (rich() ? 100 : S.wb) + '%';
+}
+function refreshGap(){
+  const y = S.year, M = yearMoney(y), P = y > startYear() ? yearMoney(y - 1) : null, pay = M.net / 12, bills = M.bills / 12, max = Math.max(pay, bills);
+  const seg = (v_, c) => '<i style="width:' + (v_ / 12 / max * 100) + '%;background:var(--' + c + ')"></i>';
+  const gap = pay - bills, ch = k => P ? ' <small class="' + ((k === 'pay' ? M.net >= P.net : M.bills <= P.bills) ? 'up' : 'down') + '">' + arrow(k === 'pay' ? M.net / P.net - 1 : M.bills / P.bills - 1) + '</small>' : '';
+  $('gap').innerHTML =
+    '<div class="gr"><span>PAY</span><div class="trk"><i style="width:' + (pay / max * 100) + '%;background:var(--giro)"></i></div><span class="val">' + big(pay) + ch('pay') + '</span></div>' +
+    '<div class="gr"><span>BILLS</span><div class="trk">' + (rich() ? seg(M.rest, 'gold') : seg(M.rent, 'ink') + seg(M.energy, 'fuel') + seg(M.food, 'giro') + seg(M.rest, 'mute')) + '</div><span class="val">' + big(bills) + ch('bills') + '</span></div>' +
+    '<div class="gtail"><div class="legend">' + (rich() ? '<span style="--c:var(--gold)">yacht upkeep</span>' : '<span style="--c:var(--ink)">rent</span><span style="--c:var(--fuel)">energy</span><span style="--c:var(--giro)">food</span><span style="--c:var(--mute)">other</span>') + '</div>' +
+    '<span class="pill ' + (gap >= 0 ? 'up' : 'down') + '">' + signed(gap) + ' a month</span></div>';
+}
+function renderLow(){
+  $('low').innerHTML = '<div class="walkline"><b id="mname">' + MONTHS[0].toUpperCase() + '</b><span class="small">' + (S.year - startYear() + 1) + ' of ' + (YEND - startYear() + 1) + ' years · hold the scene to hurry</span></div>' +
+    '<div class="months" id="months">' + '<i></i>'.repeat(12) + '</div>' +
+    '<p class="small">Every month your pay comes in and your bills go out. Watch the pill above.</p>';
+}
+function renderMonths(){
+  const m = $('months'); if (!m) return;
+  [...m.children].forEach((e, i) => e.className = i < G.mi ? 'on' : '');
+  $('mname').textContent = MONTHS[Math.min(11, G.mi)].toUpperCase();
 }
 
 // ---- drawing ---------------------------------------------------------
-function heartPath(x, y, s){
-  ctx.beginPath(); ctx.moveTo(x, y + s * .9);
-  ctx.bezierCurveTo(x - s * 1.5, y - s * .1, x - s * .7, y - s * 1.1, x, y - s * .35);
-  ctx.bezierCurveTo(x + s * .7, y - s * 1.1, x + s * 1.5, y - s * .1, x, y + s * .9); ctx.closePath();
+function layer(par, spacing, fn){
+  const off = S.dist * par, k0 = Math.floor(off / spacing) - 1, n = Math.ceil(W / spacing) + 3;
+  for (let k = k0; k < k0 + n; k++) fn(k * spacing - off, k);
 }
 function draw(){
-  if (!G || !C.paper) return;
+  if (!S || !C.paper || $('stage').hidden) return;
   const k = dpr * scale; ctx.setTransform(k, 0, 0, k, 0, 0);
+  const y = S.year, gy = H - 40, dist = S.dist;
   ctx.fillStyle = C.paper; ctx.fillRect(0, 0, W, H);
-  const sx = G.shake && !reduceMotion ? rnd(-G.shake, G.shake) * .4 : 0; ctx.translate(sx, 0);
-  const y = S.year, r = rich(), ceo = v('ceo', y);
+  ctx.translate(G && G.shake && !reduceMotion ? (Math.random() - .5) * G.shake * .4 : 0, 0);
 
-  // the vault at the top, where the money goes first
-  ctx.fillStyle = C.ink; ctx.fillRect(-10, 0, W + 20, 56);
-  const stacks = Math.min(18, 5 + Math.floor((y - Y0) / 2));
-  for (let i = 0; i < stacks; i++){
-    const hgt = 3 + ((i * 7) % 5) + Math.floor((y - Y0) / 5), bx = 12 + i * 9;
-    for (let j = 0; j < hgt; j++){ ctx.fillStyle = j % 2 ? '#d99e00' : C.gold; ctx.fillRect(bx, 50 - j * 4, 7, 3); }
+  // the boss's tower, far away and a little taller every year
+  const prog = Math.max(0, (y - Y0) / (YEND - Y0)), th = H * .34 + prog * H * .5, tx = W - 74;
+  ctx.fillStyle = C.gold; ctx.fillRect(tx, gy - th, 40, th);
+  ctx.fillStyle = C.ink; for (let r = 0; r < th - 14; r += 11) for (let c = 0; c < 3; c++) ctx.fillRect(tx + 6 + c * 11, gy - th + 18 + r, 6, 5);
+  ctx.fillStyle = C.ink; ctx.fillRect(tx - 3, gy - th - 14, 46, 14);
+  ctx.fillStyle = C.gold; ctx.font = '400 9px Anton, Impact, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('OMNIGRAB', tx + 20, gy - th - 4);
+
+  layer(.12, 34, (x, s) => { const h = 16 + hash(s) * H * .2; ctx.fillStyle = C.rule; ctx.fillRect(x, gy - h, 26, h); });
+
+  const rentTxt = money(v('rent', y)), houseTxt = '£' + Math.round(v('house', y) / 1000) + 'k';
+  layer(.45, 118, (x, s) => {
+    const w = 78, h = 58 + hash(s + 5) * 22, top = gy - h;
+    ctx.fillStyle = C.card; ctx.fillRect(x, top, w, h); ctx.strokeStyle = C.rule; ctx.lineWidth = 2; ctx.strokeRect(x, top, w, h);
+    ctx.fillStyle = C.ink; ctx.beginPath(); ctx.moveTo(x - 5, top); ctx.lineTo(x + w / 2, top - 18); ctx.lineTo(x + w + 5, top); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = hash(s + 9) > .5 ? C.tab : C.rule; ctx.fillRect(x + 10, top + 12, 14, 14); ctx.fillRect(x + w - 24, top + 12, 14, 14);
+    ctx.fillStyle = C.fuel; ctx.fillRect(x + w / 2 - 6, gy - 26, 12, 26);
+    const m = ((s % 3) + 3) % 3;
+    if (m < 2){                                   // a real price on a sign: rents and house prices for this year
+      ctx.fillStyle = C.ink; ctx.fillRect(x + w + 4, gy - 46, 3, 46);
+      ctx.fillStyle = m === 0 ? C.demand : C.giro; ctx.fillRect(x + w + 7, gy - 50, 58, 30);
+      ctx.fillStyle = C.card; ctx.textAlign = 'center'; ctx.font = '600 8px "IBM Plex Mono", monospace'; ctx.fillText(m === 0 ? 'TO LET' : 'FOR SALE', x + w + 36, gy - 40);
+      ctx.font = '600 11px "IBM Plex Mono", monospace'; ctx.fillText(m === 0 ? rentTxt : houseTxt, x + w + 36, gy - 27);
+    }
+  });
+
+  ctx.fillStyle = C.rule; ctx.fillRect(-10, gy, W + 20, 40);
+  ctx.fillStyle = C.mute; layer(1, 52, x => ctx.fillRect(x, gy + 18, 24, 3));
+  layer(1, 170, (x, s) => { ctx.fillStyle = C.ink; ctx.fillRect(x, gy - 74, 3, 74); ctx.fillRect(x - 6, gy - 78, 15, 5); ctx.fillStyle = C.tab; ctx.fillRect(x - 4, gy - 73, 11, 3); });
+
+  // the signpost where the next choice waits
+  const sx = CX + (S.signX - dist);
+  if (sx < W + 30){
+    ctx.fillStyle = C.ink; ctx.fillRect(sx - 2, gy - 74, 5, 74);
+    ctx.fillStyle = C.tab; ctx.fillRect(sx - 22, gy - 92, 44, 28); ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.strokeRect(sx - 22, gy - 92, 44, 28);
+    ctx.fillStyle = C.tabink; ctx.font = '400 24px Anton, Impact, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('?', sx, gy - 69);
   }
-  ctx.textAlign = 'right'; ctx.fillStyle = C.gold; ctx.font = '400 20px Anton, Impact, sans-serif';
-  ctx.fillText(r ? 'YOUR VAULT' : 'THE BOSS', W - 12, 24);
-  ctx.font = '600 12px "IBM Plex Mono", monospace'; ctx.fillStyle = C.card;
-  ctx.fillText(r ? big(S.bal) : ceo ? big(ceo) + ' = ' + Math.round(ceo / G.M.gross) + ' of you' : 'keeps the rest', W - 12, 43);
+  drawFigure(gy);
 
-  // the year as twelve months
-  for (let m = 0; m < 12; m++){
-    ctx.fillStyle = m < G.t / G.T * 12 ? C.mute : C.rule; ctx.fillRect(4 + m * (W - 8) / 12, 58, (W - 8) / 12 - 2, 3);
-  }
-
-  for (const o of G.objs){
-    ctx.textAlign = 'center';
-    if (o.k === 'coin' || o.k === 'bonus'){
-      const rr = o.k === 'bonus' ? 18 : 12;
-      ctx.fillStyle = C.gold; ctx.beginPath(); ctx.arc(o.x, o.y, rr, 0, 6.2832); ctx.fill();
-      ctx.strokeStyle = '#a87900'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(o.x, o.y, rr - 3, 0, 6.2832); ctx.stroke();
-      ctx.fillStyle = '#5c4200'; ctx.font = '600 ' + (rr + 1) + 'px "IBM Plex Mono", monospace'; ctx.fillText('£', o.x, o.y + rr * .4);
-    } else if (o.k === 'bill'){
-      const w = Math.max(54, Math.min(128, 40 + 11 * o.val / G.coinVal)), h = 34;   // wider envelope, bigger bill
-      ctx.fillStyle = C[o.tone]; ctx.fillRect(o.x - w / 2, o.y - h / 2, w, h);
-      ctx.strokeStyle = C.paper; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(o.x - w / 2, o.y - h / 2); ctx.lineTo(o.x, o.y - 6); ctx.lineTo(o.x + w / 2, o.y - h / 2); ctx.stroke();
-      ctx.fillStyle = C.paper; ctx.font = '600 10px "IBM Plex Mono", monospace'; ctx.fillText(o.label, o.x, o.y + 4);
-      ctx.font = '600 11px "IBM Plex Mono", monospace'; ctx.fillText(money(o.val), o.x, o.y + 15);
-    } else if (o.k === 'haz'){
-      ctx.save(); ctx.translate(o.x, o.y); ctx.rotate(Math.sin(G.t * 9 + o.x) * .14);
-      ctx.fillStyle = C.demand; ctx.fillRect(-24, -16, 48, 32);
-      ctx.strokeStyle = C.paper; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-24, -16); ctx.lineTo(0, 2); ctx.lineTo(24, -16); ctx.stroke();
-      ctx.fillStyle = C.paper; ctx.font = '400 20px Anton, Impact, sans-serif'; ctx.fillText('!', 0, 13); ctx.restore();
-    } else if (o.k === 'treat'){
-      const s = o.bigT ? 17 : 11; ctx.fillStyle = C.heart; heartPath(o.x, o.y, s); ctx.fill();
-      ctx.fillStyle = C.ink; ctx.font = '600 10px "IBM Plex Mono", monospace'; ctx.fillText(money(o.val), o.x, o.y + s + 13);
+  if (G){
+    for (const p of G.sprites){
+      if (p.k === 'coin'){
+        const x = (W - 54) + (CX + 6 - (W - 54)) * p.u, yy = (gy - th - 4) + (gy - 66 - (gy - th - 4)) * p.u - Math.sin(p.u * 3.14) * 30;
+        ctx.fillStyle = C.gold; ctx.beginPath(); ctx.arc(x, yy, 6, 0, 6.2832); ctx.fill(); ctx.fillStyle = '#5c4200'; ctx.font = '600 8px "IBM Plex Mono", monospace'; ctx.textAlign = 'center'; ctx.fillText('£', x, yy + 3);
+      } else {
+        const x = CX - 8 - p.u * 90, yy = gy - 70 - Math.sin(p.u * 3.14) * 30 + p.u * 40, w = 13 * p.size, h = 9 * p.size;
+        ctx.globalAlpha = 1 - p.u * .6; ctx.fillStyle = C.demand; ctx.fillRect(x - w / 2, yy - h / 2, w, h);
+        ctx.strokeStyle = C.paper; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - w / 2, yy - h / 2); ctx.lineTo(x, yy); ctx.lineTo(x + w / 2, yy - h / 2); ctx.stroke(); ctx.globalAlpha = 1;
+      }
+    }
+    // progress along the road to 2040
+    const sy0 = startYear(), total = YEND - sy0 + 1, pr = Math.min(1, (S.year - sy0 + Math.min(1, G.t / G.T)) / total);
+    ctx.fillStyle = C.rule; ctx.fillRect(34, 16, W - 68, 4); ctx.fillStyle = C.ink; ctx.fillRect(34, 16, (W - 68) * pr, 4);
+    ctx.beginPath(); ctx.arc(34 + (W - 68) * pr, 18, 6, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = C.mute; ctx.font = '600 10px "IBM Plex Mono", monospace'; ctx.textAlign = 'left'; ctx.fillText(sy0, 4, 22); ctx.textAlign = 'right'; ctx.fillText(YEND, W - 4, 22);
+    if (G.bannerT > 0 && G.banner){
+      ctx.globalAlpha = Math.min(1, G.bannerT); ctx.fillStyle = C.tab; ctx.fillRect(10, 36, W - 20, 28);
+      ctx.fillStyle = C.tabink; ctx.font = '400 17px Anton, Impact, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(G.banner.toUpperCase().slice(0, 44), W / 2, 56); ctx.globalAlpha = 1;
+    }
+    if (S.over && G.done){
+      ctx.save(); ctx.translate(W / 2, H * .45); ctx.rotate(-.06); ctx.fillStyle = C.demand; ctx.font = '400 50px Anton, Impact, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(S.over.kind === 'bust' ? 'CREDIT GONE' : 'BURNT OUT', 0, 0); ctx.restore();
     }
   }
-
-  // you and your bucket
-  const cy = catchY(), cw = G.cw, debt = S.bal < 0;
-  ctx.fillStyle = debt ? C.demand : C.ink;
-  ctx.beginPath(); ctx.moveTo(G.px - cw / 2, cy); ctx.lineTo(G.px + cw / 2, cy); ctx.lineTo(G.px + cw / 2 - 9, cy + 30); ctx.lineTo(G.px - cw / 2 + 9, cy + 30); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = C.gold; ctx.fillRect(G.px - cw / 2 - 3, cy - 3, cw + 6, 5);
-  ctx.fillStyle = C.paper; ctx.font = '600 11px "IBM Plex Mono", monospace'; ctx.textAlign = 'center';
-  ctx.fillText(r ? 'YACHT' : CH[S.ck].name.toUpperCase(), G.px, cy + 21);
-  ctx.fillStyle = C.rule; ctx.fillRect(-10, floorY(), W + 20, 2);
-  if (!r){ ctx.fillStyle = C.demand; ctx.font = '600 10px "IBM Plex Mono", monospace'; ctx.textAlign = 'left'; ctx.fillText('CREDIT LIMIT ' + money(-G.limit), 6, H - 2); }
-
-  for (const p of G.pops){
-    ctx.globalAlpha = Math.min(1, p.life * 2); ctx.textAlign = 'center';
-    ctx.font = '600 13px "IBM Plex Mono", monospace'; ctx.fillStyle = C[p.tone] || C.ink; ctx.fillText(p.text, p.x, p.y);
+}
+function drawFigure(gy){
+  const ch = CH[S.ck], walking = G && !G.done, ph = S.dist * .1, bob = walking ? Math.abs(Math.sin(ph * 2)) * 2 : 0, sw = walking ? Math.sin(ph * 2) * 7 : 0;
+  const low = !rich() && S.wb < 30, slump = low ? 3 : 0;
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 4; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(CX - 3, gy - 18 - bob); ctx.lineTo(CX - 3 + sw, gy); ctx.moveTo(CX + 3, gy - 18 - bob); ctx.lineTo(CX + 3 - sw, gy); ctx.stroke();
+  ctx.fillStyle = low ? C.mute : ch.col; ctx.fillRect(CX - 9, gy - 48 - bob + slump, 18, 32);
+  ctx.fillStyle = '#f2c9a0'; ctx.beginPath(); ctx.arc(CX + slump * .5, gy - 56 - bob + slump, 8, 0, 6.2832); ctx.fill();
+  if (S.set.heat === 0 && !rich()){ ctx.fillStyle = C.demand; ctx.fillRect(CX - 10, gy - 49 - bob + slump, 20, 5); }
+  if (rich()){ ctx.fillStyle = C.gold; ctx.fillRect(CX - 7, gy - 68 - bob, 14, 6); }
+  if (S.bal < 0 && !rich()){
+    const t = performance.now() / 1000;
+    ctx.fillStyle = C.mute; ctx.beginPath(); ctx.ellipse(CX, gy - 86, 24, 10, 0, 0, 6.2832); ctx.fill();
+    ctx.strokeStyle = C.demand; ctx.lineWidth = 2; for (let i = -1; i <= 1; i++){ const o = (t * 40 + i * 9) % 16; ctx.beginPath(); ctx.moveTo(CX + i * 12, gy - 78 + o); ctx.lineTo(CX + i * 12 - 2, gy - 72 + o); ctx.stroke(); }
   }
-  ctx.globalAlpha = 1;
-  if (S.over && G.done){
-    ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(-.06);
-    ctx.fillStyle = C.demand; ctx.font = '400 54px Anton, Impact, sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText(S.over.kind === 'bust' ? 'CREDIT GONE' : 'BURNT OUT', 0, 0); ctx.restore();
-  }
-}
-function hud(){
-  $('hYear').textContent = S.year;
-  const b = $('hBank'); b.textContent = big(S.bal); b.className = 'bank ' + (S.bal < 0 ? 'down' : '');
-  $('hHeart').style.width = (rich() ? 100 : S.wb) + '%';
-}
-
-// ---- between years ---------------------------------------------------
-function applyEff(e){
-  for (const k of ['pay', 'rent', 'energy', 'food', 'rest', 'drain', 'bucket']) if (e[k]) S.m[k] *= e[k];
-  if (e.fixed) S.m.fixed += e.fixed; if (e.isa) S.m.isa = 1;
-}
-function interlude(){
-  const y = S.year, ch = CH[S.ck], first = y === startYear(), M = yearMoney(y), ci = M.ci;
-  const prev = first ? null : yearMoney(y - 1);
-  S.offer = null; S.pick = null;
-  if (!ch.rich && !first && (y - startYear()) % 2 === 0 && S.perkUsed.length < PERKS.length - 1){
-    const pool = PERKS.map((p, i) => i).filter(i => !S.perkUsed.includes(i));
-    const a = pool.splice(Math.floor(Math.random() * pool.length), 1)[0], b = pool[Math.floor(Math.random() * pool.length)];
-    S.offer = [a, b];
-  }
-  const max = Math.max(M.net, M.bills), ceo = v('ceo', y);
-  const row = (cls, label, val, text) => '<div class="g-row"><span>' + label + '</span><div class="g-bar ' + cls + '" style="width:' + Math.max(34, val / max * 100) + '%">' + text + '</div></div>';
-  let h = '<div><div class="big">' + y + '</div>' + (y > YN ? '<span class="proj">Projection</span>' : '') + '</div>' +
-    '<div class="head">' + HEADLINES[y] + '</div>';
-  if (S.last) h += '<p class="small">' + S.last.year + ': <b class="' + (S.last.diff >= 0 ? 'up' : 'down') + '">' + signed(S.last.diff) + '</b>' + (S.last.late ? ' · ' + S.last.late + ' late fee' + (S.last.late > 1 ? 's' : '') : '') + (S.last.missed ? ' · ' + S.last.missed + ' pay packets missed' : '') + '</p>';
-  h += '<div class="gauge"><p class="eyebrow">This year</p>' +
-    row('pay', 'PAY', M.net, big(M.net) + (prev ? ' ' + pct(M.net / prev.net - 1) : '')) +
-    row('bills', ch.rich ? 'YACHT' : 'BILLS', M.bills, big(M.bills) + (prev ? ' ' + pct(M.bills / prev.bills - 1) : '')) +
-    (ceo && !ch.rich ? row('boss', 'BOSS', max, big(ceo) + ' → ' + Math.round(ceo / max).toLocaleString('en-GB') + ' screens wide') : '') + '</div>';
-  if (first && !ch.rich) h += '<div class="legend">' +
-    '<span class="lg coin">£</span><span><b>Catch your pay.</b> It drips from the boss’s vault.</span>' +
-    '<span class="lg bill">RENT</span><span><b>Catch your bills.</b> Miss one and it costs 10% more.</span>' +
-    '<span class="lg red">!</span><span><b>Dodge red letters.</b> They are never good news.</span>' +
-    '<span class="lg hrt">♥</span><span><b>Hearts keep you going,</b> at a price. Run out and you burn out.</span></div>' +
-    '<p class="small">Drag, or use the arrow keys. Go below your credit limit and it is over.</p>';
-  if (first && ch.rich) h += '<p class="small">Your bucket is a yacht. Try not to exert yourself.</p>';
-  if (S.offer) h += '<p class="eyebrow">Pick one, or neither</p><div class="perks">' + S.offer.map((id, i) => {
-    const p = PERKS[id];
-    return '<button class="perk" id="perk-' + i + '" type="button" aria-pressed="false"><b>' + p.name + '</b><span>' + p.line + '</span><em>' + (p.cost ? money(p.cost * ci) + ' now' : 'free') + (p.wb ? ' · ♥ ' + p.wb : '') + '</em></button>';
-  }).join('') + '</div>';
-  h += '<div class="btns"><button class="go" id="begin" type="button">Play ' + y + '</button></div>';
-  const el = $('inter'); el.innerHTML = h; el.hidden = false; el.scrollTop = 0;
-  $('hTick').textContent = HEADLINES[y]; hud();
-  if (S.offer) S.offer.forEach((id, i) => $('perk-' + i).addEventListener('click', () => {
-    S.pick = S.pick === i ? null : i;
-    S.offer.forEach((_, j) => $('perk-' + j).setAttribute('aria-pressed', String(S.pick === j)));
-  }));
-  $('begin').addEventListener('click', () => begin());
-}
-function begin(){
-  if (!S || G) return;
-  if (S.offer && S.pick != null){
-    const id = S.offer[S.pick], p = PERKS[id], ci = idx('cpi', S.year);
-    S.perkUsed.push(id); S.perks.push(p.name); applyEff(p.eff);
-    if (p.cost) S.bal -= p.cost * ci; if (p.wb) S.wb = Math.max(5, S.wb + p.wb);
-  }
-  S.offer = null; $('inter').hidden = true;
-  resize(); G = setupYear(); hud(); beep(440, .12, 'triangle', .05, 2);
-}
-
-function newGame(ck){
-  const ch = CH[ck];
-  S = {ck, year:ch.y0 || Y0, bal:ch.start, wb:70, m:{pay:1, rent:1, energy:1, food:1, rest:1, fixed:0, drain:1, bucket:1, isa:0},
-       perks:[], perkUsed:[], earned:0, giles:0, gYears:0, over:null, last:null, lastHit:'', offer:null, pick:null};
-  G = null; $('app').hidden = true; $('stage').hidden = false; resize(); interlude();
 }
 
 // ---- reading screens -------------------------------------------------
 function sourcesHTML(){
   const li = DATA.sources.map(s => '<li><a href="' + s.url + '" target="_blank" rel="noopener">' + s.title + '</a>. ' + s.note + '</li>').join('');
   return '<details class="src"><summary>Where the numbers come from</summary><ul>' + li +
-    '<li>How the figures become the game: each year’s coins add up to that year’s take-home pay, and each envelope is a share of that year’s rent, energy, food and other bills.</li>' +
+    '<li>How the figures become the game: your pay and your bills each month are that year’s published figures, shaped by the choices you made.</li>' +
     '<li>People, companies and headlines are invented. Pay, prices, rents, bills and tax rules for ' + Y0 + ' to ' + YN + ' come from the sources above; each note says how closely it was checked.</li>' +
     '<li>Years after ' + YN + ' are a projection, not a forecast: each series simply carries on at its own average rate since ' + Y0 + ', except the minimum wage, which keeps its 2025 share of average pay.</li>' +
-    '<li>Simplified: one adult, no children, no benefits or pension, renting privately. Housing sizes, everyday costs, the café’s accounts, the yacht, red letters, treats and perks are illustrative, not data.</li></ul></details>';
+    '<li>Simplified: one adult, no children, no benefits or pension, renting privately. Housing sizes, everyday costs, the café’s accounts, the yacht, the life events and the perks are illustrative, not data.</li></ul></details>';
 }
 function renderStart(){
+  const rows = [['Pay', v('pay', YN) / v('pay', Y0), 'pay'], ['Food', idx('food', YN), ''], ['Rent', idx('rent', YN), ''], ['House', v('house', YN) / v('house', Y0), ''], ['Energy', idx('energy', YN), 'hot']];
+  const mx = Math.max(...rows.map(r => r[1]));
+  const idxHTML = '<div class="idx"><p class="eyebrow">What changed, 2008 to 2025 (2008 = 100)</p>' + rows.map(r => '<div class="idx-row"><span>' + r[0] + '</span><div class="idx-bar"><i class="' + r[2] + '" style="width:' + (r[1] / mx * 100) + '%"></i></div><span>' + Math.round(r[1] * 100) + '</span></div>').join('') + '</div>';
   const cards = Object.keys(CH).map(k => {
     const ch = CH[k], y0 = ch.y0 || Y0, g = ch.gross(y0), net = (g - taxOn(g, y0)) / 12, lock = ch.rich && !meta.unlocked;
     return '<button class="char' + (ch.rich ? ' rich' : '') + '" id="pick-' + k + '" type="button"' + (lock ? ' disabled' : '') + '>' +
@@ -545,22 +655,38 @@ function renderStart(){
   }).join('');
   $('app').innerHTML =
     '<h1 class="title">Trickle <i>Down</i></h1>' +
-    '<p class="lede">Catch your pay as it drips from the boss’s vault. Pay your bills before they hit the floor. Last from 2008 to 2040. The amounts are real UK figures. The people are invented.</p>' +
+    '<p class="lede">Walk from 2008 to 2040 on real UK pay and real UK prices. Keep your pay ahead of your bills. If you can.</p>' +
+    '<div class="how">' + ico('coins') + '<span><b>Pay comes in, bills go out,</b> every month. The gap decides how long you last.</span>' +
+    ico('key') + '<span><b>A signpost every year.</b> Pick a path. Everything costs money or wellbeing.</span>' +
+    ico('crown') + '<span><b>The boss gets richer</b> in the background. Look up.</span></div>' +
+    idxHTML +
     '<p class="eyebrow">Choose who to be</p><div class="chars">' + cards + '</div>' + sourcesHTML();
   for (const k of Object.keys(CH)) $('pick-' + k).addEventListener('click', () => newGame(k));
 }
-function rank(yrs){
-  return yrs < 5 ? 'Official verdict: should have budgeted better.' : yrs < 12 ? 'Official verdict: just about managing.' : yrs < 24 ? 'Official verdict: resilient, the government’s favourite word.' : 'Official verdict: so close to the nothing waiting at the end.';
+const rank = yrs => yrs < 5 ? 'Official verdict: should have budgeted better.' : yrs < 12 ? 'Official verdict: just about managing.' : yrs < 24 ? 'Official verdict: resilient, the government’s favourite word.' : 'Official verdict: so close to the nothing waiting at the end.';
+function chartHTML(){
+  const h = S.hist; if (h.length < 2) return '';
+  const w = 360, ht = 150, px = 34, max = Math.max(...h.flatMap(d => [d.pay, d.bills])) * 1.1;
+  const X = i => px + i * (w - px - 10) / (h.length - 1), Y = val => ht - 22 - val / max * (ht - 36);
+  const line = key => h.map((d, i) => X(i).toFixed(1) + ',' + Y(d[key]).toFixed(1)).join(' ');
+  let gaps = ''; for (let i = 0; i < h.length - 1; i++) if (h[i].bills > h[i].pay && h[i + 1].bills > h[i + 1].pay)
+    gaps += '<polygon points="' + X(i) + ',' + Y(h[i].bills) + ' ' + X(i + 1) + ',' + Y(h[i + 1].bills) + ' ' + X(i + 1) + ',' + Y(h[i + 1].pay) + ' ' + X(i) + ',' + Y(h[i].pay) + '" fill="var(--demand)" opacity=".28"/>';
+  return '<svg viewBox="0 0 ' + w + ' ' + ht + '" width="100%" role="img" aria-label="Your monthly pay and bills by year">' +
+    '<line x1="' + px + '" y1="' + (ht - 22) + '" x2="' + (w - 10) + '" y2="' + (ht - 22) + '" stroke="var(--rule)"/>' + gaps +
+    '<polyline points="' + line('pay') + '" fill="none" stroke="var(--giro)" stroke-width="3"/><polyline points="' + line('bills') + '" fill="none" stroke="var(--demand)" stroke-width="3"/>' +
+    '<text x="' + px + '" y="' + (ht - 6) + '" fill="var(--mute)" font-size="10" font-family="IBM Plex Mono, monospace">' + h[0].y + '</text><text x="' + (w - 10) + '" y="' + (ht - 6) + '" text-anchor="end" fill="var(--mute)" font-size="10" font-family="IBM Plex Mono, monospace">' + h[h.length - 1].y + '</text>' +
+    '<text x="' + (px - 4) + '" y="12" text-anchor="end" fill="var(--mute)" font-size="10" font-family="IBM Plex Mono, monospace">' + big(max / 1.1) + '</text>' +
+    '<text x="' + (w - 10) + '" y="12" text-anchor="end" font-size="11" font-family="IBM Plex Mono, monospace"><tspan fill="var(--giro)">pay</tspan> <tspan fill="var(--demand)">bills</tspan></text></svg>';
 }
 function renderEnd(){
-  const ch = CH[S.ck], o = S.over, y = S.year, first = ch.rich ? 'Sir Giles' : ch.name;
-  const y0 = startYear(), yrs = y - y0 + 1;
+  const ch = CH[S.ck], o = S.over, y = S.year, first = ch.rich ? 'Sir Giles' : ch.name, art = /^[aeiou]/i.test(ch.job) ? 'an' : 'a';
+  const y0 = startYear(), yrs = y - y0 + 1, h = S.hist, a = h[0], z = h[h.length - 1];
   const gTot = S.giles || v('ceo', 2015), gLabel = S.giles ? (S.gYears < yrs ? 'Median FTSE 100 boss was paid, 2015 onwards' : 'Median FTSE 100 boss was paid, same years') : 'Median FTSE 100 boss was paid in 2015 alone';
-  let stamp, line, share; const art = /^[aeiou]/i.test(ch.job) ? 'an' : 'a';
+  let stamp, line, share;
   if (ch.rich){
     const deeNet = CH.dee.gross(YEND) - taxOn(CH.dee.gross(YEND), YEND);
     stamp = 'Sir Giles won. Obviously.';
-    line = 'He finished ' + YEND + ' worth ' + big(S.bal) + ' with a bucket the width of a yacht. Dee would need ' + Math.round(S.bal / deeNet).toLocaleString('en-GB') + ' years of take-home pay to match it.';
+    line = 'He finished ' + YEND + ' worth ' + big(S.bal) + '. Dee would need ' + Math.round(S.bal / deeNet).toLocaleString('en-GB') + ' years of take-home pay to match it.';
     share = 'I played Trickle Down as a FTSE 100 boss and finished 2040 worth ' + big(S.bal) + '. It was not hard. That is the joke.';
   } else if (o.kind === 'survived'){
     stamp = first + ' made it to ' + YEND;
@@ -574,14 +700,12 @@ function renderEnd(){
   $('app').innerHTML =
     '<div class="stamp' + (o.kind === 'survived' ? ' win' : '') + '">' + stamp + '</div>' +
     '<p class="lede">' + line + '</p>' +
-    (ch.rich ? '' : '<section class="card slip"><p class="eyebrow">Final statement, ' + y0 + ' to ' + y + (y > YN ? ' (later years projected)' : '') + '</p><dl class="lines">' +
-    '<dt>Pay ' + first + ' caught, in total</dt><dd>' + big(S.earned) + '</dd>' +
-    '<dt>' + gLabel + '</dt><dd>' + big(gTot) + '</dd>' +
-    '<dt class="tot">Years ' + first + ' would need to work for that</dt><dd class="tot">' + Math.round(gTot / (Math.max(1, S.earned) / yrs)).toLocaleString('en-GB') + '</dd></dl></section>') +
-    '<section class="card"><p class="eyebrow">Tell someone</p><p class="share" id="share">' + share + '</p>' +
-    '<div class="btns"><button class="ghost" id="copy" type="button">Copy result</button></div></section>' +
-    '<div class="btns"><button class="go" id="again" type="button">Play again</button>' +
-    (ch.rich ? '' : '<button class="ghost" id="asgiles" type="button">Now play as the boss</button>') + '</div>' + sourcesHTML();
+    (ch.rich || h.length < 2 ? '' : '<section class="card slip"><p class="eyebrow">Your pay against your bills, ' + y0 + ' to ' + y + '</p>' + chartHTML() +
+      '<div class="verdict"><div><span class="eyebrow">Your pay</span><b class="' + (z.pay >= a.pay ? 'up' : 'down') + '">' + arrow(z.pay / a.pay - 1) + '</b></div><div><span class="eyebrow">Your bills</span><b class="' + (z.bills <= a.bills ? 'up' : 'down') + '">' + arrow(z.bills / a.bills - 1) + '</b></div></div></section>') +
+    (ch.rich ? '' : '<section class="card"><dl class="lines"><dt>' + first + ' took home, in total</dt><dd>' + big(S.earned) + '</dd><dt>' + gLabel + '</dt><dd>' + big(gTot) + '</dd>' +
+      '<dt class="tot">Years ' + first + ' would need to work for that</dt><dd class="tot">' + Math.round(gTot / (Math.max(1, S.earned) / yrs)).toLocaleString('en-GB') + '</dd></dl></section>') +
+    '<section class="card"><p class="eyebrow">Tell someone</p><p class="share" id="share">' + share + '</p><div class="btns"><button class="ghost" id="copy" type="button">Copy result</button></div></section>' +
+    '<div class="btns"><button class="go" id="again" type="button">Play again</button>' + (ch.rich ? '' : '<button class="ghost" id="asgiles" type="button">Now play as the boss</button>') + '</div>' + sourcesHTML();
   $('again').addEventListener('click', () => { S = null; renderStart(); scrollTo(0, 0); });
   if (!ch.rich) $('asgiles').addEventListener('click', () => newGame('giles'));
   $('copy').addEventListener('click', () => {
@@ -592,29 +716,26 @@ function renderEnd(){
 }
 
 // ---- input and loop --------------------------------------------------
-const toX = e => Math.max(0, Math.min(W, (e.clientX - cv.getBoundingClientRect().left) / scale));
-cv.addEventListener('pointerdown', e => { e.preventDefault(); if (G) G.px = toX(e); });
-cv.addEventListener('pointermove', e => { if (G) G.px = toX(e); });
-const keys = {};
+cv.addEventListener('pointerdown', e => { if (G) G.fast = true; });
+addEventListener('pointerup', () => { if (G) G.fast = false; });
 addEventListener('keydown', e => {
-  if (e.code === 'ArrowLeft' || e.code === 'ArrowRight'){ keys[e.code] = 1; e.preventDefault(); }
-  if ((e.code === 'Enter' || e.code === 'Space') && S && !G && !$('inter').hidden && !(e.target instanceof HTMLButtonElement)){ e.preventDefault(); begin(); }
+  if (e.code === 'Space' && G && !(e.target instanceof HTMLButtonElement)){ e.preventDefault(); G.fast = true; }
+  if (S && S.q && /^Digit[1-3]$/.test(e.code)){ const i = +e.code.slice(5) - 1, n = S.q.kind === 'setting' ? S.q.list.length : S.q.opts.length; if (i < n) choose(i); }
 });
-addEventListener('keyup', e => { keys[e.code] = 0; });
+addEventListener('keyup', e => { if (e.code === 'Space' && G) G.fast = false; });
 $('mute').addEventListener('click', () => { meta.mute = !meta.mute; persist(); $('mute').textContent = meta.mute ? 'OFF' : 'SND'; });
 $('mute').textContent = meta.mute ? 'OFF' : 'SND';
 
 let last = performance.now();
 function frame(now){
   const dt = Math.min(.033, (now - last) / 1000); last = now;
-  if (G && !window.__tdManual){ G.key = (keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0); update(dt); if (G){ draw(); hud(); } }
+  if (S && !window.__tdManual) update(dt);
+  draw();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 
-window.__td = {v, idx, taxOn, CH, PERKS, W, get S(){ return S; }, get G(){ return G; }, newGame, begin, update, yearMoney, catchY, pick:i => { S.pick = i; }};
-const boot = d => { if (d && d.S && d.S.m && !d.S.over){ S = d.S; $('app').hidden = true; $('stage').hidden = false; resize(); interlude(); } else renderStart(); };
-window.claude?.hot?.snapshot?.(() => ({S}));
-window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});
+window.__td = {v, idx, taxOn, CH, W, get S(){ return S; }, get G(){ return G; }, newGame, choose, update, yearMoney, HOMES, HEATS, FOODS};
+renderStart();
 })();
 </script>
