@@ -102,17 +102,20 @@ details a{color:var(--ink)}
 <script>
 (() => {
 /*DATA-START*/
+// Every array runs 2008..2025. "direct" in a source note means the figures were read from the publisher's own series for this build.
+const RENT_IDX = [84.8,86.3,87.5,89.7,92.7,95.0,97.2,100.0,101.8,102.7,103.2,103.9,105.4,107.2,110.9,117.3,125.7,132.5];
+const ENERGY_IDX = [74.9,80.2,77.9,85.7,92.5,99.1,103.4,100.0,97.0,100.7,107.5,111.6,106.5,111.5,183.6,212.0,172.2,174.9];
+const AWE_WEEKLY = [434,434,444,455,461,466,471,482,494,505,520,538,547,580,616,659,694,728];
 const DATA = {
-  placeholder: true,
-  medianPay:[25165,25800,25900,26100,26500,27000,27200,27600,28200,28800,29600,30400,31500,31300,33000,35000,37400,39000],
-  minWage:[5.73,5.80,5.93,6.08,6.19,6.31,6.50,6.70,7.20,7.50,7.83,8.21,8.72,8.91,9.50,10.42,11.44,12.21],
-  cpi:[84.7,86.6,89.4,93.4,96.1,98.5,100,100,100.7,103.4,105.9,107.8,108.7,111.6,121.7,130.5,133.9,138.5],
-  food:[82,86.5,89.4,94.3,97.3,101,100.8,98.2,95.8,97.9,100,101.4,102.1,102.4,114,131,134,139.5],
-  rent:[780,785,790,805,820,835,850,870,890,905,915,930,945,960,1000,1090,1250,1335],
-  energy:[1050,1100,1060,1130,1220,1290,1270,1210,1120,1130,1190,1200,1150,1200,1900,2300,1750,1780],
-  house:[172000,155000,167000,165000,166000,170000,184000,196000,210000,220000,227000,230000,237000,258000,280000,283000,283000,270000],
-  ceo:[3900000,3700000,4200000,4300000,4300000,4400000,4400000,4300000,3500000,4000000,3600000,3300000,2500000,3400000,3900000,4200000,4600000,4600000],
-  parcels:[26000,41000,61000,129000,347000,913000,1085000,1110000,1180000,1330000,1600000,1900000,2580000,2180000,2990000,3120000,2890000,null],
+  pay: AWE_WEEKLY.map(w => w * 52),
+  minWage:[5.52,5.73,5.80,5.93,6.08,6.19,6.31,6.50,7.20,7.50,7.83,8.21,8.72,8.91,9.50,10.42,11.44,12.21],
+  cpi:[84.7,86.6,89.4,93.4,96.1,98.5,100.0,100.0,100.7,103.4,105.9,107.8,108.7,111.6,121.7,130.5,133.9,138.4],
+  food:[83.5,88.1,91.1,96.0,99.1,102.9,102.7,100.0,97.6,99.8,101.8,103.2,103.9,104.2,115.5,132.3,135.8,141.5],
+  rent: RENT_IDX.map(i => 1368 * i / 132.5),          // pounds a month, anchored to the ONS UK average private rent
+  energy: ENERGY_IDX.map(i => 2252 * i / 172.2),      // pounds a year, anchored to the DESNZ 2024 typical dual-fuel bill
+  house:[162912,148445,156936,154654,155269,159262,172048,182291,195035,203950,210354,212434,218522,236313,258236,258956,260532,267458],
+  ceo:[null,null,null,null,null,null,null,3970000,3450000,3930000,3630000,3610000,2690000,3410000,3910000,4190000,4580000,5060000],
+  parcels:[null,null,null,null,null,913138,1084604,1109309,1182954,1354682,1606810,1909360,2578919,2183061,2997589,3121404,2885086,null],
   pa:[6035,6475,6475,7475,8105,9440,10000,10600,11000,11500,11850,12500,12500,12570,12570,12570,12570,12570],
   hr:[40835,43875,43875,42475,42475,41450,41865,42385,43000,45000,46350,50000,50000,50270,50270,50270,50270,50270],
   pt:[5435,5715,5715,7225,7605,7755,7956,8060,8060,8164,8424,8632,9500,9568,11908,12570,12570,12570],
@@ -120,12 +123,22 @@ const DATA = {
   uel:[40040,43875,43875,42475,42475,41450,41865,42385,43000,45000,46350,50000,50000,50270,50270,50270,50270,50270],
   ni2:[.01,.01,.01,.02,.02,.02,.02,.02,.02,.02,.02,.02,.02,.02,.0273,.02,.02,.02],
   freezeUntil: 2030,
-  base: { food:175, essentials:190, bus:55, car:210, social:65, holiday:170 },   // 2008 pounds a month, single adult
-  sources: []
+  base: { food:165, essentials:175, bus:50, car:200, social:60, holiday:160 },   // 2008 pounds a month, one adult; illustrative
+  sources: [
+    {title:'ONS Consumer Prices Index: all items (D7BT) and food (D7BU)', url:'https://www.ons.gov.uk/economy/inflationandpriceindices/timeseries/d7bt/mm23', note:'Annual averages, read direct.'},
+    {title:'ONS CPI: actual rents for housing (D7CE)', url:'https://www.ons.gov.uk/economy/inflationandpriceindices/timeseries/d7ce/mm23', note:'Read direct. Turned into pounds using the ONS UK average private rent of £1,368 (December 2025). This index includes social rents and existing tenancies, so it understates how fast new private rents rose.'},
+    {title:'ONS CPI: electricity, gas and other fuels (D7CH)', url:'https://www.ons.gov.uk/economy/inflationandpriceindices/timeseries/d7ch/mm23', note:'Read direct. Turned into pounds using the government’s typical 2024 dual-fuel bill of £2,252, a figure since revised by about 1.5%.'},
+    {title:'ONS Average Weekly Earnings, total pay (KAB9)', url:'https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/timeseries/kab9/emp', note:'Read direct. Sam is paid this average, times 52.'},
+    {title:'GOV.UK National Minimum Wage and National Living Wage rates', url:'https://www.gov.uk/national-minimum-wage-rates', note:'Main adult rate in force for most of each year. Statutory rates, not re-checked against the page for this build.'},
+    {title:'GOV.UK income tax and National Insurance rates and allowances', url:'https://www.gov.uk/government/publications/rates-and-allowances-income-tax/income-tax-rates-and-allowances-current-and-past', note:'Statutory rates for England, Wales and Northern Ireland, not re-checked for this build. Mid-year changes in 2022 and 2023 are averaged. Thresholds are announced as frozen until April 2031.'},
+    {title:'UK House Price Index (HM Land Registry and ONS)', url:'https://www.gov.uk/government/collections/uk-house-price-index-reports', note:'Annual averages taken from a third-party compilation of the official index, not read direct.'},
+    {title:'High Pay Centre annual FTSE 100 chief executive pay reports', url:'https://highpaycentre.org/', note:'Median total pay as first reported. 2018 and 2019 read direct; other years from the reports via press coverage; 2017 unverified. No verified figures before 2015, so boss comparisons start then.'},
+    {title:'Trussell end of year statistics', url:'https://www.trussell.org.uk/news-and-research/latest-stats/end-of-year-stats', note:'Emergency food parcels, financial years from April, via secondary reproductions of Trussell’s figures.'}
+  ]
 };
 /*DATA-END*/
 
-const Y0 = 2008, YN = Y0 + DATA.medianPay.length - 1, YEND = 2040;
+const Y0 = 2008, YN = Y0 + DATA.pay.length - 1, YEND = 2040;
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const $ = id => document.getElementById(id);
 const money = n => (n < 0 ? '−' : '') + '£' + Math.abs(Math.round(n)).toLocaleString('en-GB');
@@ -135,9 +148,9 @@ const pct = n => (n >= 0 ? '+' : '−') + Math.abs(n * 100).toFixed(1) + '%';
 // A series value for any year. After the last real year, each series carries on at its own 2008-to-latest average growth rate.
 function v(key, y){
   const s = DATA[key], n = s.length - 1;
-  let last = n; while (s[last] == null) last--;
+  let last = n, first = 0; while (s[last] == null) last--; while (s[first] == null) first++;
   if (y - Y0 <= last) return s[y - Y0];
-  const g = Math.pow(s[last] / s[0], 1 / last);
+  const g = Math.pow(s[last] / s[first], 1 / (last - first));
   return s[last] * Math.pow(g, y - Y0 - last);
 }
 const idx = (key, y) => v(key, y) / v(key, Y0);
@@ -160,18 +173,18 @@ function taxOn(g, y){
 const CH = {
   dee:  {name:'Dee', job:'Care worker', blurb:'Full time on the legal minimum wage. Called a hero roughly once a decade.', start:300, home:0,
          gross:y => v('minWage', y) * 37.5 * 52},
-  sam:  {name:'Sam', job:'Office administrator', blurb:'Paid exactly the UK median full-time wage. Statistically, doing fine.', start:1500, home:1,
-         gross:y => v('medianPay', y)},
+  sam:  {name:'Sam', job:'Office administrator', blurb:'Paid exactly the national average wage. Statistically, doing fine.', start:1500, home:1,
+         gross:y => v('pay', y)},
   priya:{name:'Priya', job:'Café owner', blurb:'A small business owner. Her rent, energy, stock and wage bill all rise before her prices can.', start:1000, home:1,
          gross:y => Math.max(0, 78000 * idx('cpi', y) - v('minWage', y) * 37.5 * 52 * 1.1 - 14000 * idx('rent', y) - 6000 * idx('energy', y) - 22000 * idx('food', y))},
-  giles:{name:'Sir Giles Hoard-Whittle', job:'Chief executive, OmniGrab plc', blurb:'Paid the real median for a FTSE 100 boss. Same years. Slightly different game.', start:2000000, rich:true,
+  giles:{name:'Sir Giles Hoard-Whittle', job:'Chief executive, OmniGrab plc', blurb:'Paid the real median for a FTSE 100 boss. Starts in 2015, the first year with verified pay figures.', start:2000000, rich:true, y0:2015,
          gross:y => v('ceo', y)}
 };
 
 const B = DATA.base;
 const CHOICES = [
   {k:'home', label:'Home', opts:[
-    {l:'Room in a shared house', rent:.45, en:.4, ess:.7, wb:-4},
+    {l:'Room in a shared house', rent:.38, en:.4, ess:.7, wb:-2},
     {l:'One-bed flat', rent:.8, en:.7, ess:1, wb:0},
     {l:'Two-bed house', rent:1.15, en:1, ess:1.1, wb:3}]},
   {k:'heat', label:'Heating', opts:[
@@ -319,8 +332,8 @@ function deal(){
 }
 function newGame(ck){
   const ch = CH[ck];
-  S = {ck, year:Y0, bal:ch.start, wb:70, picks: ch.rich ? {home:0, tax:0, give:0} : {home:ch.home, heat:1, food:1, travel:0, life:1},
-       livedHome: ch.rich ? 0 : ch.home, rentMult:1, payMult:1, owed:0, used:[], ev:null, note:'', earned:0, giles:0, over:null};
+  S = {ck, year:ch.y0 || Y0, bal:ch.start, wb:70, picks: ch.rich ? {home:0, tax:0, give:0} : {home:ch.home, heat:1, food:1, travel:0, life:1},
+       livedHome: ch.rich ? 0 : ch.home, rentMult:1, payMult:1, owed:0, used:[], ev:null, note:'', earned:0, giles:0, gYears:0, over:null};
   deal(); tickI = 0; render(); scrollTo(0, 0);
 }
 
@@ -365,7 +378,7 @@ function liveYear(){
   }
   if (eo.rent) S.rentMult *= eo.rent;
   S.livedHome = S.picks.home;
-  S.earned += c.net * 12; S.giles += v('ceo', y);
+  S.earned += c.net * 12; S.giles += v('ceo', y) || 0; if (v('ceo', y)) S.gYears++;
   const diff = bal - S.bal;
   S.wb = Math.max(ch.rich ? 50 : 0, Math.min(100, S.wb + wb));
   if (bust){
@@ -379,7 +392,7 @@ function liveYear(){
   S.bal = bust ? -c.limit : (ch.rich ? bal * v('house', y + 1) / v('house', y) : bal);
   if (S.over){
     meta.unlocked = true;
-    const yrs = y - Y0 + (S.over.kind === 'survived' ? 1 : 0);
+    const yrs = y - (ch.y0 || Y0) + (S.over.kind === 'survived' ? 1 : 0);
     meta.best[S.ck] = Math.max(meta.best[S.ck] || 0, yrs); persist();
   } else {
     S.note = y + ': ' + (diff >= 0 ? 'you put away ' + money(diff) : 'you went ' + money(-diff) + ' backwards') + '. ' + note;
@@ -391,13 +404,14 @@ function liveYear(){
 // ---- screens ---------------------------------------------------------
 function tickerLines(){
   const y = S.year, ch = CH[S.ck], c = calc(), lines = HEADLINES[y].slice();
-  const real = (v('medianPay', y) / v('medianPay', Y0)) / idx('cpi', y) - 1;
-  lines.push('Median full-time pay, after inflation: ' + pct(real) + ' since 2008.');
-  if (!ch.rich){
+  const real = idx('pay', y) / idx('cpi', y) - 1;
+  if (y > Y0) lines.push('Average pay, after inflation: ' + pct(real) + ' since 2008.');
+  if (!ch.rich && v('ceo', y)){
     const d = new Date(y, 0, 1 + Math.floor(365 / (v('ceo', y) / c.gross)));
     lines.push('The median FTSE 100 boss made ' + big(v('ceo', y)) + '. That covered your whole year by ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + '.');
-    lines.push('Average house: ' + money(v('house', y)) + ', or ' + (v('house', y) / c.gross).toFixed(1) + ' times your pay.');
-  } else lines.push('Your pay is ' + Math.round(c.gross / v('medianPay', y)) + ' times the median full-time wage.');
+  }
+  if (!ch.rich) lines.push('Average house: ' + money(v('house', y)) + ', or ' + (v('house', y) / c.gross).toFixed(1) + ' times your pay.');
+  else lines.push('Your pay is ' + Math.round(c.gross / v('pay', y)) + ' times the national average wage.');
   const p = DATA.parcels[y - Y0];
   if (p) lines.push('Emergency food parcels handed out by the largest food bank network: ' + p.toLocaleString('en-GB') + '.');
   return lines;
@@ -405,26 +419,26 @@ function tickerLines(){
 function sourcesHTML(){
   const li = DATA.sources.map(s => '<li><a href="' + s.url + '" target="_blank" rel="noopener">' + s.title + '</a>. ' + s.note + '</li>').join('');
   return '<details><summary>Where the numbers come from</summary><ul>' + li +
-    '<li>People, companies and headlines are invented. Pay, prices, rents, bills and tax rules for ' + Y0 + ' to ' + YN + ' are published figures.</li>' +
+    '<li>People, companies and headlines are invented. Pay, prices, rents, bills and tax rules for ' + Y0 + ' to ' + YN + ' come from the sources above; each note says how closely it was checked.</li>' +
     '<li>Years after ' + YN + ' are a projection, not a forecast: each series simply carries on at its own average rate since ' + Y0 + '.</li>' +
-    '<li>Simplified: one adult, no children, no benefits or pension, renting privately. Lifestyle costs and one-off events are illustrative.</li></ul></details>';
+    '<li>Simplified: one adult, no children, no benefits or pension, renting privately. Housing sizes, lifestyle costs, the caf\u00e9\u2019s accounts, the boss\u2019s spending and one-off events are illustrative, not data.</li></ul></details>';
 }
 function renderStart(){
   const cards = Object.keys(CH).map(k => {
-    const ch = CH[k], g = ch.gross(Y0), net = (g - taxOn(g, Y0)) / 12, lock = ch.rich && !meta.unlocked;
+    const ch = CH[k], y0 = ch.y0 || Y0, g = ch.gross(y0), net = (g - taxOn(g, y0)) / 12, lock = ch.rich && !meta.unlocked;
     return '<button class="char' + (ch.rich ? ' rich' : '') + '" id="pick-' + k + '" type="button"' + (lock ? ' disabled' : '') + '>' +
-      '<b>' + ch.name + '</b><span class="pay"><strong>' + big(net) + '</strong>a month in ' + Y0 + '</span>' +
+      '<b>' + ch.name + '</b><span class="pay"><strong>' + big(net) + '</strong>a month in ' + y0 + '</span>' +
       '<span>' + ch.job + '. ' + (lock ? 'Unlocks after your first game.' : ch.blurb) + (meta.best[k] ? ' Best: ' + meta.best[k] + ' years.' : '') + '</span></button>';
   }).join('');
   $('app').innerHTML =
     '<h1 class="title">Trickle <i>Down</i></h1>' +
-    '<p class="lede">It is 2008. You have a job, a landlord and a boss who earns your salary before the bank holiday is over. Make it to 2040. The wages, rents, bills and tax rules are real. The people are not.</p>' +
+    '<p class="lede">It is 2008. You have a job, a landlord and a boss who earns your year\u2019s pay in a few days. Make it to 2040. The wages, prices, rents and tax rules come from published UK figures. The people are invented.</p>' +
     '<p class="eyebrow">Choose who to be</p><div class="chars">' + cards + '</div>' + sourcesHTML();
   for (const k of Object.keys(CH)) $('pick-' + k).addEventListener('click', () => newGame(k));
 }
 function renderGame(){
   const y = S.year, ch = CH[S.ck], c = calc(), ev = eventsFor()[S.ev.id], lines = tickerLines();
-  const prevG = y > Y0 ? ch.gross(y - 1) * S.payMult : 0;
+  const prevG = y > (ch.y0 || Y0) ? ch.gross(y - 1) * S.payMult : 0;
   const payCh = prevG ? c.gross / prevG - 1 : 0, priceCh = y > Y0 ? v('cpi', y) / v('cpi', y - 1) - 1 : 0;
   const dep = v('house', y) * .1, lend = c.gross * 4.5;
   let h = '<div class="mast"><div class="mast-row"><div><div class="year">' + y + '</div>' + (y > YN ? '<span class="proj">Projection</span>' : '') + '</div>' +
@@ -440,7 +454,7 @@ function renderGame(){
   h += '<section class="card slip"><p class="eyebrow">Payslip ' + y + (S.ck === 'priya' ? ' (what the café leaves you)' : '') + '</p><dl class="lines">' +
     '<dt>Gross for the year</dt><dd>' + money(c.gross) + '</dd><dt>Income tax and NI</dt><dd>' + money(-c.tx) + '</dd>' +
     '<dt class="tot">Take-home each month</dt><dd class="tot">' + money(c.net) + '</dd></dl>' +
-    (y > Y0 ? '<p class="small">Your pay: <b class="' + (payCh >= priceCh ? 'up' : 'down') + '">' + pct(payCh) + '</b> on last year. Prices: ' + pct(priceCh) + '.</p>' : '') + '</section>';
+    (prevG ? '<p class="small">Your pay: <b class="' + (payCh >= priceCh ? 'up' : 'down') + '">' + pct(payCh) + '</b> on last year. Prices: ' + pct(priceCh) + '.</p>' : '') + '</section>';
   h += '<section class="card letter"><p class="eyebrow">From: ' + ev.from + '</p><h2>' + ev.t + '</h2><p>' + ev.body + '</p><div class="opts">' +
     ev.opts.map((o, i) => {
       const bits = [];
@@ -487,18 +501,19 @@ function renderEnd(){
     line = o.kind === 'bust' ? 'The credit ran out. Finished off by ' + o.cause + '.' : 'Not the money in the end. Burnt out after ' + o.cause + '.';
     share = 'I played Trickle Down as ' + first + ', a ' + ch.job.toLowerCase() + '. I lasted until ' + MONTHS[o.month - 1] + ' ' + y + '. Finished off by ' + o.cause + '.';
   }
-  const yrs = y - Y0 + 1;
+  const y0 = ch.y0 || Y0, yrs = y - y0 + 1, gTot = S.giles || v('ceo', 2015), gLabel = S.giles ? (S.gYears < yrs ? 'Median FTSE 100 boss was paid, 2015 onwards' : 'Median FTSE 100 boss was paid, same years') : 'Median FTSE 100 boss was paid in 2015 alone';
   $('app').innerHTML =
     '<div class="stamp' + (o.kind === 'survived' ? ' win' : '') + '">' + stamp + '</div>' +
     '<p class="lede">' + line + '</p>' +
-    '<section class="card slip"><p class="eyebrow">Final statement, ' + Y0 + ' to ' + y + (y > YN ? ' (later years projected)' : '') + '</p><dl class="lines">' +
+    '<section class="card slip" id="stmt"><p class="eyebrow">Final statement, ' + y0 + ' to ' + y + (y > YN ? ' (later years projected)' : '') + '</p><dl class="lines">' +
     '<dt>' + first + ' took home, in total</dt><dd>' + big(S.earned) + '</dd>' +
-    '<dt>Median FTSE 100 boss was paid, same years</dt><dd>' + big(S.giles) + '</dd>' +
-    '<dt class="tot">Years ' + first + ' would need to work for that</dt><dd class="tot">' + Math.round(S.giles / (S.earned / yrs)).toLocaleString('en-GB') + '</dd></dl></section>' +
+    '<dt>' + gLabel + '</dt><dd>' + big(gTot) + '</dd>' +
+    '<dt class="tot">Years ' + first + ' would need to work for that</dt><dd class="tot">' + Math.round(gTot / (S.earned / yrs)).toLocaleString('en-GB') + '</dd></dl></section>' +
     '<section class="card"><p class="eyebrow">Tell someone</p><p class="share" id="share">' + share + '</p>' +
     '<div class="btns"><button class="ghost" id="copy" type="button">Copy result</button></div></section>' +
     '<div class="btns"><button class="go" id="again" type="button">Play again</button>' +
     (ch.rich ? '' : '<button class="ghost" id="asgiles" type="button">Now play the same years as the boss</button>') + '</div>' + sourcesHTML();
+  if (ch.rich) $('stmt').hidden = true;
   $('again').addEventListener('click', () => { S = null; render(); scrollTo(0, 0); });
   if (!ch.rich) $('asgiles').addEventListener('click', () => newGame('giles'));
   $('copy').addEventListener('click', () => {
