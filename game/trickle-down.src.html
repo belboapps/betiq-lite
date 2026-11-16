@@ -1,4 +1,8 @@
 <title>Trickle Down</title>
+<meta name="description" content="Walk from 2008 to 2040 on real UK pay and prices. Keep your pay ahead of your bills. If you can.">
+<meta property="og:title" content="Trickle Down">
+<meta property="og:description" content="A satirical game about UK wages and the cost of living, built on published figures. How long do you last?">
+<meta name="theme-color" content="#14213d">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
@@ -104,6 +108,19 @@ canvas{display:block;flex:0 0 clamp(190px,36vh,330px);width:100%;touch-action:ma
 .chips{display:flex;flex-direction:column;gap:3px;align-items:flex-start}
 .chip{font:600 11px var(--f-mono);padding:1px 5px;border-radius:2px;background:var(--paper);color:var(--ink)}
 .chip.bad{color:var(--demand)} .chip.good{color:var(--giro)}
+.daily{display:flex;flex-direction:column;gap:4px;text-align:left;background:var(--ink);color:var(--card);border:0;border-radius:2px;padding:14px 16px;box-shadow:0 4px 0 var(--demand)}
+.daily:active{transform:translateY(3px);box-shadow:0 1px 0 var(--demand)}
+.daily b{font:400 30px/1 var(--f-head);text-transform:uppercase}
+.daily span{font-size:14px}
+.daily .eyebrow{color:var(--tab)}
+.sqs{display:grid;grid-template-columns:repeat(11,1fr);gap:4px;max-width:380px}
+.sq{aspect-ratio:1;border-radius:2px;background:var(--rule)}
+.sq.g{background:var(--giro)} .sq.y{background:var(--gold)} .sq.r{background:var(--demand)} .sq.x{background:var(--ink)}
+.badge-list{display:flex;flex-wrap:wrap;gap:6px}
+.badge{font:600 12px var(--f-body);padding:4px 10px;border:2px solid var(--ink);border-radius:999px}
+.badge.new{background:var(--tab);color:var(--tabink);border-color:var(--tab)}
+.badge.off{opacity:.45;border-style:dashed}
+.tip{color:var(--ink);font-weight:600}
 @media (prefers-reduced-motion:reduce){ .bar i{transition:none} }
 </style>
 
@@ -149,7 +166,7 @@ const DATA = {
     {title:'ONS CPI: actual rents for housing (D7CE)', url:'https://www.ons.gov.uk/economy/inflationandpriceindices/timeseries/d7ce/mm23', note:'Read direct. Turned into pounds using the ONS UK average private rent of £1,368 (December 2025). This index includes social rents and existing tenancies, so it understates how fast new private rents rose.'},
     {title:'ONS CPI: electricity, gas and other fuels (D7CH)', url:'https://www.ons.gov.uk/economy/inflationandpriceindices/timeseries/d7ch/mm23', note:'Read direct. Turned into pounds using the government’s typical 2024 dual-fuel bill of £2,252, a figure since revised by about 1.5%.'},
     {title:'ONS Average Weekly Earnings, total pay (KAB9)', url:'https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/timeseries/kab9/emp', note:'Read direct. Sam is paid this average, times 52.'},
-    {title:'GOV.UK National Minimum Wage and National Living Wage rates', url:'https://www.gov.uk/national-minimum-wage-rates', note:'Main adult rate in force for most of each year. Statutory rates, not re-checked against the page for this build.'},
+    {title:'GOV.UK National Minimum Wage and National Living Wage rates', url:'https://www.gov.uk/national-minimum-wage-rates', note:'Main adult rate in force for most of each year. 2019 to 2025 rates were checked against this page for this build; 2008 to 2018 are the statutory rates from memory, not re-checked.'},
     {title:'GOV.UK income tax and National Insurance rates and allowances', url:'https://www.gov.uk/government/publications/rates-and-allowances-income-tax/income-tax-rates-and-allowances-current-and-past', note:'Statutory rates for England, Wales and Northern Ireland, not re-checked for this build. Mid-year changes in 2022 and 2023 are averaged. Thresholds are announced as frozen until April 2031.'},
     {title:'UK House Price Index (HM Land Registry and ONS)', url:'https://www.gov.uk/government/collections/uk-house-price-index-reports', note:'Annual averages taken from a third-party compilation of the official index, not read direct.'},
     {title:'High Pay Centre annual FTSE 100 chief executive pay reports', url:'https://highpaycentre.org/', note:'Median total pay as first reported. 2018 and 2019 read direct; other years from the reports via press coverage; 2017 unverified. No verified figures before 2015, so boss comparisons start then.'}
@@ -306,9 +323,16 @@ const HEADLINES = {
 };
 
 // ---- persistent bits -------------------------------------------------
-let meta = {unlocked:false, best:{}, mute:false};
+let meta = {unlocked:false, best:{}, mute:false, runs:0, badges:[], daily:{}};
 try { Object.assign(meta, JSON.parse(localStorage.getItem('trickle-down') || '{}')); } catch (e) {}
 const persist = () => { try { localStorage.setItem('trickle-down', JSON.stringify(meta)); } catch (e) {} };
+meta.badges = meta.badges || []; meta.daily = meta.daily || {}; meta.runs = meta.runs || 0;
+const SHARE_URL = '';     // the public address of the game, once it is hosted; added to every shared result
+const SUPPORT_URL = '';   // an optional tip-jar link; shown on the result screen when set
+const DAY0 = Date.UTC(2026, 10, 16);
+const dayNo = () => { const d = new Date(); return Math.floor((Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - DAY0) / 864e5) + 1; };
+const DAILY_CAST = ['dee', 'sam', 'priya'];
+function mulberry(a){ return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 let ac;
 function beep(f, d, type, vol, slide){
   if (meta.mute) return;
@@ -355,29 +379,30 @@ function yearMoney(y){
 const wbPerYear = () => rich() ? 0 : HOMES[S.set.home].wb + HEATS[S.set.heat].wb + FOODS[S.set.food].wb + (-4) + S.m.wbyr + (S.bal < 0 ? -4 : 0);
 const limitFor = y => yearMoney(y).net / 4;      // three months of take-home pay
 
-function newGame(ck){
+function newGame(ck, daily){
   const ch = CH[ck];
   S = {ck, year:ch.y0 || Y0, bal:ch.start, wb:70, dist:0, signX:CX + 130, set:{home:ch.home, heat:1, food:1}, livedHome:ch.home,
        m:{pay:1, rent:1, energy:1, food:1, rest:1, fixed:0, wbyr:0, isa:0}, perks:[], perkUsed:[], owed:0, used:[], q:null,
-       earned:0, giles:0, gYears:0, hist:[], over:null, last:null};
+       earned:0, giles:0, gYears:0, hist:[], over:null, last:null, daily:!!daily, dn:dayNo(), grid:[], flags:{loan:0, xmas:0, rent:0, union:0, cold:0, debt:0}};
+  S.seed = daily ? dayNo() * 7919 + 13 : Math.floor(Math.random() * 1e9); S.rnd = mulberry(S.seed);
   G = null; $('app').hidden = true; $('stage').hidden = false; resize(); showCross(); scrollTo(0, 0);
 }
 
 function makeQuestion(){
   const n = S.year - startYear(), y = S.year;
   if (rich()){
-    let i; do { i = Math.floor(Math.random() * RICH_EVENTS.length); } while (S.used.includes('r' + i) && S.used.length < RICH_EVENTS.length); S.used.push('r' + i);
+    let i; do { i = Math.floor(S.rnd() * RICH_EVENTS.length); } while (S.used.includes('r' + i) && S.used.length < RICH_EVENTS.length); S.used.push('r' + i);
     return Object.assign({kind:'event'}, RICH_EVENTS[i]);
   }
   if (n === 0) return Object.assign({kind:'setting'}, SETTINGS[0]);
   const slot = n % 4;
   if (slot === 2 && S.perkUsed.length < PERKS.length - 1){
-    const pool = PERKS.map((p, i) => i).filter(i => !S.perkUsed.includes(i)), id = pool[Math.floor(Math.random() * pool.length)], p = PERKS[id];
+    const pool = PERKS.map((p, i) => i).filter(i => !S.perkUsed.includes(i)), id = pool[Math.floor(S.rnd() * pool.length)], p = PERKS[id];
     S.perkUsed.push(id);
     return {kind:'chance', t:p.name, sub:p.line, ic:p.ic, opts:[{l:'Take it', ic:p.ic, cost:p.cost, wb:p.wb, wbyr:p.wbyr, eff:p.eff, perk:p.name}, {l:'Not now', ic:'no'}]};
   }
   if (slot === 0) return Object.assign({kind:'setting'}, SETTINGS[(n / 4 - 1) % 3]);
-  let i; do { i = Math.floor(Math.random() * EVENTS.length); } while (S.used.includes(i) && S.used.length < EVENTS.length); S.used.push(i);
+  let i; do { i = Math.floor(S.rnd() * EVENTS.length); } while (S.used.includes(i) && S.used.length < EVENTS.length); S.used.push(i);
   if (S.used.length >= EVENTS.length) S.used = [];
   return Object.assign({kind:'event'}, EVENTS[i]);
 }
@@ -390,6 +415,8 @@ function chipsFor(q, o, i){
     const it = q.list[i], m = S.m;
     let mo;
     if (q.k === 'home') mo = v('rent', y) * it.rent * m.rent; else if (q.k === 'heat') mo = v('energy', y) * HOMES[S.set.home].en * it.f * m.energy / 12; else mo = B.food * idx('food', y) * it.f * m.food;
+    const keep = S.set[q.k]; S.set[q.k] = i; const Mx = yearMoney(y), gp = (Mx.net - Mx.bills) / 12; S.set[q.k] = keep;
+    add('gap ' + signed(gp), gp >= 0 ? 'good' : 'bad');
     add(money(mo) + '/mo');
     if (q.k === 'home' && i !== S.livedHome && !rich()) add('+' + money(350 * ci) + ' move', 'bad');
     if (it.wb) add('♥ ' + (it.wb > 0 ? '+' : '−') + Math.abs(it.wb) + '/yr', it.wb < 0 ? 'bad' : 'good');
@@ -419,6 +446,7 @@ function showCross(){
   let h = '<p class="eyebrow">' + (S.last ? S.last.year + ': ' + signed(S.last.diff) + ' · ' : '') + y + ' ahead</p><h2>' + q.t + '</h2><p class="small">' + q.sub + '</p>' +
     '<div class="cards n' + opts.length + '">' + opts.map((o, i) =>
       '<button class="opt" id="o-' + i + '" type="button">' + ico(o.ic) + '<b>' + o.l + '</b>' + (i === cur ? '<span class="now">NOW</span>' : '') + '<span class="chips">' + chipsFor(q, o, i) + '</span></button>').join('') + '</div>';
+  if (meta.runs === 0 && S.year === startYear()) h = '<p class="small"><b>First time?</b> Tap a card. Everything costs money, wellbeing, or both.</p>' + h;
   $('low').innerHTML = h; $('low').scrollTop = 0;
   opts.forEach((o, i) => $('o-' + i).addEventListener('click', () => choose(i)));
   $('hTick').textContent = HEADLINES[y]; refreshGap(); hud();
@@ -433,6 +461,10 @@ function choose(i){
     S.set[q.k] = i; if (q.k === 'home') S.livedHome = i; banner = q.list[i].n;
   } else {
     const o = q.opts[i];
+    if (q.t === 'Loan flyer' && i === 0) S.flags.loan = 1;
+    if (q.t === 'December' && i === 1) S.flags.xmas++;
+    if (q.t === 'Rent review' && i === 0) S.flags.rent++;
+    if (o.perk === 'Join the union') S.flags.union = 1;
     if (o.cost){ S.bal -= o.cost * k; banner += ': ' + money(-o.cost * k); }
     if (o.gain){ S.bal += o.gain * k; banner += ': +' + big(o.gain * k); }
     if (o.wb) S.wb = Math.max(rich() ? 50 : 0, Math.min(100, S.wb + o.wb));
@@ -440,7 +472,7 @@ function choose(i){
     if (o.later) S.owed = o.later * k;
     if (o.wbyr) S.m.wbyr += o.wbyr;
     if (o.luck){
-      if (Math.random() < o.luck.p){ S.m.pay *= o.luck.pay; banner = o.luck.win; } else { S.wb = Math.max(0, S.wb + o.luck.loseWb); banner = o.luck.lose; }
+      if (S.rnd() < o.luck.p){ S.m.pay *= o.luck.pay; banner = o.luck.win; } else { S.wb = Math.max(0, S.wb + o.luck.loseWb); banner = o.luck.lose; }
     }
     if (o.eff){ const e = o.eff; for (const key of ['pay', 'rent', 'energy', 'food', 'rest']) if (e[key]) S.m[key] *= e[key]; if (e.fixed) S.m.fixed += e.fixed; if (e.isa) S.m.isa = 1; S.perks.push(o.perk); banner = o.perk; }
     if (o.l === 'Not now') banner = 'Walked on';
@@ -463,6 +495,11 @@ function startWalk(banner){
   G.lines = [HEADLINES[y]];
   if (!rich() && ceo){ const d = new Date(y, 0, 1 + Math.floor(365 / (ceo / M.gross))); G.lines.push('The median FTSE 100 boss made ' + big(ceo) + '. That covered your whole year by ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + '.'); }
   G.lines.push('The average house costs ' + money(v('house', y)) + ': ' + (v('house', y) / M.gross).toFixed(1) + ' times your pay.');
+  G.alertT = 0; G.alert = null;
+  if (y > Y0 && y <= YN){
+    const c = [['ENERGY BILLS', 'energy'], ['FOOD PRICES', 'food'], ['RENTS', 'rent']].map(a => [a[0], v(a[1], y) / v(a[1], y - 1) - 1]).sort((a, b) => b[1] - a[1])[0];
+    if (c[1] > .08){ G.alert = c[0] + ' ▲' + Math.round(c[1] * 100) + '%'; G.alertT = 3.6; G.shake = 7; beep(240, .35, 'sawtooth', .04, .6); }
+  }
   $('hTick').textContent = G.lines[0];
   renderLow(); refreshGap(); hud();
 }
@@ -484,7 +521,7 @@ function update(dt){
   if (G){
     for (const p of G.sprites) p.u += dt / .9;
     G.sprites = G.sprites.filter(p => p.u < 1);
-    G.shake = Math.max(0, G.shake - dt * 30); G.bannerT -= dt;
+    G.shake = Math.max(0, G.shake - dt * 30); G.bannerT -= dt; G.alertT -= dt;
     if (G.done){ G.overT -= dt; if (G.overT <= 0) finishYear(); return; }
     dt *= G.fast ? 3.2 : 1;
     G.t += dt; S.dist = G.dist0 + Math.min(1, G.t / G.T) * DY;
@@ -506,11 +543,22 @@ function finishYear(){
     S.last = {year:y, diff:S.bal - from};
     if (y >= YEND) S.over = {kind:'survived'};
   }
+  { const dn = S.bal - from, mo = M.net / 12;
+    S.grid.push(S.over && S.over.kind !== 'survived' ? 'x' : dn >= 0 ? 'g' : dn > -2 * mo ? 'y' : 'r'); }
+  if (S.set.heat === 0 && !rich()) S.flags.cold++;
+  if (S.bal < 0) S.flags.debt++;
   G = null;
   if (S.over){
-    meta.unlocked = true;
+    meta.unlocked = true; meta.runs++;
     const yrs = y - startYear() + (S.over.kind === 'survived' ? 1 : 0);
-    meta.best[S.ck] = Math.max(meta.best[S.ck] || 0, yrs); persist();
+    meta.best[S.ck] = Math.max(meta.best[S.ck] || 0, yrs);
+    if (S.daily){
+      if (meta.daily.n !== S.dn) meta.daily = {n:S.dn, tries:0, best:0};
+      meta.daily.tries++; if (yrs >= meta.daily.best){ meta.daily.best = yrs; }
+    }
+    S.badges = BADGES.filter(b => b.t(S.over)).map(b => b.id);
+    S.newBadges = S.badges.filter(id => !meta.badges.includes(id));
+    meta.badges.push(...S.newBadges); persist();
     $('stage').hidden = true; $('app').hidden = false; renderEnd(); scrollTo(0, 0);
   } else { S.year++; showCross(); }
 }
@@ -534,7 +582,7 @@ function refreshGap(){
 function renderLow(){
   $('low').innerHTML = '<div class="walkline"><b id="mname">' + MONTHS[0].toUpperCase() + '</b><span class="small">' + (S.year - startYear() + 1) + ' of ' + (YEND - startYear() + 1) + ' years · hold the scene to hurry</span></div>' +
     '<div class="months" id="months">' + '<i></i>'.repeat(12) + '</div>' +
-    '<p class="small">Every month your pay comes in and your bills go out. Watch the pill above.</p>';
+    '<p class="small">' + (meta.runs === 0 ? 'Green pill: you are saving. Red pill: you are sinking.' : 'Every month your pay comes in and your bills go out. Watch the pill above.') + '</p>';
 }
 function renderMonths(){
   const m = $('months'); if (!m) return;
@@ -612,6 +660,11 @@ function draw(){
       ctx.globalAlpha = Math.min(1, G.bannerT); ctx.fillStyle = C.tab; ctx.fillRect(10, 36, W - 20, 28);
       ctx.fillStyle = C.tabink; ctx.font = '400 17px Anton, Impact, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(G.banner.toUpperCase().slice(0, 44), W / 2, 56); ctx.globalAlpha = 1;
     }
+    if (G.alertT > 0 && G.alert){
+      const a = Math.min(1, G.alertT), pulse = reduceMotion ? 0 : Math.sin(G.alertT * 12) * 2;
+      ctx.globalAlpha = a; ctx.fillStyle = C.demand; ctx.fillRect(10, 72, W - 20, 36);
+      ctx.fillStyle = C.paper; ctx.font = '400 24px Anton, Impact, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(G.alert, W / 2, 98 + pulse * .2); ctx.globalAlpha = 1;
+    }
     if (S.over && G.done){
       ctx.save(); ctx.translate(W / 2, H * .45); ctx.rotate(-.06); ctx.fillStyle = C.demand; ctx.font = '400 50px Anton, Impact, sans-serif'; ctx.textAlign = 'center';
       ctx.fillText(S.over.kind === 'bust' ? 'CREDIT GONE' : 'BURNT OUT', 0, 0); ctx.restore();
@@ -643,10 +696,26 @@ function sourcesHTML(){
     '<li>Years after ' + YN + ' are a projection, not a forecast: each series simply carries on at its own average rate since ' + Y0 + ', except the minimum wage, which keeps its 2025 share of average pay.</li>' +
     '<li>Simplified: one adult, no children, no benefits or pension, renting privately. Housing sizes, everyday costs, the café’s accounts, the yacht, the life events and the perks are illustrative, not data.</li></ul></details>';
 }
+const BADGES = [
+  {id:'energy', n:'Survived the energy crisis', t:o => !rich() && startYear() <= 2022 && S.year >= 2023},
+  {id:'cold', n:'Kept the heating off for 3 winters', t:o => S.flags.cold >= 3},
+  {id:'loan', n:'Met WongaWonga', t:o => S.flags.loan > 0},
+  {id:'xmas', n:'Cancelled Christmas', t:o => S.flags.xmas > 0},
+  {id:'landlord', n:'Landlord’s favourite tenant', t:o => S.flags.rent >= 2},
+  {id:'union', n:'Card-carrying member', t:o => S.flags.union > 0},
+  {id:'solvent', n:'Never owed a penny', t:o => !rich() && S.flags.debt === 0 && S.hist.length >= 8},
+  {id:'close', n:'So close to 2040', t:o => !rich() && o.kind !== 'survived' && S.year >= 2036},
+  {id:'made', n:'Made it to 2040', t:o => !rich() && o.kind === 'survived'},
+  {id:'ruin', n:'Speedrun to ruin', t:o => !rich() && o.kind !== 'survived' && S.year <= startYear() + 2},
+  {id:'boss', n:'Won at life', t:o => rich()}
+];
 function renderStart(){
   const rows = [['Pay', v('pay', YN) / v('pay', Y0), 'pay'], ['Food', idx('food', YN), ''], ['Rent', idx('rent', YN), ''], ['House', v('house', YN) / v('house', Y0), ''], ['Energy', idx('energy', YN), 'hot']];
   const mx = Math.max(...rows.map(r => r[1]));
   const idxHTML = '<div class="idx"><p class="eyebrow">What changed, 2008 to 2025 (2008 = 100)</p>' + rows.map(r => '<div class="idx-row"><span>' + r[0] + '</span><div class="idx-bar"><i class="' + r[2] + '" style="width:' + (r[1] / mx * 100) + '%"></i></div><span>' + Math.round(r[1] * 100) + '</span></div>').join('') + '</div>';
+  const dn = dayNo(), dck = DAILY_CAST[(dn - 1) % DAILY_CAST.length], dch = CH[dck], dd = meta.daily.n === dn ? meta.daily : null;
+  const dailyHTML = '<button class="daily" id="daily" type="button"><span class="eyebrow">Today’s challenge #' + dn + '</span><b>Play as ' + dch.name + '</b><span>' + dch.job + '. Everyone gets the same life today. How long do you last?</span>' +
+    '<span>' + (dd ? 'Your best today: ' + dd.best + ' years (' + dd.tries + (dd.tries === 1 ? ' try' : ' tries') + ')' : 'Not played yet today.') + '</span></button>';
   const cards = Object.keys(CH).map(k => {
     const ch = CH[k], y0 = ch.y0 || Y0, g = ch.gross(y0), net = (g - taxOn(g, y0)) / 12, lock = ch.rich && !meta.unlocked;
     return '<button class="char' + (ch.rich ? ' rich' : '') + '" id="pick-' + k + '" type="button"' + (lock ? ' disabled' : '') + '>' +
@@ -659,9 +728,21 @@ function renderStart(){
     '<div class="how">' + ico('coins') + '<span><b>Pay comes in, bills go out,</b> every month. The gap decides how long you last.</span>' +
     ico('key') + '<span><b>A signpost every year.</b> Pick a path. Everything costs money or wellbeing.</span>' +
     ico('crown') + '<span><b>The boss gets richer</b> in the background. Look up.</span></div>' +
-    idxHTML +
-    '<p class="eyebrow">Choose who to be</p><div class="chars">' + cards + '</div>' + sourcesHTML();
+    dailyHTML + '<p class="eyebrow">Or choose who to be</p><div class="chars">' + cards + '</div>' + idxHTML +
+    '<p class="small">Games played ' + meta.runs + ' · Badges ' + meta.badges.length + ' of ' + BADGES.length + '</p>' + sourcesHTML();
+  $('daily').addEventListener('click', () => newGame(dck, true));
   for (const k of Object.keys(CH)) $('pick-' + k).addEventListener('click', () => newGame(k));
+}
+function shareText(){
+  const ch = CH[S.ck], o = S.over, name = ch.rich ? 'Sir Giles' : ch.name;
+  const sq = {g:'\u{1F7E9}', y:'\u{1F7E8}', r:'\u{1F7E5}', x:'\u{1F480}'}, a = S.grid.map(c => sq[c]), rows = [];
+  for (let i = 0; i < a.length; i += 11) rows.push(a.slice(i, i + 11).join(''));
+  const head = 'Trickle Down' + (S.daily ? ' Daily #' + S.dn : '') + ' · ' + name;
+  let res;
+  if (ch.rich) res = 'Finished ' + YEND + ' worth ' + big(S.bal) + '. Not hard. That is the joke.';
+  else if (o.kind === 'survived') res = 'Made it to ' + YEND + '. Still renting.';
+  else res = 'Lasted until ' + MONTHS[o.month - 1] + ' ' + S.year + ' · ' + o.cause;
+  return [head, res, ch.rich ? '' : rows.join('\n'), SHARE_URL].filter(Boolean).join('\n');
 }
 const rank = yrs => yrs < 5 ? 'Official verdict: should have budgeted better.' : yrs < 12 ? 'Official verdict: just about managing.' : yrs < 24 ? 'Official verdict: resilient, the government’s favourite word.' : 'Official verdict: so close to the nothing waiting at the end.';
 function chartHTML(){
@@ -679,35 +760,40 @@ function chartHTML(){
     '<text x="' + (w - 10) + '" y="12" text-anchor="end" font-size="11" font-family="IBM Plex Mono, monospace"><tspan fill="var(--giro)">pay</tspan> <tspan fill="var(--demand)">bills</tspan></text></svg>';
 }
 function renderEnd(){
-  const ch = CH[S.ck], o = S.over, y = S.year, first = ch.rich ? 'Sir Giles' : ch.name, art = /^[aeiou]/i.test(ch.job) ? 'an' : 'a';
-  const y0 = startYear(), yrs = y - y0 + 1, h = S.hist, a = h[0], z = h[h.length - 1];
-  const gTot = S.giles || v('ceo', 2015), gLabel = S.giles ? (S.gYears < yrs ? 'Median FTSE 100 boss was paid, 2015 onwards' : 'Median FTSE 100 boss was paid, same years') : 'Median FTSE 100 boss was paid in 2015 alone';
-  let stamp, line, share;
+  const ch = CH[S.ck], o = S.over, y = S.year, first = ch.rich ? 'Sir Giles' : ch.name;
+  const y0 = startYear(), yrs = y - y0 + (o.kind === 'survived' ? 1 : 0), h = S.hist, a = h[0], z = h[h.length - 1];
+  const gTot = S.giles || v('ceo', 2015), gLabel = S.giles ? (S.gYears < h.length ? 'Median FTSE 100 boss was paid, 2015 onwards' : 'Median FTSE 100 boss was paid, same years') : 'Median FTSE 100 boss was paid in 2015 alone';
+  let stamp, line;
   if (ch.rich){
     const deeNet = CH.dee.gross(YEND) - taxOn(CH.dee.gross(YEND), YEND);
     stamp = 'Sir Giles won. Obviously.';
     line = 'He finished ' + YEND + ' worth ' + big(S.bal) + '. Dee would need ' + Math.round(S.bal / deeNet).toLocaleString('en-GB') + ' years of take-home pay to match it.';
-    share = 'I played Trickle Down as a FTSE 100 boss and finished 2040 worth ' + big(S.bal) + '. It was not hard. That is the joke.';
   } else if (o.kind === 'survived'){
     stamp = first + ' made it to ' + YEND;
     line = 'Thirty-three years of work, ' + (S.bal >= 0 ? money(S.bal) + ' in the bank' : money(-S.bal) + ' in debt') + ' and no home of their own. A 10% deposit on the average house is now ' + money(v('house', YEND) * .1) + '. Still standing. Still renting.';
-    share = 'I played Trickle Down as ' + first + ', ' + art + ' ' + ch.job.toLowerCase() + ', and survived to 2040 with ' + money(S.bal) + ' and no house.';
   } else {
     stamp = first + ' lasted until ' + MONTHS[o.month - 1] + ' ' + y;
-    line = (o.kind === 'bust' ? 'The credit ran out. Finished off by ' + o.cause + '. ' : 'Not the money in the end. Burnt out from ' + o.cause + '. ') + rank(yrs);
-    share = 'I played Trickle Down as ' + first + ', ' + art + ' ' + ch.job.toLowerCase() + '. I lasted until ' + MONTHS[o.month - 1] + ' ' + y + '. Finished off by ' + o.cause + '.';
+    line = (o.kind === 'bust' ? 'The credit ran out. Finished off by ' + o.cause + '. ' : 'Not the money in the end. Burnt out from ' + o.cause + '. ') + (YEND - y) + ' years short of ' + YEND + '. ' + rank(yrs);
   }
+  const share = shareText(), dd = S.daily && meta.daily.n === S.dn ? meta.daily : null;
+  const badgeHTML = BADGES.filter(b => S.badges.includes(b.id)).map(b => '<span class="badge' + (S.newBadges.includes(b.id) ? ' new' : '') + '">' + (S.newBadges.includes(b.id) ? 'NEW · ' : '') + b.n + '</span>').join('');
   $('app').innerHTML =
     '<div class="stamp' + (o.kind === 'survived' ? ' win' : '') + '">' + stamp + '</div>' +
     '<p class="lede">' + line + '</p>' +
+    (ch.rich ? '' : '<div class="sqs" aria-label="Your years: green saved, amber slipped, red lost ground, black the end">' + S.grid.map(c => '<i class="sq ' + c + '"></i>').join('') + '</div><p class="small">Each square is a year. Green: you saved. Amber: you slipped. Red: you lost ground. Black: the end.</p>') +
+    '<section class="card"><p class="eyebrow">Tell someone</p><p class="share" id="share">' + share + '</p><div class="btns"><button class="go" id="copy" type="button">Copy result</button></div>' +
+      (S.daily ? '<p class="small">Today’s best: ' + dd.best + ' years after ' + dd.tries + (dd.tries === 1 ? ' try' : ' tries') + '. A new challenge arrives tomorrow.</p>' : '') + '</section>' +
+    (badgeHTML ? '<section class="card"><p class="eyebrow">Badges earned · ' + meta.badges.length + ' of ' + BADGES.length + ' collected</p><div class="badge-list">' + badgeHTML + '</div></section>' : '') +
     (ch.rich || h.length < 2 ? '' : '<section class="card slip"><p class="eyebrow">Your pay against your bills, ' + y0 + ' to ' + y + '</p>' + chartHTML() +
       '<div class="verdict"><div><span class="eyebrow">Your pay</span><b class="' + (z.pay >= a.pay ? 'up' : 'down') + '">' + arrow(z.pay / a.pay - 1) + '</b></div><div><span class="eyebrow">Your bills</span><b class="' + (z.bills <= a.bills ? 'up' : 'down') + '">' + arrow(z.bills / a.bills - 1) + '</b></div></div></section>') +
     (ch.rich ? '' : '<section class="card"><dl class="lines"><dt>' + first + ' took home, in total</dt><dd>' + big(S.earned) + '</dd><dt>' + gLabel + '</dt><dd>' + big(gTot) + '</dd>' +
-      '<dt class="tot">Years ' + first + ' would need to work for that</dt><dd class="tot">' + Math.round(gTot / (Math.max(1, S.earned) / yrs)).toLocaleString('en-GB') + '</dd></dl></section>') +
-    '<section class="card"><p class="eyebrow">Tell someone</p><p class="share" id="share">' + share + '</p><div class="btns"><button class="ghost" id="copy" type="button">Copy result</button></div></section>' +
-    '<div class="btns"><button class="go" id="again" type="button">Play again</button>' + (ch.rich ? '' : '<button class="ghost" id="asgiles" type="button">Now play as the boss</button>') + '</div>' + sourcesHTML();
-  $('again').addEventListener('click', () => { S = null; renderStart(); scrollTo(0, 0); });
-  if (!ch.rich) $('asgiles').addEventListener('click', () => newGame('giles'));
+      '<dt class="tot">Years ' + first + ' would need to work for that</dt><dd class="tot">' + Math.round(gTot / (Math.max(1, S.earned) / Math.max(1, h.length))).toLocaleString('en-GB') + '</dd></dl></section>') +
+    '<div class="btns"><button class="go" id="again" type="button">' + (S.daily ? 'Try today again' : 'Play again') + '</button><button class="ghost" id="menu" type="button">Menu</button>' +
+      (ch.rich || S.daily ? '' : '<button class="ghost" id="asgiles" type="button">Play as the boss</button>') + '</div>' +
+    (SUPPORT_URL ? '<p class="small">Enjoyed it? <a class="tip" href="' + SUPPORT_URL + '" target="_blank" rel="noopener">Support the developer</a>.</p>' : '') + sourcesHTML();
+  $('again').addEventListener('click', () => newGame(S.ck, S.daily));
+  $('menu').addEventListener('click', () => { S = null; renderStart(); scrollTo(0, 0); });
+  if ($('asgiles')) $('asgiles').addEventListener('click', () => newGame('giles'));
   $('copy').addEventListener('click', () => {
     const done = () => { $('copy').textContent = 'Copied'; };
     const fallback = () => { const r = document.createRange(); r.selectNodeContents($('share')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); $('copy').textContent = 'Selected. Press copy'; };
@@ -735,7 +821,7 @@ function frame(now){
 }
 requestAnimationFrame(frame);
 
-window.__td = {v, idx, taxOn, CH, W, get S(){ return S; }, get G(){ return G; }, newGame, choose, update, yearMoney, HOMES, HEATS, FOODS};
+window.__td = {shareText, BADGES, dayNo, v, idx, taxOn, CH, W, get S(){ return S; }, get G(){ return G; }, newGame, choose, update, yearMoney, HOMES, HEATS, FOODS};
 renderStart();
 })();
 </script>
