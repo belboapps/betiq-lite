@@ -1,6 +1,6 @@
 # How BetIQ Lite's rules would have done on past matches
 
-Generated from football-data.co.uk results and bookmaker odds. 80,665 matches from 2012-07-28 to 2026-11-04 across 15 leagues.
+Generated from football-data.co.uk results and bookmaker odds. 80665 matches from 2012-07-28 to 2026-11-04 across 15 leagues.
 
 **How to read it.** Each row replays a rule over every past match, staking 1 unit per bet. *Won* is the share of bets that won, *Predicted* is the average win chance the rules had worked out (if they match, the chances are well calibrated). *ROI* is profit divided by money staked. *Beat closing price by* is the value against the final fair market price, positive meaning better than where the market settled. The +/- is a 95% margin of error.
 
@@ -32,10 +32,10 @@ Closing prices (needed for the closing-price columns) only exist from 2019/20. O
 
 | Group | Bets | Won | Predicted | ROI at best price | ROI at Bet365 price | Beat closing price by |
 |---|---|---|---|---|---|---|
-| h2h: every bet | 212820 | 33.3% | 33.3% | -4.2% (+/-0.7) | -6.6% (+/-0.7) | -3.7% |
-| h2h: VALUE flagged (3-12%, odds up to 4.0) | 1397 | 44.0% | 42.2% | +8.0% (+/-7.0) | +0.0% (+/-6.6) | +3.3% |
-| h2h: not flagged | 211352 | 33.3% | 33.3% | -4.2% (+/-0.7) | -6.6% (+/-0.7) | -3.7% |
-| h2h: 'check price' (over 12%) | 71 | 19.7% | 25.8% | -43.6% (+/-32.4) | -57.4% (+/-24.7) | +19.9% |
+| h2h: every bet | 234603 | 33.3% | 33.3% | -4.3% (+/-0.6) | -6.8% (+/-0.6) | -3.8% |
+| h2h: VALUE flagged (3-12%, odds up to 4.0) | 1425 | 44.1% | 42.1% | +8.1% (+/-6.9) | +0.0% (+/-6.5) | +3.4% |
+| h2h: not flagged | 233102 | 33.3% | 33.3% | -4.4% (+/-0.6) | -6.8% (+/-0.6) | -3.9% |
+| h2h: 'check price' (over 12%) | 76 | 19.7% | 26.6% | -41.1% (+/-32.3) | -53.9% (+/-25.7) | +22.1% |
 
 ## Cross-check using market average and best available price
 
@@ -54,21 +54,57 @@ Closing prices (needed for the closing-price columns) only exist from 2019/20. O
 
 | Group | Bets | Won | Predicted | ROI at best price | ROI at Bet365 price | Beat closing price by |
 |---|---|---|---|---|---|---|
-| h2h: every bet | 221052 | 33.3% | 33.3% | -4.2% (+/-0.7) | -6.6% (+/-0.6) | -3.8% |
-| h2h: VALUE flagged (3-12%, odds up to 4.0) | 4324 | 45.7% | 44.6% | +6.8% (+/-3.8) | +1.1% (+/-3.6) | +4.0% |
-| h2h: not flagged | 216399 | 33.1% | 33.1% | -4.5% (+/-0.7) | -6.8% (+/-0.6) | -3.9% |
-| h2h: 'check price' (over 12%) | 329 | 22.8% | 21.4% | +23.0% (+/-43.4) | -2.7% (+/-29.3) | +12.1% |
+| h2h: every bet | 221055 | 33.3% | 33.3% | -4.1% (+/-0.7) | -6.6% (+/-0.6) | -3.7% |
+| h2h: VALUE flagged (3-12%, odds up to 4.0) | 4360 | 45.6% | 44.6% | +6.6% (+/-3.8) | +1.0% (+/-3.6) | +4.0% |
+| h2h: not flagged | 216360 | 33.1% | 33.1% | -4.4% (+/-0.7) | -6.8% (+/-0.6) | -3.9% |
+| h2h: 'check price' (over 12%) | 335 | 22.4% | 21.3% | +20.9% (+/-42.7) | -4.5% (+/-28.8) | +12.0% |
+
+## No paid data: Betfair Exchange's price as the fair price, best price among the UK bookmakers (2024/25 onwards)
+
+| Group | Bets | Won | Predicted | ROI at best price | ROI at Bet365 price | Beat closing price by |
+|---|---|---|---|---|---|---|
+| h2h: every bet | 33930 | 33.3% | 33.7% | -5.5% (+/-1.7) | -8.2% (+/-1.6) | -4.8% |
+| h2h: VALUE flagged (3-12%, odds up to 4.0) | 304 | 37.8% | 38.2% | +1.0% (+/-15.7) | -5.0% (+/-14.9) | +0.8% |
+| h2h: not flagged | 33083 | 33.4% | 33.1% | -5.6% (+/-1.7) | -8.2% (+/-1.6) | -4.9% |
+| h2h: 'check price' (over 12%) | 543 | 29.7% | 67.7% | -3.8% (+/-15.3) | -6.6% (+/-14.6) | -5.0% |
+
+## Exchange fair price, betting at Bet365 only
+
+| Group | Bets | Won | Predicted | ROI at best price | ROI at Bet365 price | Beat closing price by |
+|---|---|---|---|---|---|---|
+| h2h: every bet | 33897 | 33.3% | 33.7% | -8.2% (+/-1.6) | -8.2% (+/-1.6) | -7.7% |
+| h2h: VALUE flagged (3-12%, odds up to 4.0) | 122 | 35.2% | 38.8% | -8.4% (+/-24.1) | -8.4% (+/-24.1) | -3.5% |
+| h2h: not flagged | 33277 | 33.4% | 33.1% | -8.2% (+/-1.6) | -8.2% (+/-1.6) | -7.7% |
+| h2h: 'check price' (over 12%) | 498 | 29.5% | 70.5% | -5.0% (+/-15.6) | -5.0% (+/-15.6) | -9.1% |
+
+## Exchange fair price, betting at Paddy Power only
+
+| Group | Bets | Won | Predicted | ROI at best price | ROI at Bet365 price | Beat closing price by |
+|---|---|---|---|---|---|---|
+| h2h: every bet | 4842 | 33.3% | 33.5% | -9.8% (+/-4.1) | -9.0% (+/-4.2) | -8.6% |
+| h2h: VALUE flagged (3-12%, odds up to 4.0) | 12 | 41.7% | 39.3% | +37.5% (+/-96.4) | +33.5% (+/-93.7) | -1.2% |
+| h2h: not flagged | 4791 | 33.4% | 33.1% | -9.8% (+/-4.2) | -9.0% (+/-4.2) | -8.7% |
+| h2h: 'check price' (over 12%) | 39 | 28.2% | 69.7% | -26.0% (+/-42.4) | -26.5% (+/-41.7) | +7.9% |
+
+## Exchange fair price, betting at Sky Bet only
+
+| Group | Bets | Won | Predicted | ROI at best price | ROI at Bet365 price | Beat closing price by |
+|---|---|---|---|---|---|---|
+| h2h: every bet | 4842 | 33.3% | 33.5% | -11.2% (+/-4.0) | -9.0% (+/-4.2) | -10.1% |
+| h2h: VALUE flagged (3-12%, odds up to 4.0) | 9 | 22.2% | 42.1% | -23.3% (+/-99.7) | -27.8% (+/-93.6) | +0.2% |
+| h2h: not flagged | 4795 | 33.4% | 33.1% | -11.0% (+/-4.0) | -8.9% (+/-4.2) | -10.2% |
+| h2h: 'check price' (over 12%) | 38 | 28.9% | 70.6% | -25.8% (+/-42.1) | -24.6% (+/-42.6) | +4.8% |
 
 ## English leagues only
 
 | Group | Bets | Won | Predicted | ROI at best price | ROI at Bet365 price | Beat closing price by |
 |---|---|---|---|---|---|---|
-| uk4: every bet | 96267 | 33.3% | 33.3% | -3.4% (+/-1.0) | -5.0% (+/-0.9) | -3.3% |
-| uk4: VALUE flagged | 607 | 36.7% | 36.7% | +3.9% (+/-11.4) | -0.7% (+/-11.0) | +0.9% |
+| uk4: every bet | 106299 | 33.3% | 33.3% | -3.6% (+/-0.9) | -5.4% (+/-0.9) | -3.5% |
+| uk4: VALUE flagged | 624 | 36.9% | 36.8% | +3.8% (+/-11.2) | -1.1% (+/-10.8) | +1.1% |
 | maxavg: every bet | 109485 | 33.3% | 33.3% | -1.7% (+/-0.9) | -5.4% (+/-0.9) | -1.7% |
 | maxavg: VALUE flagged | 1186 | 39.9% | 39.3% | +5.7% (+/-8.0) | -1.9% (+/-7.4) | +3.3% |
-| sharp: every bet | 100437 | 33.3% | 33.3% | -3.5% (+/-0.9) | -5.1% (+/-0.9) | -3.5% |
-| sharp: VALUE flagged | 1935 | 41.6% | 40.5% | +7.6% (+/-6.1) | +3.5% (+/-5.9) | +2.9% |
+| sharp: every bet | 100437 | 33.3% | 33.3% | -3.4% (+/-0.9) | -5.1% (+/-0.9) | -3.4% |
+| sharp: VALUE flagged | 1953 | 41.4% | 40.4% | +7.2% (+/-6.0) | +3.1% (+/-5.8) | +2.9% |
 
 ## Does beating the closing price predict profit? (match winner, seasons with closing prices)
 
@@ -76,40 +112,40 @@ If the closing price is the market's best guess, bets that beat it by more shoul
 
 | Group | Bets | Won | Predicted | ROI at best price | ROI at Bet365 price | Beat closing price by |
 |---|---|---|---|---|---|---|
-| uk4: worse than closing by over 5% | 85084 | 26.9% | 29.1% | -12.8% (+/-1.1) | -15.0% (+/-1.1) | -11.9% |
-| uk4: worse by up to 5% | 60659 | 35.6% | 35.5% | -2.7% (+/-1.2) | -4.7% (+/-1.1) | -2.5% |
-| uk4: better by up to 3% | 27486 | 40.5% | 39.1% | +1.6% (+/-1.7) | -0.8% (+/-1.7) | +1.4% |
-| uk4: better by 3 to 6% | 16638 | 41.1% | 38.5% | +3.6% (+/-2.2) | +0.8% (+/-2.2) | +4.4% |
-| uk4: better by over 6% | 22545 | 37.1% | 32.6% | +11.9% (+/-2.3) | +7.7% (+/-2.2) | +12.2% |
+| uk4: worse than closing by over 5% | 95241 | 26.9% | 29.0% | -12.8% (+/-1.1) | -15.0% (+/-1.0) | -11.9% |
+| uk4: worse by up to 5% | 67113 | 35.7% | 35.6% | -2.7% (+/-1.1) | -4.9% (+/-1.1) | -2.5% |
+| uk4: better by up to 3% | 29839 | 40.7% | 39.2% | +1.6% (+/-1.6) | -0.8% (+/-1.6) | +1.4% |
+| uk4: better by 3 to 6% | 17935 | 41.1% | 38.7% | +3.5% (+/-2.2) | +0.6% (+/-2.1) | +4.4% |
+| uk4: better by over 6% | 24067 | 37.3% | 32.7% | +11.9% (+/-2.3) | +7.6% (+/-2.2) | +12.2% |
 | maxavg: worse than closing by over 5% | 72158 | 25.9% | 28.6% | -12.8% (+/-1.3) | -17.3% (+/-1.2) | -11.5% |
 | maxavg: worse by up to 5% | 68971 | 34.1% | 34.4% | -2.1% (+/-1.2) | -6.2% (+/-1.1) | -2.4% |
 | maxavg: better by up to 3% | 37968 | 38.8% | 37.8% | +2.0% (+/-1.5) | -2.4% (+/-1.4) | +1.4% |
 | maxavg: better by 3 to 6% | 25813 | 40.1% | 38.1% | +4.3% (+/-1.8) | -0.6% (+/-1.7) | +4.4% |
 | maxavg: better by over 6% | 36413 | 36.1% | 32.6% | +10.6% (+/-1.9) | +4.0% (+/-1.7) | +12.4% |
-| sharp: worse than closing by over 5% | 89460 | 27.0% | 29.0% | -12.7% (+/-1.1) | -14.9% (+/-1.0) | -11.9% |
-| sharp: worse by up to 5% | 63277 | 35.7% | 35.6% | -2.6% (+/-1.2) | -4.6% (+/-1.1) | -2.5% |
-| sharp: better by up to 3% | 28346 | 40.5% | 39.2% | +1.6% (+/-1.7) | -0.7% (+/-1.6) | +1.4% |
-| sharp: better by 3 to 6% | 17049 | 40.9% | 38.8% | +3.3% (+/-2.2) | +0.5% (+/-2.1) | +4.4% |
-| sharp: better by over 6% | 22866 | 37.2% | 32.9% | +11.7% (+/-2.3) | +7.6% (+/-2.2) | +12.1% |
+| sharp: worse than closing by over 5% | 88713 | 27.0% | 29.0% | -12.6% (+/-1.1) | -14.9% (+/-1.1) | -11.9% |
+| sharp: worse by up to 5% | 63477 | 35.6% | 35.5% | -2.6% (+/-1.2) | -4.7% (+/-1.1) | -2.5% |
+| sharp: better by up to 3% | 28586 | 40.5% | 39.2% | +1.8% (+/-1.7) | -0.6% (+/-1.6) | +1.4% |
+| sharp: better by 3 to 6% | 17192 | 40.9% | 38.7% | +3.3% (+/-2.2) | +0.5% (+/-2.1) | +4.4% |
+| sharp: better by over 6% | 23033 | 37.1% | 32.9% | +11.6% (+/-2.3) | +7.4% (+/-2.2) | +12.1% |
 
 ## VALUE-flagged bets by risk level (app-like rules, match winner)
 
 | Group | Bets | Won | Predicted | ROI at best price | ROI at Bet365 price | Beat closing price by |
 |---|---|---|---|---|---|---|
-| Safer (50%+ chance) | 362 | 68.8% | 63.7% | +13.1% (+/-8.2) | +3.3% (+/-7.4) | +6.4% |
-| Middle (30-50%) | 694 | 38.9% | 38.1% | +6.3% (+/-10.1) | -2.1% (+/-9.4) | +3.0% |
-| Longer shots (under 30%) | 341 | 28.2% | 27.7% | +5.9% (+/-18.0) | +0.8% (+/-17.2) | +0.6% |
+| Safer (50%+ chance) | 367 | 68.9% | 63.6% | +13.6% (+/-8.1) | +3.6% (+/-7.3) | +6.4% |
+| Middle (30-50%) | 709 | 39.2% | 38.1% | +7.1% (+/-10.0) | -1.5% (+/-9.3) | +3.1% |
+| Longer shots (under 30%) | 349 | 27.8% | 27.7% | +4.5% (+/-17.7) | -0.4% (+/-16.9) | +0.6% |
 
 ## By size of the price edge (app-like rules, match winner)
 
 | Group | Bets | Won | Predicted | ROI at best price | ROI at Bet365 price | Beat closing price by |
 |---|---|---|---|---|---|---|
-| edge -100% to +0% | 193633 | 32.6% | 32.6% | -4.5% (+/-0.7) | -6.7% (+/-0.7) | -4.1% |
-| edge +0% to +1% | 9817 | 45.6% | 45.7% | -0.5% (+/-2.6) | -4.0% (+/-2.5) | -0.5% |
-| edge +1% to +3% | 6724 | 38.1% | 38.6% | -2.0% (+/-3.6) | -6.3% (+/-3.4) | +0.1% |
-| edge +3% to +6% | 2112 | 31.3% | 31.5% | -1.4% (+/-7.9) | -8.7% (+/-7.0) | +2.1% |
-| edge +6% to +12% | 463 | 26.6% | 25.8% | +1.4% (+/-20.9) | -12.2% (+/-17.4) | +5.1% |
-| edge +12% to +900% | 71 | 19.7% | 25.8% | -43.6% (+/-32.4) | -57.4% (+/-24.7) | +19.9% |
+| edge -100% to +0% | 214680 | 32.6% | 32.6% | -4.6% (+/-0.7) | -6.9% (+/-0.7) | -4.2% |
+| edge +0% to +1% | 10304 | 46.3% | 46.4% | -0.5% (+/-2.6) | -4.0% (+/-2.5) | -0.5% |
+| edge +1% to +3% | 6928 | 38.5% | 38.9% | -1.8% (+/-3.5) | -6.2% (+/-3.4) | +0.1% |
+| edge +3% to +6% | 2140 | 31.4% | 31.5% | -1.4% (+/-7.9) | -8.7% (+/-7.0) | +2.1% |
+| edge +6% to +12% | 475 | 27.2% | 26.1% | +2.0% (+/-20.4) | -11.7% (+/-17.1) | +5.0% |
+| edge +12% to +900% | 76 | 19.7% | 26.6% | -41.1% (+/-32.3) | -53.9% (+/-25.7) | +22.1% |
 
 ## VALUE-flagged bets by season (app-like rules, match winner)
 
@@ -128,47 +164,49 @@ If the closing price is the market's best guess, bets that beat it by more shoul
 | season 2223 | 34 | 44.1% | 47.2% | -12.4% (+/-35.2) | -24.5% (+/-29.9) | +7.3% |
 | season 2324 | 18 | 50.0% | 42.4% | +36.0% (+/-70.9) | +26.8% (+/-67.9) | +2.9% |
 | season 2425 | 5 | 80.0% | 54.5% | +70.0% (+/-98.3) | +45.6% (+/-80.1) | +8.4% |
+| season 2526 | 20 | 50.0% | 37.1% | +32.9% (+/-62.3) | +17.7% (+/-55.9) | +6.6% |
+| season 2627 | 8 | 37.5% | 43.8% | -29.4% (+/-69.1) | -39.0% (+/-59.0) | +4.3% |
 
 ## VALUE-flagged bets by league (app-like rules, match winner)
 
 | Group | Bets | Won | Predicted | ROI at best price | ROI at Bet365 price | Beat closing price by |
 |---|---|---|---|---|---|---|
-| Belgian Pro League | 46 | 54.3% | 45.5% | +16.3% (+/-33.3) | +1.2% (+/-28.8) | +8.3% |
+| Belgian Pro League | 48 | 56.2% | 45.7% | +21.6% (+/-33.2) | +6.0% (+/-28.7) | +8.6% |
 | Bundesliga | 164 | 56.1% | 52.6% | +11.7% (+/-17.1) | +1.5% (+/-15.5) | +7.4% |
-| Championship | 76 | 34.2% | 32.7% | +9.6% (+/-35.3) | +7.1% (+/-34.8) | -0.1% |
-| Conference | 108 | 43.5% | 40.5% | +12.7% (+/-25.7) | +2.8% (+/-23.7) | +2.0% |
-| Eredivisie | 41 | 48.8% | 52.3% | -1.5% (+/-35.4) | -12.0% (+/-31.8) | +5.0% |
-| Greek Super League | 30 | 53.3% | 41.5% | +39.2% (+/-52.7) | +25.6% (+/-48.6) | +8.4% |
+| Championship | 82 | 34.1% | 32.9% | +8.3% (+/-33.7) | +5.0% (+/-33.0) | +0.5% |
+| Conference | 109 | 43.1% | 40.4% | +11.7% (+/-25.5) | +1.8% (+/-23.6) | +1.9% |
+| Eredivisie | 42 | 50.0% | 52.4% | +0.5% (+/-34.8) | -10.2% (+/-31.2) | +4.7% |
+| Greek Super League | 33 | 51.5% | 40.7% | +37.5% (+/-51.1) | +25.1% (+/-47.5) | +7.6% |
 | La Liga | 115 | 39.1% | 44.5% | -11.5% (+/-22.4) | -19.5% (+/-20.3) | +4.7% |
-| League One | 141 | 30.5% | 33.6% | -5.8% (+/-24.2) | -7.8% (+/-23.8) | -1.6% |
-| League Two | 173 | 32.4% | 34.8% | -3.5% (+/-21.5) | -6.1% (+/-21.0) | +1.2% |
+| League One | 148 | 31.8% | 34.1% | -4.0% (+/-23.5) | -6.8% (+/-23.0) | -1.1% |
+| League Two | 176 | 32.4% | 34.8% | -3.7% (+/-21.2) | -6.5% (+/-20.7) | +1.4% |
 | Ligue 1 | 127 | 44.1% | 44.1% | +4.4% (+/-22.3) | -3.6% (+/-20.7) | +3.2% |
 | Premier League | 109 | 46.8% | 42.8% | +15.1% (+/-25.6) | +7.8% (+/-24.1) | +3.0% |
 | Primeira Liga | 39 | 56.4% | 52.9% | -3.4% (+/-28.8) | -12.8% (+/-25.7) | +4.4% |
-| Scottish Premiership | 35 | 60.0% | 49.7% | +35.5% (+/-43.0) | +21.5% (+/-38.4) | +4.5% |
-| Serie A | 135 | 49.6% | 40.0% | +25.5% (+/-23.6) | +13.9% (+/-21.5) | +2.4% |
-| Turkish Super Lig | 58 | 48.3% | 44.8% | +21.4% (+/-36.2) | +8.0% (+/-32.3) | +7.5% |
+| Scottish Premiership | 36 | 58.3% | 49.1% | +31.7% (+/-42.4) | +18.2% (+/-37.9) | +4.7% |
+| Serie A | 136 | 50.0% | 40.1% | +26.2% (+/-23.5) | +14.6% (+/-21.4) | +2.4% |
+| Turkish Super Lig | 61 | 47.5% | 44.2% | +19.4% (+/-35.1) | +6.1% (+/-31.3) | +7.1% |
 
 ## Calibration: do the chances match reality? (app-like rules, match winner, every bet)
 
 | Predicted chance | Bets | Actually won |
 |---|---|---|
-| 0% to 10% (avg predicted 7%) | 7151 | 6.3% |
-| 10% to 20% (avg predicted 16%) | 24348 | 15.5% |
-| 20% to 30% (avg predicted 26%) | 87316 | 26.1% |
-| 30% to 40% (avg predicted 35%) | 37224 | 34.4% |
-| 40% to 50% (avg predicted 45%) | 26095 | 44.6% |
-| 50% to 60% (avg predicted 55%) | 15107 | 55.2% |
-| 60% to 70% (avg predicted 65%) | 8268 | 64.3% |
-| 70% to 80% (avg predicted 74%) | 4628 | 76.3% |
-| 80% to 90% (avg predicted 84%) | 2373 | 84.7% |
-| 90% to 100% (avg predicted 92%) | 310 | 92.9% |
+| 0% to 10% (avg predicted 7%) | 7776 | 6.3% |
+| 10% to 20% (avg predicted 16%) | 27067 | 15.4% |
+| 20% to 30% (avg predicted 26%) | 96171 | 26.1% |
+| 30% to 40% (avg predicted 35%) | 40798 | 34.3% |
+| 40% to 50% (avg predicted 45%) | 28782 | 44.7% |
+| 50% to 60% (avg predicted 55%) | 16756 | 54.9% |
+| 60% to 70% (avg predicted 65%) | 9203 | 64.6% |
+| 70% to 80% (avg predicted 74%) | 5138 | 76.4% |
+| 80% to 90% (avg predicted 84%) | 2585 | 84.6% |
+| 90% to 100% (avg predicted 92%) | 327 | 92.7% |
 
 ## Match-winner favourites (always back the shortest price)
 
 | Group | Bets | Won | Predicted | ROI at best price | ROI at Bet365 price | Beat closing price by |
 |---|---|---|---|---|---|---|
-| favourite each match | 70951 | 51.3% | 51.2% | -1.8% (+/-0.7) | -4.2% (+/-0.7) | -1.7% |
+| favourite each match | 78213 | 51.3% | 51.2% | -1.8% (+/-0.7) | -4.2% (+/-0.7) | -1.7% |
 
 ## Which way of removing the bookmaker's margin predicts best? (market average opening odds, every match)
 

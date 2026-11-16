@@ -511,6 +511,8 @@ body.simple .adv { display: none !important; }
       <button class="btn primary" id="keySave">Save and check</button>
     </div>
     <div id="keyMsg"></div>
+    <p>No key yet? You can start with free weekly prices instead, with no key and no credits.</p>
+    <button class="btn" id="freeStart" type="button">Use the free weekly prices file</button>
   </section>
 
   <section id="main" hidden>
@@ -629,7 +631,8 @@ body.simple .adv { display: none !important; }
       <p>The most you want to spend in a week (Monday to Sunday). Stakes are shared across the best bets and never go over it. Leave empty for no limit. You do not have to spend it all: if few bets have an edge, the rest stays in your pocket.</p>
       <label class="check" for="weeklyIn">Weekly budget £ <input id="weeklyIn" type="number" inputmode="decimal" min="0" step="1" placeholder="no limit"></label>
       <h2 class="adv">Fair price yardstick</h2>
-      <p class="adv">Normally the fair price is the average of the UK bookmakers with their margins removed. Pinnacle is the bookmaker professionals use and has the smallest margin, so its prices make a better yardstick. It doubles the cost of the main prices and is never a price to bet at.</p>
+      <p class="adv">The fair price is the yardstick every bet is measured against. By default it comes from Betfair Exchange when that market is busy, which on past matches was as accurate as Pinnacle and costs nothing extra, and from the bookmaker average otherwise. Pinnacle is the bookmaker professionals use and has the smallest margin, so its prices make a better yardstick. It doubles the cost of the main prices and is never a price to bet at.</p>
+      <label class="check adv"><input type="checkbox" id="exYard"> Use Betfair Exchange as the yardstick when its market is busy (free, recommended)</label>
       <label class="check adv"><input type="checkbox" id="sharpOn"> Use Pinnacle as the yardstick (doubles main-price credits)</label>
       <div id="sharpMsg" class="adv"></div>
       <h2>Automatic</h2>
@@ -650,6 +653,7 @@ body.simple .adv { display: none !important; }
         <button class="btn primary small" id="settingsDone">Save and load prices</button>
         <button class="btn small" id="reloadSports">Reload leagues</button>
         <button class="btn small" id="useRecommended">Use recommended sports</button>
+        <button class="btn small" id="creditSaver">Credit saver</button>
         <button class="btn small" id="changeKey">Change key</button>
       </div>
     </section>
@@ -667,11 +671,22 @@ body.simple .adv { display: none !important; }
           <li><b>"Check price" bets are suspect.</b> Bets with an edge over 12% won about 20% of the time against 26% predicted, and lost money. It usually means a stale or wrong price.</li>
           <li><b>When to bet.</b> Of the value prices the rules would flag, 63% were worse by kick-off and only 39% were still good value at the start. So a good price should be taken as soon as it has been checked.</li>
           <li><b>Form and head-to-head add nothing.</b> Across 79,000 matches, teams with better recent form or a dominant head-to-head record won no more often than the odds already implied. The bookmakers price it in, so this app does not use them.</li>
+          <li><b>The best yardstick is free.</b> On 4,041 recent matches, a busy Betfair Exchange market predicted results as well as Pinnacle, and better than the bookmaker average. Thin exchange markets (lower leagues) were badly wrong, so the app only uses the exchange when its prices add up to within 2.5% of 100%.</li>
+          <li><b>Value is rare.</b> The strict rules flagged roughly one to three bets a week across fifteen leagues. Most days the right answer is "nothing today".</li>
           <li><b>Even now it is only an estimate.</b> With over a thousand flagged bets the margin of error was still about 7 points. Recent seasons have far fewer qualifying bets, so the newest evidence is thin.</li>
         </ul>
         <p>So treat betting as paid entertainment, not income. If you only use one or two bookmakers, expect roughly to lose a few percent of what you stake over time, and only stake what you can afford to lose.</p>
       </section>
       <section class="panel" id="tourBox"><h2>New here?</h2><p>A short walk-through of how to read the page and stay in control.</p><button class="btn" id="tourAgain" type="button">Show the tour</button></section>
+      <section class="panel" id="freeBox">
+        <h2>Free weekly prices (no credits)</h2>
+        <p>A free file of the coming football matches, with prices from Bet365, Paddy Power, Sky Bet, Betfred, BetVictor, Bwin and Betfair Exchange. It needs no key and uses no credits. It is a snapshot, published about twice a week (usually Tuesday and Friday), so always check the live price before betting. Where you also load live prices for a league, the live prices are used.</p>
+        <ol class="steps">
+          <li><a href="https://www.football-data.co.uk/fixtures.csv" target="_blank" rel="noopener" download>Download this week's file</a> from football-data.co.uk.</li>
+          <li>Then choose the downloaded file here: <input id="freeFile" type="file" accept=".csv,text/csv" aria-label="Choose the downloaded prices file"></li>
+        </ol>
+        <div id="freeMsg"></div>
+      </section>
       <section class="panel" id="acctBox">
         <h2>My bookmaker accounts</h2>
         <p>Keep track of balances and which accounts have been limited. A limited or closed account is no longer offered as a place to bet. Set a deposit limit on every account when you open it.</p>
@@ -748,12 +763,12 @@ body.simple .adv { display: none !important; }
 <script>
 (function () {
   "use strict";
-  var VERSION = "v24 (13 Nov 2026)";   /* shown in the footer; bump on every release */
+  var VERSION = "v25 (16 Nov 2026)";   /* shown in the footer; bump on every release */
   var LS = "betiqlite.v1";
   var API = "https://api.the-odds-api.com/v4";
   var DEFAULTS = { key: "", selected: [], mode: "value", minOdds: 1.3, windowH: 72, group: "all",
                    sports: [], sportsAt: 0, cache: {}, remaining: null, used: null, picked: false,
-                   bankroll: 100, weekly: 0, league: "all", sugg: [], series: {}, accts: {}, fMaxOdds: 0, fMinEdge: 0, fMinScore: 0, live: null, simple: true, recAt: 0, autoKick: true, sharp: false, sharpBad: false, placeMin: 60, tuneN: 0, tomb: [], sb: { url: "", key: "", email: "", session: null, last: 0, status: "" }, extras: true, extraMax: 12, extraFreshH: 3, lossLimit: 0, lossStreak: 5, tour: false, afKey: "", newsOn: true, news: {}, afUse: { d: "", n: 0 }, afStatus: "", xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
+                   bankroll: 100, weekly: 0, league: "all", sugg: [], exYard: true, freeMode: false, freeInfo: null, series: {}, accts: {}, fMaxOdds: 0, fMinEdge: 0, fMinScore: 0, live: null, simple: true, recAt: 0, autoKick: true, sharp: false, sharpBad: false, placeMin: 60, tuneN: 0, tomb: [], sb: { url: "", key: "", email: "", session: null, last: 0, status: "" }, extras: true, extraMax: 12, extraFreshH: 3, lossLimit: 0, lossStreak: 5, tour: false, afKey: "", newsOn: true, news: {}, afUse: { d: "", n: 0 }, afStatus: "", xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
   var GROUPS = { "Soccer": "Football", "American Football": "US football", "Ice Hockey": "Ice hockey",
                  "Mixed Martial Arts": "MMA", "Rugby League": "Rugby", "Rugby Union": "Rugby", "Aussie Rules": "Aussie rules" };
   var DEFAULT_FOOTBALL = ["soccer_epl", "soccer_efl_champ", "soccer_uefa_champs_league", "soccer_uefa_europa_league"];
@@ -767,6 +782,7 @@ body.simple .adv { display: none !important; }
     "888sport": "https://www.888sport.com", "Virgin Bet": "https://www.virginbet.com", "LeoVegas": "https://www.leovegas.com",
     "LiveScore Bet": "https://www.livescorebet.com", "Spreadex": "https://www.spreadex.com" };
   var KELLY_FRACTION = 0.25, MAX_STAKE = 0.05, SMALL_STAKE = 0.01, VALUE_MIN = 0.03, VALUE_MAX = 0.12;
+  var EX_LIQUID = 1.025;
   var DAILY_CAP = 0.10, MIN_CREDITS = 60, LONGSHOT = 4, WEEK_CAP = 0.25;
 
   var S = load();
@@ -840,13 +856,22 @@ body.simple .adv { display: none !important; }
     S.sports.filter(function (s) { return /horse|racing/i.test(s.group || "") || /horse_racing|horseracing/.test(s.key); }).slice(0, 2).forEach(function (s) { keys.push(s.key); });
     return keys;
   }
+  function isFree(k) { return String(k).indexOf("fd_") === 0; }
+  function apiKeys() { return S.selected.filter(function (k) { return !isFree(k); }); }
+  /* The live-data league that matches a free-file league, if the user has a key and that league exists. Used for results. */
+  function apiKeyFor(k) {
+    if (!isFree(k)) return k;
+    var t = (FD_LEAGUES[k.slice(3)] || [])[0];
+    return S.key && t && S.sports.some(function (x) { return x.key === t; }) ? t : null;
+  }
   function fetchSports() {
     return api("/sports/", {}).then(function (list) {
+      var freeOnes = S.sports.filter(function (x) { return isFree(x.key); });
       S.sports = list.filter(function (s) { return s.active && !s.has_outrights; })
-        .map(function (s) { return { key: s.key, title: s.title, group: s.group }; });
+        .map(function (s) { return { key: s.key, title: s.title, group: s.group }; }).concat(freeOnes);
       S.sportsAt = Date.now();
       if (!S.picked) {
-        S.selected = recommendedKeys();
+        S.selected = recommendedKeys().concat(S.selected.filter(isFree));
       } else {
         S.selected = S.selected.filter(function (k) { return S.sports.some(function (s) { return s.key === k; }); });
       }
@@ -919,11 +944,11 @@ body.simple .adv { display: none !important; }
   }
   var busyMsg = "";
   function refreshAll(opts) {
-    if (busy || !S.selected.length) return Promise.resolve();
+    if (busy || !S.key || !apiKeys().length) return Promise.resolve();
     var wantExtras = S.extras && !(opts && opts.extras === false), before = S.remaining, startCount = spentCounter;
     busy = true; busyMsg = ""; renderStatus();
     var errors = [];
-    var jobs = S.selected.map(function (key) { return loadLeague(key, errors); });
+    var jobs = apiKeys().map(function (key) { return loadLeague(key, errors); });
     return Promise.all(jobs).then(function () {
       if (!wantExtras || errors.length) return null;
       var targets = pickExtraTargets(), per = extraMarkets().length, skipped = false;
@@ -961,7 +986,7 @@ body.simple .adv { display: none !important; }
   function isFootball(ev) { return ev.books.some(function (b) { return b.o.some(function (o) { return o[0] === "Draw"; }); }); }
   function pickExtraTargets() {
     var now = Date.now(), end = now + S.windowH * 3600000, list = [];
-    S.selected.forEach(function (k) {
+    apiKeys().forEach(function (k) {
       var c = S.cache[k]; if (!c) return;
       c.events.forEach(function (ev) {
         var t = Date.parse(ev.c);
@@ -974,7 +999,7 @@ body.simple .adv { display: none !important; }
   }
   function extraEstimate() {
     if (!S.extras) return 0;
-    var known = S.selected.some(function (k) { return S.cache[k] && S.cache[k].events.length; });
+    var known = apiKeys().some(function (k) { return S.cache[k] && S.cache[k].events.length; });
     return (known ? pickExtraTargets().length : S.extraMax) * extraMarkets().length;   /* before the first load, assume the most it could cost */
   }
   function addExtra(x, resp) {
@@ -1060,9 +1085,13 @@ body.simple .adv { display: none !important; }
     return q.map(function (x) { return Math.pow(x, k); });
   }
   function analyse(ev) {
-    var map = {}, order = [], nBooks = 0, sharpFair = {};
+    var map = {}, order = [], nBooks = 0, sharpFair = {}, exFair = {}, nOut = 0;
+    ev.books.forEach(function (b) { nOut = Math.max(nOut, b.o.length); });
     ev.books.forEach(function (b) {
       var fairs = demargin(b.o.map(function (x) { return 1 / x[1]; }));
+      /* Betfair Exchange as the yardstick, but only when its market is busy: every outcome priced and the prices adding up to within 2.5% of 100%.
+         On 4,041 past matches a busy exchange predicted results as well as Pinnacle; thin exchange markets were badly wrong. */
+      if (S.exYard && b.k === "betfair_ex_uk" && b.o.length === nOut && b.o.reduce(function (t, x) { return t + 1 / x[1]; }, 0) <= EX_LIQUID) b.o.forEach(function (x, i) { exFair[x[0]] = fairs[i]; });
       if (b.sharp) { b.o.forEach(function (x, i) { sharpFair[x[0]] = fairs[i]; }); return; }   /* the yardstick, never a price to bet at */
       nBooks++;
       b.o.forEach(function (x, i) {
@@ -1079,13 +1108,15 @@ body.simple .adv { display: none !important; }
       var s = map[n];
       if (s.fair.length < need) return;
       var fair = s.fair.reduce(function (p, c) { return p + c; }, 0) / s.fair.length, viaSharp = false;
-      if (sharpFair[n] !== undefined) { fair = sharpFair[n]; viaSharp = true; }
+      var yard = "the bookmaker average";
+      if (sharpFair[n] !== undefined) { fair = sharpFair[n]; viaSharp = true; yard = "Pinnacle"; }
+      else if (exFair[n] !== undefined) { fair = exFair[n]; yard = "Betfair Exchange"; }
       s.prices.sort(function (a, b) { return b.price - a.price; });
       var best = null;
       for (var i = 0; i < s.prices.length; i++) { if (s.prices[i].ok) { best = s.prices[i]; break; } }
       if (!best) return;
       sels.push({ name: s.name, fair: fair, fairOdds: 1 / fair, best: best.price, bestBook: best.book, bestEx: best.ex, bestComm: best.comm, bestLink: best.link,
-                  prices: s.prices, ev: fair * best.price - 1, sharp: viaSharp });
+                  prices: s.prices, ev: fair * best.price - 1, sharp: viaSharp, yard: yard });
     });
     return sels.length >= 2 ? { sels: sels, nBooks: nBooks } : null;
   }
@@ -1098,13 +1129,14 @@ body.simple .adv { display: none !important; }
         var o = b.p[k][0], u = b.p[k][1], fp = demargin([1 / o, 1 / u]);
         var L = lines[k] || (lines[k] = { point: +k, fo: [], ov: [], un: [] });
         if (b.sharp) { L.sf = fp[0]; return; }
+        if (S.exYard && b.k === "betfair_ex_uk" && 1 / o + 1 / u <= EX_LIQUID) L.xf = fp[0];
         L.fo.push(fp[0]);
         L.ov.push({ book: b.t, price: eff(o, b.k), ex: !!EXCH[b.k], comm: EXCH[b.k] || 0, ok: allowed(b.t) });
         L.un.push({ book: b.t, price: eff(u, b.k), ex: !!EXCH[b.k], comm: EXCH[b.k] || 0, ok: allowed(b.t) });
       });
     });
     var arr = Object.keys(lines).map(function (k) { return lines[k]; }).filter(function (L) { return L.fo.length >= 3; });
-    arr.forEach(function (L) { L.fair = L.sf !== undefined ? L.sf : L.fo.reduce(function (p, c) { return p + c; }, 0) / L.fo.length; });
+    arr.forEach(function (L) { L.fair = L.sf !== undefined ? L.sf : L.xf !== undefined ? L.xf : L.fo.reduce(function (p, c) { return p + c; }, 0) / L.fo.length; });
     arr.sort(function (a, b) { return Math.abs(a.fair - 0.5) - Math.abs(b.fair - 0.5); });
     arr = arr.slice(0, 3).sort(function (a, b) { return a.point - b.point; });
     var rows = [];
@@ -1234,6 +1266,7 @@ body.simple .adv { display: none !important; }
     var now = Date.now(), end = now + S.windowH * 3600000, out = [];
     S.selected.forEach(function (key) {
       var c = S.cache[key]; if (!c) return;
+      if (isFree(key)) { var tw = (FD_LEAGUES[key.slice(3)] || [])[0]; if (tw && S.selected.indexOf(tw) > -1 && S.cache[tw] && S.cache[tw].events.length) return; }   /* live prices for the same league win */
       var meta = S.sports.filter(function (s) { return s.key === key; })[0] || {};
       var grp = groupLabel(meta.group);
       if (S.group !== "all" && grp !== S.group) return;
@@ -1250,7 +1283,7 @@ body.simple .adv { display: none !important; }
         function add(pk, n) {
           if (pk.best < S.minOdds) return;
           if (mode === "value" && pk.ev <= 0) return;
-          var p = { ev: ev, key: key, league: meta.title || key, group: grp, time: t, pick: pk, nBooks: n, a: a, at: c.at };
+          var p = { ev: ev, key: key, league: meta.title || key, group: grp, time: t, pick: pk, nBooks: n, a: a, at: c.at, free: isFree(key) };
           p.isValue = pk.ev >= VALUE_MIN && pk.ev <= VALUE_MAX && n >= 4 && pk.best <= LONGSHOT;
           p.suspect = pk.ev > VALUE_MAX;
           p.id = ev.id + "|" + pk.name;
@@ -1369,6 +1402,7 @@ body.simple .adv { display: none !important; }
     if (p.suspect) return { k: "check", label: "CHECK FIRST", why: "edge too big to trust, probably a stale price" };
     var act = timingFor(p).action, sc = scoreFor(p).total, st = stakeFor(p.pick).amount, age = priceAge(p);
     if (st < 0.5) return { k: "skip", label: "SKIP", why: stakeFor(p.pick).kind.toLowerCase() };
+    if (p.free && p.isValue && sc >= (S.placeMin || 60) - 5) return { k: "place", label: "PLACE IF THE PRICE HOLDS", why: "weekly-file price: only bet if your bookmaker still shows " + minRaw(p.pick).toFixed(2) + " or better" };
     if (p.isValue && act === "now" && sc >= (S.placeMin || 60) && (age === null || age < 3 * 3600000)) return { k: "place", label: "PLACE THIS BET", why: "check the price is " + minRaw(p.pick).toFixed(2) + " or better first" };
     if (p.isValue && (act === "now" || act === "wait") && sc >= 45) return { k: "consider", label: "CONSIDER", why: age !== null && age >= 3 * 3600000 ? "refresh first, the prices are old" : sc < (S.placeMin || 60) ? "value, but the evidence score is only " + sc : "value, but check nearer kick-off" };
     if (act === "wait") return { k: "wait", label: "WAIT", why: "nothing beats the market yet, check 1 h before kick-off" };
@@ -1590,7 +1624,7 @@ body.simple .adv { display: none !important; }
   }
   function soonBets() { var now = Date.now(); return BETS().filter(function (b) { return b.status === "open" && b.time > now && b.time - now <= 3 * 3600000; }); }
   function captureNow() {
-    var keys = []; soonBets().forEach(function (b) { if (keys.indexOf(b.key) < 0) keys.push(b.key); });
+    var keys = []; soonBets().forEach(function (b) { if (!isFree(b.key) && keys.indexOf(b.key) < 0) keys.push(b.key); });
     if (!keys.length || busy) return;
     busy = true; busyMsg = "Getting closing prices…"; renderStatus();
     var errors = [], before = S.remaining, startCount = spentCounter;
@@ -1639,6 +1673,7 @@ body.simple .adv { display: none !important; }
     var now = Date.now(), added = 0;
     buildPicks("value", true).filter(function (p) { return p.isValue && !p.suspect; }).slice(0, 10).forEach(function (p) {
       if (S.sugg.some(function (x) { return x.pid === p.id; })) return;
+      if (p.free && !apiKeyFor(p.key)) return;      /* no way to fetch the result later, so it would sit open for ever */
       var s = p.pick, sc = scoreFor(p);
       S.sugg.push({ sugg: true, pid: p.id, evId: p.ev.id, key: p.key, league: p.league, h: p.ev.h, a: p.ev.a, sel: s.name, odds: s.best, book: s.bestBook,
         fair: s.fair, ev: s.ev, score: sc.total, v: decision(p).k, stake: 1, time: p.time, at: now, mkt: s.market || "", point: s.point, side: s.side, rule: s.rule, status: "open", profit: 0 });
@@ -1648,9 +1683,9 @@ body.simple .adv { display: none !important; }
     return added;
   }
   function dueSugg() { return S.sugg.filter(function (b) { return b.status === "open" && Date.now() > b.time + 2.5 * 3600000; }); }
-  function suggKeys() { var k = []; dueSugg().forEach(function (b) { if (k.indexOf(b.key) < 0) k.push(b.key); }); return k; }
+  function suggKeys() { var k = []; dueSugg().forEach(function (b) { var a = apiKeyFor(b.key); if (a && k.indexOf(a) < 0) k.push(a); }); return k; }
   function dueBets() { return BETS().filter(function (b) { return b.status === "open" && Date.now() > b.time + 2.5 * 3600000; }); }
-  function dueKeys() { var k = []; dueBets().forEach(function (b) { if (k.indexOf(b.key) < 0) k.push(b.key); }); return k; }
+  function dueKeys() { var k = []; dueBets().forEach(function (b) { var a = apiKeyFor(b.key); if (a && k.indexOf(a) < 0) k.push(a); }); return k; }
   /* Works out won / lost / void for the market types with a settlement rule. Returns null when it cannot tell. */
   function ruleResult(rule, winner, a, b, sc) {
     if (rule.t === "dc") return rule.set.indexOf(winner) > -1 ? "won" : "lost";
@@ -1677,14 +1712,21 @@ body.simple .adv { display: none !important; }
           var winner = a > b ? r.scores[0].name : b > a ? r.scores[1].name : "Draw";
           var sc = {}; sc[r.scores[0].name] = a; sc[r.scores[1].name] = b;
           S.bets.concat(S.pbets).concat(S.sugg).forEach(function (bt) {
-            if (bt.status !== "open" || bt.evId !== r.id) return;
+            if (bt.status !== "open") return;
+            var w0 = winner, sc0 = sc;
+            if (bt.evId !== r.id) {
+              /* a bet taken from the free file has no live-data id, so match it by team names and date */
+              if (!(isFree(bt.key) && r.home_team && r.away_team && teamMatch(bt.h, r.home_team) && teamMatch(bt.a, r.away_team) && Math.abs(Date.parse(r.commence_time) - bt.time) < 36 * 3600000)) return;
+              var hs = r.scores[0].name === r.home_team ? a : b, as = a + b - hs;
+              w0 = hs > as ? bt.h : as > hs ? bt.a : "Draw"; sc0 = {}; sc0[bt.h] = hs; sc0[bt.a] = as;
+            }
             var res;
             if (bt.mkt === "totals") {
               var tot = a + b;
               res = tot === bt.point ? "void" : ((tot > bt.point) === (bt.side === "Over")) ? "won" : "lost";
             } else if (bt.rule && bt.mkt) {
-              res = ruleResult(bt.rule, winner, a, b, sc);
-            } else res = bt.sel === winner ? "won" : "lost";
+              res = ruleResult(bt.rule, w0, a, b, sc0);
+            } else res = bt.sel === w0 ? "won" : "lost";
             if (!res) return;
             if (bt.sugg) { bt.status = res; bt.profit = res === "won" ? Math.round((bt.odds - 1) * 100) / 100 : res === "lost" ? -1 : 0; bt.settledAt = Date.now(); sg++; }
             else { settle(bt, res); settled++; }
@@ -1742,9 +1784,9 @@ body.simple .adv { display: none !important; }
     var times = S.selected.map(function (k) { return S.cache[k] && S.cache[k].at; }).filter(Boolean);
     $("updated").textContent = busy ? (busyMsg || "Working…") : times.length ? "Odds updated " + ago(Math.min.apply(null, times)) : "No odds loaded yet";
     var rb = $("refreshBtn");
-    rb.disabled = busy || !S.selected.length;
-    var cost = S.selected.length * (S.totals ? 2 : 1) * (sharpOn() ? 2 : 1), xe = extraEstimate();
-    rb.textContent = busy ? "Working…" : "Refresh · " + (xe ? "about " + (cost + xe) + " credits" : cost + (cost === 1 ? " credit" : " credits"));
+    rb.disabled = busy || !S.key || !apiKeys().length;
+    var cost = apiKeys().length * (S.totals ? 2 : 1) * (sharpOn() ? 2 : 1), xe = extraEstimate();
+    rb.textContent = busy ? "Working…" : !S.key ? "No key: free file only" : "Refresh · " + (xe ? "about " + (cost + xe) + " credits" : cost + (cost === 1 ? " credit" : " credits"));
   }
   function renderChips() {
     var box = $("groupChips"); box.textContent = "";
@@ -1872,9 +1914,14 @@ body.simple .adv { display: none !important; }
     return t;
   }
   function stakeLine(st) { return st.amount >= 0.5 ? "Bet " + gbp(st.amount) : st.kind; }
+  var FD_LEAGUES = { E0: ["soccer_epl", "Premier League"], E1: ["soccer_efl_champ", "Championship"], E2: ["soccer_england_league1", "League One"], E3: ["soccer_england_league2", "League Two"], EC: ["", "National League"],
+    SC0: ["soccer_spl", "Scottish Premiership"], SC1: ["", "Scottish Championship"], SC2: ["", "Scottish League One"], SC3: ["", "Scottish League Two"],
+    D1: ["soccer_germany_bundesliga", "Bundesliga"], D2: ["soccer_germany_bundesliga2", "Bundesliga 2"], I1: ["soccer_italy_serie_a", "Serie A"], I2: ["soccer_italy_serie_b", "Serie B"],
+    SP1: ["soccer_spain_la_liga", "La Liga"], SP2: ["soccer_spain_segunda_division", "La Liga 2"], F1: ["soccer_france_ligue_one", "Ligue 1"], F2: ["soccer_france_ligue_two", "Ligue 2"],
+    N1: ["soccer_netherlands_eredivisie", "Eredivisie"], B1: ["soccer_belgium_first_div", "Belgian Pro League"], P1: ["soccer_portugal_primeira_liga", "Primeira Liga"], T1: ["soccer_turkey_super_league", "Turkish Super Lig"], G1: ["soccer_greece_super_league", "Greek Super League"] };
   var LEAGUE_ORDER = ["soccer_epl", "soccer_efl_champ", "soccer_england_league1", "soccer_england_league2", "soccer_fa_cup", "soccer_england_efl_cup",
                       "soccer_uefa_champs_league", "soccer_uefa_europa_league", "soccer_uefa_europa_conf_league"];
-  function leagueRank(g) { var k = LEAGUE_ORDER.indexOf(g.key); return k > -1 ? k : (g.group === "Football" ? 100 : 200); }
+  function leagueRank(g) { var k = LEAGUE_ORDER.indexOf(isFree(g.key) ? (FD_LEAGUES[g.key.slice(3)] || [""])[0] : g.key); return k > -1 ? k : (g.group === "Football" ? 100 : 200); }
   function stat3(label, text, frac, tone) {
     var d = el("span", "t3 " + tone); d.appendChild(el("span", "t3l", label)); d.appendChild(el("b", null, text));
     var m = el("span", "meter"), fi = el("i"); fi.style.width = Math.max(5, Math.min(100, frac * 100)) + "%"; m.appendChild(fi); d.appendChild(m); return d;
@@ -1909,6 +1956,10 @@ body.simple .adv { display: none !important; }
       else if (c.roi + c.ci < 0) { ev -= 15; why.push([-1, "Bets like this lost money on past matches"]); }
       else why.push([0, "Past results for bets like this were about level"]);
     } else if (key) why.push([0, "Not enough past bets of this kind to judge"]);
+    if (!s.market && s.yard) {
+      if (s.yard === "the bookmaker average") { ev -= 8; why.push([-1, "The fair price is only a bookmaker average: no busy exchange market to check it against"]); }
+      else { ev += 8; why.push([1, "The fair price comes from " + s.yard + ", the most accurate yardstick on past matches"]); }
+    }
     var mv = moveInfo(p);
     if (mv) {
       if (mv.kind === "better") { ev += 10; why.push([1, "The market is moving towards this bet"]); }
@@ -1916,7 +1967,8 @@ body.simple .adv { display: none !important; }
       else { ev -= 10; why.push([-1, "The price has moved a lot, so it may be gone or reflect news"]); }
     }
     var age = priceAge(p);
-    if (age !== null) {
+    if (p.free) why.push([0, "Prices are from the free weekly file, taken a few days before the match, so check the live price"]);
+    else if (age !== null) {
       if (age < 3600000) { ev += 5; why.push([1, "Prices are under an hour old"]); }
       else if (age > 6 * 3600000) { ev -= 15; why.push([-1, "Prices are over 6 hours old, refresh first"]); }
     }
@@ -1962,7 +2014,8 @@ body.simple .adv { display: none !important; }
     main.appendChild(el("span", "cmatch", p.ev.h + " vs " + p.ev.a));
     main.appendChild(verdictStrip(p));
     var when = el("span", "cwhen", "Starts " + TF.format(new Date(p.time)));
-    if (age !== null) when.appendChild(el("span", age > 3 * 3600000 ? "old" : null, " · " + ageText(p)));
+    if (p.free) when.appendChild(el("span", null, " · weekly file"));
+    else if (age !== null) when.appendChild(el("span", age > 3 * 3600000 ? "old" : null, " · " + ageText(p)));
     main.appendChild(when);
     var g = el("span", "cgrid");
     function cell(l, v, sub, cls) { var c = el("span", "cc"); c.appendChild(el("span", "cl", l)); c.appendChild(el("b", cls || null, v)); c.appendChild(el("small", null, sub)); return c; }
@@ -1979,7 +2032,7 @@ body.simple .adv { display: none !important; }
     main.addEventListener("click", function () { openSheet(p, main); });
     wrap.appendChild(main);
     var acts = el("div", "bacts"); acts.appendChild(actionsFor(p, st)); var rb = remindBtn(p); if (rb) acts.appendChild(rb);
-    if (liveWindow(p)) { var wl = el("button", "accbtn", "Watch this match live · about " + liveCostPerCheck() + " credit" + (liveCostPerCheck() === 1 ? "" : "s") + " a check"); wl.type = "button"; wl.addEventListener("click", function () { startLive(p); setTab("today"); }); acts.appendChild(wl); }
+    if (liveWindow(p) && !p.free && S.key) { var wl = el("button", "accbtn", "Watch this match live · about " + liveCostPerCheck() + " credit" + (liveCostPerCheck() === 1 ? "" : "s") + " a check"); wl.type = "button"; wl.addEventListener("click", function () { startLive(p); setTab("today"); }); acts.appendChild(wl); }
     wrap.appendChild(acts);
     return wrap;
   }
@@ -2008,7 +2061,7 @@ body.simple .adv { display: none !important; }
       box.appendChild(nb);
     }
     var inPlay = [];
-    S.selected.forEach(function (k) { var c = S.cache[k]; if (!c) return; var meta = S.sports.filter(function (x) { return x.key === k; })[0] || {}, grp = groupLabel(meta.group);
+    apiKeys().forEach(function (k) { var c = S.cache[k]; if (!c) return; var meta = S.sports.filter(function (x) { return x.key === k; })[0] || {}, grp = groupLabel(meta.group);
       c.events.forEach(function (ev) { var t = Date.parse(ev.c); if (liveWindow({ time: t, group: grp })) inPlay.push({ key: k, ev: ev, time: t, league: meta.title || k, group: grp }); }); });
     if (inPlay.length && !liveActive()) {
       var lp = el("div", "plain"); lp.appendChild(el("b", null, "In play now"));
@@ -2091,7 +2144,7 @@ body.simple .adv { display: none !important; }
   function subPick(p, r) {
     var pk = { name: r.label, fair: r.fair, fairOdds: r.fairOdds, best: r.best, bestBook: r.book, bestEx: r.ex, bestComm: r.comm, bestLink: "",
                prices: r.prices, ev: r.ev, market: r.market || "totals", point: r.point, side: r.side, rule: r.rule, refund: r.refund || 0, pid: p.ev.id + "|" + r.label };
-    var sp = { ev: p.ev, key: p.key, league: p.league, group: p.group, time: p.time, pick: pk, nBooks: r.n, a: p.a, id: pk.pid, sub: true, at: p.at };
+    var sp = { ev: p.ev, key: p.key, league: p.league, group: p.group, time: p.time, pick: pk, nBooks: r.n, a: p.a, id: pk.pid, sub: true, at: p.at, free: p.free };
     sp.isValue = pk.ev >= VALUE_MIN && pk.ev <= VALUE_MAX && r.n >= 4 && pk.best <= LONGSHOT; sp.suspect = pk.ev > VALUE_MAX;
     return sp;
   }
@@ -2217,7 +2270,7 @@ body.simple .adv { display: none !important; }
     var pa = el("div", "pickactions"); pa.appendChild(actionsFor(p, st)); root.appendChild(pa);
     var grid = el("div", "stats");
     grid.appendChild(statBox("Bet with", s.bestBook, "odds " + s.best.toFixed(2) + (s.bestEx ? " after commission" : "")));
-    if (s.sharp) grid.appendChild(statBox("Fair price from", "Pinnacle", "the sharpest bookmaker's price, margin removed"));
+    if (s.yard && !s.market) grid.appendChild(statBox("Fair price from", s.yard === "the bookmaker average" ? "Bookmaker average" : s.yard, s.yard === "Pinnacle" ? "the sharpest bookmaker's price, margin removed" : s.yard === "Betfair Exchange" ? "a busy exchange market, as accurate as Pinnacle on past matches" : "no busy exchange market for this match, so less reliable"));
     grid.appendChild(statBox("Suggested stake", st.amount >= 0.5 ? gbp(st.amount) : "–", st.kind));
     grid.appendChild(statBox("If it wins", sgbp(st.amount * (s.best - 1)), "profit", "pos"));
     grid.appendChild(statBox("If it loses", sgbp(-st.amount), "your stake", "neg"));
@@ -2230,7 +2283,7 @@ body.simple .adv { display: none !important; }
     tb.appendChild(el("p", null, tm.text));
     if (tm.move) tb.appendChild(el("p", null, tm.move));
     var rb2 = remindBtn(p); if (rb2) tb.appendChild(rb2);
-    if (liveWindow(p) && !p.live) { var wl2 = el("button", "accbtn", "Watch this match live"); wl2.type = "button"; wl2.addEventListener("click", function () { closeSheet(); startLive(p); setTab("today"); }); tb.appendChild(wl2); }
+    if (liveWindow(p) && !p.live && !p.free && S.key) { var wl2 = el("button", "accbtn", "Watch this match live"); wl2.type = "button"; wl2.addEventListener("click", function () { closeSheet(); startLive(p); setTab("today"); }); tb.appendChild(wl2); }
     root.appendChild(tb);
     var mch = moveChart(p); if (mch) root.appendChild(mch);
     var mkb = p.sub ? null : marketsBox(p); if (mkb) root.appendChild(mkb);
@@ -2640,10 +2693,10 @@ body.simple .adv { display: none !important; }
     });
     if (!order.length) box.appendChild(el("p", null, "No leagues loaded yet. Press Reload leagues."));
     $("autoOn").checked = !!S.auto; $("autoHours").value = String(S.autoHours); $("totalsOn").checked = !!S.totals;
-    $("simpleOn").checked = !!S.simple; $("sharpOn").checked = !!S.sharp; $("autoKick").checked = !!S.autoKick; renderSharpMsg();
+    $("exYard").checked = !!S.exYard; $("simpleOn").checked = !!S.simple; $("sharpOn").checked = !!S.sharp; $("autoKick").checked = !!S.autoKick; renderSharpMsg();
     $("extrasOn").checked = !!S.extras; $("extraMax").value = String(S.extraMax); $("extraFresh").value = String(S.extraFreshH);
     $("lossLimit").value = S.lossLimit ? String(S.lossLimit) : ""; $("lossStreak").value = String(S.lossStreak);
-    renderAccts();
+    renderAccts(); renderFree();
     $("sbUrl").value = S.sb.url || ""; $("sbKey").value = S.sb.key || ""; $("sbEmail").value = S.sb.email || ""; renderSb();
     $("newsOn").checked = !!S.newsOn; $("afKey").value = S.afKey || ""; renderAfMsg();
     renderCost(); renderBooks(); renderMkCheck(); renderCreditLog();
@@ -2726,8 +2779,8 @@ body.simple .adv { display: none !important; }
     });
   }
   function renderCost() {
-    var cost = S.selected.length * (S.totals ? 2 : 1) * (sharpOn() ? 2 : 1), xe = extraEstimate();
-    $("costNote").textContent = "Each refresh uses about " + (cost + xe) + " credits: " + cost + " for the main prices (" + (S.totals ? "two" : "one") + " per league" + (sharpOn() ? ", doubled for the Pinnacle yardstick" : "") + ")" +
+    var cost = apiKeys().length * (S.totals ? 2 : 1) * (sharpOn() ? 2 : 1), xe = extraEstimate();
+    $("costNote").textContent = (cost + xe > 0 ? "On the free 500 credits a month that is about " + Math.max(1, Math.floor(500 / 30 / (cost + xe) * 10) / 10) + " refreshes a day. " : "") + "Each refresh uses about " + (cost + xe) + " credits: " + cost + " for the main prices (" + (S.totals ? "two" : "one") + " per league" + (sharpOn() ? ", doubled for the Pinnacle yardstick" : "") + ")" +
       (xe ? " plus about " + xe + " for extra markets (" + pickExtraTargets().length + " matches x " + extraMarkets().length + " markets)" : "") +
       ". The free plan gives 500 a month. Opening the page only refreshes the main prices, never the extras.";
   }
@@ -2740,12 +2793,13 @@ body.simple .adv { display: none !important; }
     renderPlan(d); renderTiles(d); renderScenarios(d); renderList(); renderBets(); renderRecord(); renderSheet();
   }
   function renderAll() {
-    $("setup").hidden = !!S.key;
-    $("main").hidden = !S.key;
-    $("tabbar").hidden = !S.key;
+    var inApp = !!(S.key || S.freeMode);
+    $("setup").hidden = inApp;
+    $("main").hidden = !inApp;
+    $("tabbar").hidden = !inApp;
     document.body.classList.toggle("simple", !!S.simple);
     applyTab();
-    if (!S.key) return;
+    if (!inApp) return;
     $("modeLikely").setAttribute("aria-pressed", String(S.mode === "likely"));
     $("modeValue").setAttribute("aria-pressed", String(S.mode === "value"));
     $("modeBal").setAttribute("aria-pressed", String(S.mode === "balanced"));
@@ -2769,7 +2823,7 @@ body.simple .adv { display: none !important; }
 
   /* ---------- Automatic refresh ---------- */
   function stale() {
-    var times = S.selected.map(function (k) { return S.cache[k] && S.cache[k].at; });
+    var times = apiKeys().map(function (k) { return S.cache[k] && S.cache[k].at; });
     if (!times.length) return false;
     if (times.some(function (t) { return !t; })) return true;
     return Date.now() - Math.min.apply(null, times) > S.autoHours * 3600000;
@@ -2778,7 +2832,7 @@ body.simple .adv { display: none !important; }
   /* Leagues with a match starting within 75 minutes whose prices are over 20 minutes old. */
   function kickoffKeys() {
     var now = Date.now(), out = [];
-    S.selected.forEach(function (k) {
+    apiKeys().forEach(function (k) {
       var c = S.cache[k]; if (!c || now - c.at < 20 * 60000) return;
       if (c.events.some(function (ev) { var t = Date.parse(ev.c); return t > now && t - now < 75 * 60000; })) out.push(k);
     });
@@ -2844,10 +2898,24 @@ body.simple .adv { display: none !important; }
   $("afKey").addEventListener("change", function (e) { S.afKey = e.target.value.trim(); S.afStatus = ""; save(); renderAfMsg(); });
   $("afTest").addEventListener("click", testNews);
   $("tourAgain").addEventListener("click", function () { openTour(); });
+  $("freeStart").addEventListener("click", function () { S.freeMode = true; S.tour = true; save(); renderAll(); setTab("more"); var fb = $("freeBox"); if (fb && fb.scrollIntoView) fb.scrollIntoView(); });
+  $("freeFile").addEventListener("change", function (e) {
+    var file = e.target.files && e.target.files[0], m = $("freeMsg"); if (!file) return;
+    if (file.size > 3000000) { m.textContent = ""; m.appendChild(el("div", "msg", "That file is too big to be the prices file.")); return; }
+    var rd = new FileReader();
+    rd.onload = function () {
+      try { var info = importFree(rd.result); save(); renderSettings(); renderAll(); setTab("today"); showAlert("Free prices loaded: " + info.n + " matches in " + info.leagues + " leagues. Check the live price before any bet.", true); }
+      catch (err) { m.textContent = ""; m.appendChild(el("div", "msg", err.message === "format" || err.message === "empty" ? "That does not look like the prices file. Download fixtures.csv from football-data.co.uk and choose that." : err.message === "nomatches" ? "No usable matches in that file." : "Could not read that file.")); }
+      e.target.value = "";
+    };
+    rd.onerror = function () { m.textContent = ""; m.appendChild(el("div", "msg", "Could not read that file.")); };
+    rd.readAsText(file);
+  });
   $("acctAdd").addEventListener("click", function () { var n = $("acctNew").value.trim(); if (!n) return; if (!S.accts[n]) S.accts[n] = { bal: 0, status: "active", note: "" }; $("acctNew").value = ""; save(); renderAccts(); });
   $("sbSignIn").addEventListener("click", sbSignIn);
   $("sbSync").addEventListener("click", function () { syncNow(false); });
   $("sbOut").addEventListener("click", function () { S.sb.session = null; S.sb.status = "Signed out. Your bets stay on this phone."; save(); renderSb(); });
+  $("exYard").addEventListener("change", function (e) { S.exYard = e.target.checked; save(); renderAll(); });
   $("simpleOn").addEventListener("change", function (e) { S.simple = e.target.checked; save(); renderAll(); });
   $("sharpOn").addEventListener("change", function (e) { S.sharp = e.target.checked; if (S.sharp) S.sharpBad = false; save(); renderCost(); renderStatus(); renderSharpMsg(); });
   $("autoKick").addEventListener("change", function (e) { S.autoKick = e.target.checked; save(); });
@@ -2856,7 +2924,7 @@ body.simple .adv { display: none !important; }
   $("autoHours").addEventListener("change", function (e) { S.autoHours = +e.target.value; save(); });
   $("refreshBtn").addEventListener("click", function () {
     showAlert("");
-    var est = S.selected.length * (S.totals ? 2 : 1) * (sharpOn() ? 2 : 1) + extraEstimate();
+    var est = apiKeys().length * (S.totals ? 2 : 1) * (sharpOn() ? 2 : 1) + extraEstimate();
     if ((est >= 40 || (S.remaining !== null && est >= S.remaining * 0.15)) &&
         !window.confirm("This refresh will use about " + est + " credits" + (S.remaining !== null ? " and you have " + S.remaining + " left" : "") + ". Continue?")) return;
     refreshAll();
@@ -2864,7 +2932,12 @@ body.simple .adv { display: none !important; }
   $("settingsDone").addEventListener("click", function () {
     setTab("today"); renderAll();
     var any = S.selected.some(function (k) { return S.cache[k]; });
-    if (!any && S.selected.length) refreshAll();
+    if (!any && apiKeys().length) refreshAll();
+  });
+  $("creditSaver").addEventListener("click", function () {
+    S.totals = false; S.extras = false; S.sharp = false; S.exYard = true; save(); renderSettings(); renderAll();
+    var c = apiKeys().length;
+    showAlert("Credit saver on: main prices only, with Betfair Exchange as the free yardstick. A refresh now costs " + c + (c === 1 ? " credit" : " credits") + ", so the free 500 a month allows about " + (c ? Math.floor(500 / 30 / c * 10) / 10 : 0) + " refreshes a day. Goals prices and extra markets are off: on past matches they showed no clear edge.", true);
   });
   $("useRecommended").addEventListener("click", function () {
     var go = function () { S.selected = recommendedKeys(); S.picked = true; save(); renderSettings(); renderAll();
@@ -2999,6 +3072,70 @@ body.simple .adv { display: none !important; }
     $("sbSignIn").hidden = signedIn; $("sbSync").hidden = !signedIn; $("sbOut").hidden = !signedIn;
     if (signedIn) m.appendChild(el("div", "msg info", "Signed in as " + (S.sb.email || "you") + (S.sb.last ? " · last synced " + ago(S.sb.last) : "") + ". " + (S.sb.status || "")));
     else if (S.sb.status) m.appendChild(el("div", S.sb.status.indexOf("Link sent") === 0 || S.sb.status === "Signed in." ? "msg info" : "msg", S.sb.status));
+  }
+
+  /* ---------- Free weekly prices file (football-data.co.uk "fixtures.csv"): no key, no credits ----------
+     The site publishes one file, about twice a week, with the coming matches and prices from six UK bookmakers plus Betfair Exchange.
+     A web page is not allowed to fetch it directly, so the user downloads it and picks it here. Everything in it is treated as plain data. */
+  var FD_BOOKS = { B365: ["Bet365", "bet365"], BFD: ["Betfred", "betfred_uk"], BV: ["Bet Victor", "betvictor"], BW: ["Bwin", "bwin"], PP: ["Paddy Power", "paddypower"], SKB: ["Sky Bet", "skybet"], BFE: ["Betfair", "betfair_ex_uk"] };
+  function parseCsv(text) {
+    var rows = [], row = [], cur = "", q = false, i, c;
+    text = text.replace(/^\ufeff/, "");
+    for (i = 0; i < text.length; i++) {
+      c = text[i];
+      if (q) { if (c === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+      else if (c === '"') q = true;
+      else if (c === ",") { row.push(cur); cur = ""; }
+      else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(cur); cur = ""; if (row.length > 1) rows.push(row); row = []; }
+      else cur += c;
+    }
+    if (cur || row.length) { row.push(cur); if (row.length > 1) rows.push(row); }
+    return rows;
+  }
+  function londonEpoch(y, mo, d, h, mi) {
+    var g = Date.UTC(y, mo - 1, d, h, mi), p = {};
+    new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
+      .formatToParts(new Date(g)).forEach(function (x) { p[x.type] = x.value; });
+    return g - (Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute) - g);
+  }
+  function importFree(text) {
+    var rows = parseCsv(String(text).slice(0, 2000000)); if (rows.length < 2) throw new Error("empty");
+    var head = rows[0].map(function (x) { return x.trim(); }), col = {}; head.forEach(function (h, i) { col[h] = i; });
+    if (col.Div === undefined || col.Date === undefined || col.HomeTeam === undefined || col.AwayTeam === undefined || col.B365H === undefined) throw new Error("format");
+    function price(r, name) { var v = parseFloat(r[col[name]]); return isFinite(v) && v > 1 && v < 1000 ? v : 0; }
+    var leagues = {}, n = 0;
+    rows.slice(1).forEach(function (r) {
+      var div = (r[col.Div] || "").trim(), h = (r[col.HomeTeam] || "").trim().slice(0, 40), a = (r[col.AwayTeam] || "").trim().slice(0, 40);
+      var dm = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/.exec((r[col.Date] || "").trim()), tm = /^(\d{1,2}):(\d{2})$/.exec(col.Time !== undefined ? (r[col.Time] || "").trim() : "") || [0, 15, 0];
+      if (!/^[A-Z]{1,2}\d?$/.test(div) || !h || !a || !dm) return;
+      var yr = +dm[3] < 100 ? 2000 + +dm[3] : +dm[3], t = londonEpoch(yr, +dm[2], +dm[1], +tm[1], +tm[2]), books = [];
+      Object.keys(FD_BOOKS).forEach(function (b) {
+        var ph = price(r, b + "H"), pd = price(r, b + "D"), pa = price(r, b + "A");
+        if (ph && pd && pa) books.push({ t: FD_BOOKS[b][0], k: FD_BOOKS[b][1], o: [[h, ph, ""], [a, pa, ""], ["Draw", pd, ""]] });
+      });
+      if (books.length < 3) return;
+      (leagues[div] = leagues[div] || []).push({ id: "fd|" + div + "|" + dm[0] + "|" + h + "|" + a, c: new Date(t).toISOString(), h: h, a: a, books: books, tb: [] }); n++;
+    });
+    if (!n) throw new Error("nomatches");
+    Object.keys(S.cache).forEach(function (k) { if (isFree(k)) { snapshot(S.cache[k]); delete S.cache[k]; } });
+    S.sports = S.sports.filter(function (x) { return !isFree(x.key); }); S.selected = S.selected.filter(function (k) { return !isFree(k); });
+    var names = [], first = Infinity, last = 0;
+    Object.keys(leagues).forEach(function (div) {
+      var key = "fd_" + div, title = (FD_LEAGUES[div] || [null, "League " + div])[1];
+      S.cache[key] = { at: Date.now(), events: leagues[div], free: true }; S.sports.push({ key: key, title: title + " · free file", group: "Soccer" }); S.selected.push(key); names.push(title);
+      leagues[div].forEach(function (e) { var t = Date.parse(e.c); first = Math.min(first, t); last = Math.max(last, t); });
+      recordSeries(leagues[div]);
+    });
+    S.freeInfo = { at: Date.now(), n: n, leagues: names.length, first: first, last: last };
+    S.freeMode = true; S.picked = true;
+    return S.freeInfo;
+  }
+  function renderFree() {
+    var m = $("freeMsg"); if (!m) return; m.textContent = "";
+    var i = S.freeInfo; if (!i) return;
+    var up = 0, now = Date.now(); Object.keys(S.cache).forEach(function (k) { if (isFree(k)) S.cache[k].events.forEach(function (e) { if (Date.parse(e.c) > now) up++; }); });
+    m.appendChild(el("div", up ? "msg info" : "msg", "Loaded " + ago(i.at) + ": " + i.n + " matches in " + i.leagues + " leagues, from " + TF.format(new Date(i.first)) + " to " + TF.format(new Date(i.last)) + ". " +
+      (up ? up + " still to be played." : "All of them have kicked off, so get a newer file. A new one usually appears on Tuesdays and Fridays.")));
   }
 
   /* ---------- Guided tour ---------- */
@@ -3177,7 +3314,7 @@ body.simple .adv { display: none !important; }
   $("verLine").textContent = "BetIQ Lite " + VERSION + ". If the page looks out of date, add ?" + VERSION.slice(0, 3) + " to the address to skip your phone's saved copy.";
   initCalc();
   renderAll();
-  if (S.key) renderSettings();
+  if (S.key || S.freeMode) renderSettings();
   if (S.sb.session && S.sb.url) { if (sbArrived) setTab("more"); syncNow(true); }
   if (S.live) { if (liveActive() && Date.now() - S.live.time > liveMins(S.live.group) * 60000) S.live.stopped = true; renderLive(); if (liveActive()) { scheduleLive(); liveCheck(); } }
   if (S.key && !S.tour && !S.booksSet && !S.bets.length && !S.pbets.length && !S.sb.session) openTour();
