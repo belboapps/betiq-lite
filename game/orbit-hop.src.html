@@ -1,0 +1,384 @@
+<title>Orbit Hop</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap">
+<style>
+/* Layout: one full-height play column (max 520px). HUD floats over the canvas; menus are a sheet anchored to the bottom so the live scene stays visible above it. */
+:root{
+  --void:#120b2e; --deep:#221a5c; --ink:#f3efff; --dim:#a9a1d8;
+  --flare:#ffb238; --pulse:#ff5d8f; --ion:#4fe0d0;
+  --panel:rgba(22,14,60,.9); --line:rgba(169,161,216,.28);
+  --font-display:'Chakra Petch','Trebuchet MS',system-ui,sans-serif;
+  --font-body:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--void);color:var(--ink);font-family:var(--font-body);font-size:15px;overflow:hidden;-webkit-user-select:none;user-select:none}
+#stage{position:relative;height:100%;max-width:520px;margin:0 auto;overflow:hidden;background:var(--void)}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+.hud{position:absolute;inset:0 0 auto 0;display:grid;grid-template-columns:1fr auto 1fr;align-items:start;gap:8px;
+  padding-block:12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));pointer-events:none}
+.score{grid-column:2;font-family:var(--font-display);font-weight:700;font-size:54px;line-height:1;font-variant-numeric:tabular-nums;text-shadow:0 2px 0 rgba(18,11,46,.6)}
+.coins{grid-column:3;justify-self:end;font-family:var(--font-display);font-weight:600;font-size:18px;color:var(--flare);font-variant-numeric:tabular-nums;padding-top:6px}
+.icon-btn{pointer-events:auto;justify-self:start;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:rgba(18,11,46,.5);color:var(--ink);font:600 12px var(--font-display);cursor:pointer}
+.sheet{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;
+  padding-block:20px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  background:linear-gradient(to top,var(--void) 30%,rgba(18,11,46,0) 72%)}
+.panel{display:flex;flex-direction:column;gap:14px}
+h1{margin:0;font-family:var(--font-display);font-weight:700;font-size:clamp(44px,14vw,68px);line-height:.9;letter-spacing:-.01em;text-wrap:balance}
+h1 em{font-style:normal;color:var(--flare)}
+.lede{margin:0;color:var(--dim);max-width:34ch;line-height:1.45}
+.stats{display:flex;gap:22px;flex-wrap:wrap}
+.stat{display:flex;flex-direction:column;gap:2px}
+.stat span{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.stat b{font-family:var(--font-display);font-size:24px;font-variant-numeric:tabular-nums}
+.stat b.gold{color:var(--flare)}
+.play{appearance:none;border:0;border-radius:14px;padding:16px;background:var(--flare);color:#2a1500;font:700 20px var(--font-display);letter-spacing:.04em;cursor:pointer;box-shadow:0 5px 0 #b06d0c}
+.play:active{transform:translateY(3px);box-shadow:0 2px 0 #b06d0c}
+.skins{display:flex;gap:8px;flex-wrap:wrap}
+.skin{flex:1 1 56px;min-width:0;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 4px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:500 12px var(--font-body);cursor:pointer}
+.skin i{width:18px;height:18px;border-radius:50%;background:var(--c);box-shadow:0 0 10px var(--c)}
+.skin[aria-pressed="true"]{border-color:var(--ion);color:var(--ion)}
+.skin.locked{color:var(--dim)}
+.skin.cant{opacity:.55}
+button:focus-visible{outline:2px solid var(--ion);outline-offset:2px}
+.note{margin:0;font-size:12px;color:var(--dim);min-height:1.3em}
+</style>
+
+<div id="stage">
+  <canvas id="c" aria-label="Orbit Hop play area"></canvas>
+  <div class="hud">
+    <button class="icon-btn" id="mute" type="button" aria-label="Toggle sound">SND</button>
+    <div class="score" id="score" hidden>0</div>
+    <div class="coins" id="coins">★ 0</div>
+  </div>
+  <div class="sheet" id="sheet">
+    <div class="panel">
+      <h1 id="title">ORBIT <em>HOP</em></h1>
+      <p class="lede" id="lede">Tap to let go. Fly straight, catch the next planet's ring, and stay ahead of the rising tide.</p>
+      <div class="stats">
+        <div class="stat"><span>Best</span><b id="best">0</b></div>
+        <div class="stat"><span>Stars</span><b class="gold" id="bank">0</b></div>
+        <div class="stat" id="earnedBox" hidden><span>This run</span><b class="gold" id="earned">+0</b></div>
+      </div>
+      <button class="play" id="play" type="button">PLAY</button>
+      <div class="skins" id="skins"></div>
+      <p class="note" id="note">Spend stars on new trails. Space or tap to play.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+const W = 400;                       // logical world width; height follows the screen
+const SKINS = [
+  {n:'Comet', c:'#ffb238', cost:0},
+  {n:'Ion',   c:'#4fe0d0', cost:15},
+  {n:'Rose',  c:'#ff5d8f', cost:40},
+  {n:'Lime',  c:'#b6f24a', cost:80},
+  {n:'Ghost', c:'#ffffff', cost:150},
+];
+const PLANET_HUES = ['#7c6cff','#4fe0d0','#ff8a5c','#ff5d8f','#6fb1ff','#c58bff'];
+const $ = id => document.getElementById(id);
+const cv = $('c'), ctx = cv.getContext('2d');
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+let save = {best:0, coins:0, skin:0, owned:[0], mute:false};
+try { Object.assign(save, JSON.parse(localStorage.getItem('orbit-hop') || '{}')); } catch (e) {}
+const persist = () => { try { localStorage.setItem('orbit-hop', JSON.stringify(save)); } catch (e) {} };
+
+let scale = 1, H = 700, dpr = 1;
+function resize(){
+  const r = cv.getBoundingClientRect();
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.max(1, Math.round(r.width * dpr));
+  cv.height = Math.max(1, Math.round(r.height * dpr));
+  scale = r.width / W; H = r.height / scale;
+}
+addEventListener('resize', resize);
+
+// ---- sound -----------------------------------------------------------
+let ac;
+function beep(f, d, type, v, slide){
+  if (save.mute) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const o = ac.createOscillator(), g = ac.createGain(), n = ac.currentTime;
+    o.type = type || 'sine'; o.frequency.setValueAtTime(f, n);
+    if (slide) o.frequency.exponentialRampToValueAtTime(f * slide, n + d);
+    g.gain.setValueAtTime(v || .07, n); g.gain.exponentialRampToValueAtTime(.0001, n + d);
+    o.connect(g); g.connect(ac.destination); o.start(); o.stop(n + d);
+  } catch (e) {}
+}
+
+// ---- world -----------------------------------------------------------
+let state = 'menu';                  // menu | play | dead
+let planets, stars, parts, pops, pl, camY, voidY, score, maxI, runCoins, t = 0, deadT = 0, shake = 0, started;
+const rnd = (a, b) => a + Math.random() * (b - a);
+
+function addPlanet(){
+  const prev = planets[planets.length - 1];
+  const i = prev ? prev.i + 1 : 0;
+  const r = i === 0 ? 24 : rnd(16, 26);
+  let x = W / 2, y = 0;
+  if (prev){
+    y = prev.y - rnd(150, 200);
+    const side = Math.random() < .5 ? -1 : 1, off = rnd(70, 170);
+    x = prev.bx + side * off;
+    if (x < 70 || x > W - 70) x = prev.bx - side * off;
+    x = Math.max(70, Math.min(W - 70, x));
+  }
+  const p = {i, x, bx:x, y, r, cap: r + Math.max(30, 48 - i * .6), hue: PLANET_HUES[i % PLANET_HUES.length], amp:0, f:0, ph:0, flash:0};
+  if (i > 8 && Math.random() < Math.min(.6, (i - 8) * .04)){
+    p.amp = Math.min(rnd(18, 40), p.bx - 60, W - 60 - p.bx); p.f = rnd(.8, 1.5); p.ph = rnd(0, 6.28);
+  }
+  planets.push(p);
+  if (prev && Math.random() < .65)
+    stars.push({x:(prev.bx + x) / 2 + rnd(-30, 30), y:(prev.y + y) / 2 + rnd(-20, 20), got:false});
+}
+
+function reset(){
+  planets = []; stars = []; parts = []; pops = [];
+  addPlanet();
+  while (planets.length < 8) addPlanet();
+  const p = planets[0];
+  pl = {mode:'orbit', p, ang:-Math.PI / 2, rad:p.r + 20, dir:1, x:0, y:0, vx:0, vy:0, flyT:0, from:null, left:true, trail:[]};
+  camY = p.y - H * .5; voidY = p.y + H; score = 0; maxI = 0; runCoins = 0; started = false; shake = 0;
+}
+const speed = () => Math.min(420, 230 + score * 4);
+
+function burst(x, y, c, n){
+  for (let k = 0; k < n; k++){
+    const a = rnd(0, 6.28), s = rnd(40, 220);
+    parts.push({x, y, vx:Math.cos(a) * s, vy:Math.sin(a) * s, life:rnd(.3, .7), max:.7, c});
+  }
+}
+
+function release(){
+  if (pl.mode !== 'orbit') return;
+  const s = speed();
+  pl.vx = -Math.sin(pl.ang) * pl.dir * s; pl.vy = Math.cos(pl.ang) * pl.dir * s;
+  pl.mode = 'fly'; pl.from = pl.p; pl.left = false; pl.flyT = 0; started = true;
+  beep(520, .09, 'triangle', .06, 1.5);
+}
+
+function attach(p){
+  const rx = pl.x - p.x, ry = pl.y - p.y;
+  pl.mode = 'orbit'; pl.p = p; pl.ang = Math.atan2(ry, rx); pl.rad = Math.max(Math.hypot(rx, ry), p.r + 8);
+  pl.dir = (rx * pl.vy - ry * pl.vx) >= 0 ? 1 : -1;
+  p.flash = 1; burst(pl.x, pl.y, p.hue, 10);
+  if (p.i > maxI){
+    const gain = p.i - maxI; maxI = p.i; score += gain;
+    pops.push({x:p.x, y:p.y - p.r - 34, text: gain > 1 ? '+' + gain + ' SKIP' : '+1', life:.9});
+    beep(330 + Math.min(score, 30) * 18, .16, 'sine', .08, 1.25);
+    if (gain > 1) shake = 6;
+    $('score').textContent = score;
+  } else beep(240, .1, 'sine', .05);
+}
+
+function die(){
+  state = 'dead'; deadT = 0; shake = 12;
+  burst(pl.x, pl.y, SKINS[save.skin].c, 36);
+  beep(200, .5, 'sawtooth', .07, .3);
+  save.coins += runCoins;
+  const newBest = score > save.best; if (newBest) save.best = score;
+  persist(); die.newBest = newBest;
+}
+
+function update(dt){
+  t += dt;
+  for (const p of planets){ if (p.amp) p.x = p.bx + Math.sin(t * p.f + p.ph) * p.amp; p.flash = Math.max(0, p.flash - dt * 2.5); }
+  for (const q of parts){ q.x += q.vx * dt; q.y += q.vy * dt; q.vx *= .96; q.vy *= .96; q.life -= dt; }
+  parts = parts.filter(q => q.life > 0);
+  for (const q of pops){ q.y -= 30 * dt; q.life -= dt; }
+  pops = pops.filter(q => q.life > 0);
+  shake = Math.max(0, shake - dt * 30);
+
+  if (state === 'dead'){
+    deadT += dt;
+    if (deadT > .75 && $('sheet').hidden) showSheet(true);
+    return;
+  }
+  if (pl.mode === 'orbit'){
+    const p = pl.p;
+    pl.rad += (p.r + 20 - pl.rad) * Math.min(1, dt * 6);
+    pl.ang += pl.dir * speed() / pl.rad * dt;
+    pl.x = p.x + Math.cos(pl.ang) * pl.rad; pl.y = p.y + Math.sin(pl.ang) * pl.rad;
+  } else {
+    pl.flyT += dt;
+    pl.x += pl.vx * dt; pl.y += pl.vy * dt;
+    if (pl.x < 8){ pl.x = 8; pl.vx = Math.abs(pl.vx); beep(160, .05, 'square', .03); }
+    if (pl.x > W - 8){ pl.x = W - 8; pl.vx = -Math.abs(pl.vx); beep(160, .05, 'square', .03); }
+    for (const p of planets){
+      const d = Math.hypot(pl.x - p.x, pl.y - p.y);
+      if (p === pl.from && !pl.left){ if (d > p.cap + 2) pl.left = true; continue; }
+      if (d < p.cap){ attach(p); break; }
+    }
+    if (pl.mode === 'fly'){
+      for (const s of stars) if (!s.got && Math.hypot(pl.x - s.x, pl.y - s.y) < 22){
+        s.got = true; runCoins++; burst(s.x, s.y, '#ffb238', 8); beep(880, .12, 'sine', .06, 1.5);
+        $('coins').textContent = '★ ' + (save.coins + runCoins);
+      }
+      if (pl.flyT > 2.6 || pl.y > camY + H + 30) return die();
+    }
+  }
+  pl.trail.push(pl.x, pl.y); if (pl.trail.length > 36) pl.trail.splice(0, 2);
+
+  // camera follows the planet you're on, and the player if they fly ahead
+  const anchor = pl.mode === 'orbit' ? pl.p.y : Math.min(pl.from.y, pl.y + H * .25);
+  camY += (anchor - H * .6 - camY) * Math.min(1, dt * 4);
+  while (planets[planets.length - 1].y > camY - 500) addPlanet();
+  planets = planets.filter(p => p === pl.p || p === pl.from || p.y < camY + H + 300);
+  stars = stars.filter(s => !s.got && s.y < camY + H + 100);
+
+  if (state === 'play' && started){
+    voidY -= Math.min(75, 22 + score * 1.5) * dt;
+    voidY = Math.min(voidY, camY + H + 40);
+    if (pl.y > voidY) die();
+  }
+}
+
+// ---- drawing ---------------------------------------------------------
+const hash = n => { const x = Math.sin(n * 127.1) * 43758.5453; return x - Math.floor(x); };
+function draw(){
+  const k = dpr * scale;
+  ctx.setTransform(k, 0, 0, k, 0, 0);
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#221a5c'); g.addColorStop(1, '#120b2e');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+  const span = H * 1.4;                                   // parallax dust
+  for (let i = 0; i < 70; i++){
+    const par = .15 + hash(i + 9) * .35;
+    const y = (((hash(i) * span - camY * par) % span) + span) % span - H * .2;
+    ctx.globalAlpha = .25 + hash(i + 3) * .5;
+    ctx.fillStyle = '#cfc8ff';
+    ctx.fillRect(hash(i + 5) * W, y, 1.6, 1.6);
+  }
+  ctx.globalAlpha = 1;
+
+  const sx = shake && !reduceMotion ? rnd(-shake, shake) * .5 : 0;
+  ctx.translate(sx, -camY);
+
+  for (const p of planets){
+    ctx.setLineDash([4, 7]); ctx.lineWidth = 1.5;
+    ctx.strokeStyle = p.hue; ctx.globalAlpha = .28 + p.flash * .6;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.cap, 0, 6.2832); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha = 1;
+    const pg = ctx.createRadialGradient(p.x - p.r * .35, p.y - p.r * .4, 2, p.x, p.y, p.r);
+    pg.addColorStop(0, '#ffffff'); pg.addColorStop(.25, p.hue); pg.addColorStop(1, '#1a1147');
+    ctx.fillStyle = pg; ctx.beginPath(); ctx.arc(p.x, p.y, p.r + p.flash * 3, 0, 6.2832); ctx.fill();
+  }
+
+  for (const s of stars){
+    const b = 1 + Math.sin(t * 5 + s.x) * .12;
+    ctx.fillStyle = '#ffb238'; ctx.shadowColor = '#ffb238'; ctx.shadowBlur = 12;
+    ctx.beginPath();
+    for (let j = 0; j < 10; j++){
+      const a = -Math.PI / 2 + j * Math.PI / 5, r = (j % 2 ? 4 : 9) * b;
+      ctx.lineTo(s.x + Math.cos(a) * r, s.y + Math.sin(a) * r);
+    }
+    ctx.fill(); ctx.shadowBlur = 0;
+  }
+
+  const col = SKINS[save.skin].c;
+  if (state !== 'dead'){
+    const tr = pl.trail;
+    for (let j = 0; j < tr.length; j += 2){
+      const a = j / tr.length;
+      ctx.globalAlpha = a * .5; ctx.fillStyle = col;
+      ctx.beginPath(); ctx.arc(tr[j], tr[j + 1], 2 + a * 5, 0, 6.2832); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    if (pl.mode === 'orbit' && state === 'play'){          // aim guide
+      const dx = -Math.sin(pl.ang) * pl.dir, dy = Math.cos(pl.ang) * pl.dir;
+      ctx.strokeStyle = '#f3efff'; ctx.globalAlpha = .4; ctx.lineWidth = 2; ctx.setLineDash([3, 8]);
+      ctx.beginPath(); ctx.moveTo(pl.x + dx * 14, pl.y + dy * 14); ctx.lineTo(pl.x + dx * 90, pl.y + dy * 90); ctx.stroke();
+      ctx.setLineDash([]); ctx.globalAlpha = 1;
+    }
+    ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 18;
+    ctx.beginPath(); ctx.arc(pl.x, pl.y, 8, 0, 6.2832); ctx.fill();
+    ctx.shadowBlur = 0; ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(pl.x - 2, pl.y - 2, 3, 0, 6.2832); ctx.fill();
+  }
+
+  for (const q of parts){
+    ctx.globalAlpha = Math.max(0, q.life / q.max); ctx.fillStyle = q.c;
+    ctx.fillRect(q.x - 2, q.y - 2, 4, 4);
+  }
+  ctx.globalAlpha = 1;
+  ctx.font = '700 18px "Chakra Petch", sans-serif'; ctx.textAlign = 'center';
+  for (const q of pops){ ctx.globalAlpha = Math.min(1, q.life * 2); ctx.fillStyle = '#f3efff'; ctx.fillText(q.text, q.x, q.y); }
+  ctx.globalAlpha = 1;
+
+  if (voidY < camY + H + 40){                               // the rising tide
+    const vg = ctx.createLinearGradient(0, voidY - 20, 0, voidY + 160);
+    vg.addColorStop(0, 'rgba(255,93,143,0)'); vg.addColorStop(.15, 'rgba(255,93,143,.85)'); vg.addColorStop(1, '#5a1140');
+    ctx.fillStyle = vg; ctx.beginPath(); ctx.moveTo(0, camY + H + 60);
+    for (let x = 0; x <= W; x += 20) ctx.lineTo(x, voidY + Math.sin(x * .05 + t * 3) * 6);
+    ctx.lineTo(W, camY + H + 60); ctx.fill();
+  }
+}
+
+// ---- UI --------------------------------------------------------------
+function renderSkins(){
+  const box = $('skins'); box.textContent = '';
+  SKINS.forEach((s, i) => {
+    const b = document.createElement('button'), owned = save.owned.includes(i);
+    b.type = 'button'; b.id = 'skin-' + i; b.className = 'skin' + (owned ? '' : ' locked' + (save.coins < s.cost ? ' cant' : ''));
+    b.style.setProperty('--c', s.c);
+    b.setAttribute('aria-pressed', String(save.skin === i));
+    b.setAttribute('aria-label', s.n + ' trail' + (owned ? '' : ', costs ' + s.cost + ' stars'));
+    const dot = document.createElement('i'), lab = document.createElement('span');
+    lab.textContent = owned ? s.n : '★ ' + s.cost;
+    b.append(dot, lab);
+    b.addEventListener('click', () => {
+      if (!save.owned.includes(i)){
+        if (save.coins < s.cost){ $('note').textContent = s.n + ' needs ' + (s.cost - save.coins) + ' more stars.'; return; }
+        save.coins -= s.cost; save.owned.push(i); $('note').textContent = s.n + ' trail unlocked.';
+        beep(660, .2, 'sine', .07, 2);
+      }
+      save.skin = i; persist(); refreshStats(); renderSkins();
+    });
+    box.append(b);
+  });
+}
+function refreshStats(){
+  $('best').textContent = save.best; $('bank').textContent = save.coins;
+  $('coins').textContent = '★ ' + save.coins;
+  $('mute').textContent = save.mute ? 'OFF' : 'SND';
+}
+function showSheet(over){
+  $('sheet').hidden = false; $('score').hidden = true;
+  if (over){
+    $('title').innerHTML = 'SCORE <em>' + score + '</em>';
+    $('lede').textContent = die.newBest ? 'New best. The tide gets faster every hop, so skip planets when you can.' : 'Skip a planet for bonus points. Your best is ' + save.best + '.';
+    $('earnedBox').hidden = false; $('earned').textContent = '+' + runCoins;
+    $('play').textContent = 'PLAY AGAIN';
+  }
+  refreshStats(); renderSkins();
+}
+function start(){
+  reset(); state = 'play';
+  $('sheet').hidden = true; $('score').hidden = false; $('score').textContent = '0';
+  beep(440, .12, 'triangle', .06, 2);
+}
+$('play').addEventListener('click', start);
+$('mute').addEventListener('click', () => { save.mute = !save.mute; persist(); refreshStats(); });
+cv.addEventListener('pointerdown', e => { e.preventDefault(); if (state === 'play') release(); });
+addEventListener('keydown', e => {
+  if (e.code !== 'Space' && e.code !== 'Enter') return;
+  if (e.target instanceof HTMLButtonElement) return;
+  e.preventDefault();
+  if (state === 'play') release(); else if (!$('sheet').hidden) start();
+});
+
+resize(); reset(); refreshStats(); renderSkins();
+let last = performance.now();
+function frame(now){
+  const dt = Math.min(.033, (now - last) / 1000); last = now;
+  update(dt); draw();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+})();
+</script>
