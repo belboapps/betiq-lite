@@ -17,8 +17,8 @@ LEAGUES = {"E0": "Premier League", "E1": "Championship", "E2": "League One", "E3
            "N1": "Eredivisie", "B1": "Belgian Pro League", "P1": "Primeira Liga", "T1": "Turkish Super Lig", "G1": "Greek Super League"}
 ENGLAND = ("E0", "E1", "E2", "E3", "EC")
 SEASONS = ["1213", "1314", "1415", "1516", "1617", "1718", "1819", "1920", "2021", "2122", "2223", "2324", "2425", "2526", "2627"]
-H2H_BOOKS = ["B365", "BW", "IW", "PS", "WH", "VC", "LB", "BF", "1XB", "SB", "GB", "BS", "SJ", "Max", "Avg", "BFE"]
-UK_BOOKS = ["B365", "WH", "LB", "BW", "VC", "BF", "IW"]          # stand-ins for the UK bookmakers the app compares
+H2H_BOOKS = ["B365", "BW", "IW", "PS", "WH", "VC", "LB", "BF", "1XB", "SB", "GB", "BS", "SJ", "BFD", "BV", "PP", "SKB", "BMGM", "CL", "Max", "Avg", "BFE"]
+UK_BOOKS = ["B365", "WH", "LB", "BW", "VC", "BF", "IW", "BFD", "BV", "PP", "SKB", "BMGM", "CL"]   # UK-facing bookmakers (Betfred, BetVictor, Paddy Power, Sky Bet, BetMGM, Coral added from 2025/26)
 TOT_BOOKS = {"B365": "B365", "P": "PS", "GB": "GB", "BS": "BS", "Max": "Max", "Avg": "Avg", "BFE": "BFE", "BbMx": "Max", "BbAv": "Avg"}
 VALUE_MIN, VALUE_MAX, LONGSHOT = 0.03, 0.12, 4.0                 # same thresholds as the page
 
@@ -187,6 +187,17 @@ def simulate(db):
             best = [max(p[i] for p in uk.values()) for i in range(3)]
             bk = [max(uk, key=lambda b: uk[b][i]) for i in range(3)]
             add(m, "h2h", "sharp", ["H", "D", "A"], fairs, best, bk, len(uk) + 1, b365, closefair, wins)
+        # variant 4: no paid data at all: Betfair Exchange's price as the fair price, best price among the UK bookmakers
+        bfe = o_open.get("BFE")
+        if bfe and len(uk) >= 3:
+            fairs = demargin(list(bfe))
+            best = [max(p[i] for p in uk.values()) for i in range(3)]
+            bk = [max(uk, key=lambda b: uk[b][i]) for i in range(3)]
+            bcl = o_close.get("BFE"); bclf = demargin(list(bcl)) if bcl else closefair
+            add(m, "h2h", "exch", ["H", "D", "A"], fairs, best, bk, len(uk) + 1, b365, bclf, wins)
+            for one in ("B365", "PP", "SKB"):           # what one bookmaker account alone would have got, against the exchange fair price
+                if one in uk:
+                    add(m, "h2h", "exch_" + one, ["H", "D", "A"], fairs, list(uk[one]), [one] * 3, 10, b365, bclf, wins)
         # variant 2: market average and best price (many bookmakers behind each)
         if "Avg" in o_open and "Max" in o_open:
             fairs = demargin(o_open["Avg"])
@@ -265,7 +276,9 @@ def report(db_path, out_path):
     p()
     for variant, title in (("uk4", "Rules as the app applies them (individual UK bookmakers, best price among them)"),
                            ("maxavg", "Cross-check using market average and best available price"),
-                           ("sharp", "What a professional would do: Pinnacle's opening price as the fair price, best price among the UK bookmakers")):
+                           ("sharp", "What a professional would do: Pinnacle's opening price as the fair price, best price among the UK bookmakers"),
+                           ("exch", "No paid data: Betfair Exchange's price as the fair price, best price among the UK bookmakers (2024/25 onwards)"),
+                           ("exch_B365", "Exchange fair price, betting at Bet365 only"), ("exch_PP", "Exchange fair price, betting at Paddy Power only"), ("exch_SKB", "Exchange fair price, betting at Sky Bet only")):
         p("## " + title); p(); p(hdr)
         for mk in ("h2h", "totals25"):
             if not db.execute("SELECT 1 FROM sim_bets WHERE variant=? AND market=? LIMIT 1", (variant, mk)).fetchone():
