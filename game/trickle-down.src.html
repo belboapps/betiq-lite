@@ -1,0 +1,517 @@
+<title>Trickle Down</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one reading column (max 620px) of paperwork. A tabloid masthead with the year and a yellow ticker sticks to the top; a totals bar sticks to the bottom. */
+:root{
+  --paper:#e6ecf2; --card:#f9fbfd; --ink:#14213d; --mute:#56637b; --rule:#c2cddb;
+  --demand:#c8102e; --tab:#ffd400; --tabink:#14213d; --giro:#12715b;
+  --f-head:'Anton','Impact','Arial Narrow',sans-serif;
+  --f-body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --paper:#0e1524; --card:#172135; --ink:#e8edf4; --mute:#9aa7bf; --rule:#2b3954;
+  --demand:#ff5d70; --tab:#ffd400; --tabink:#14213d; --giro:#4fd1a8; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --paper:#0e1524; --card:#172135; --ink:#e8edf4; --mute:#9aa7bf; --rule:#2b3954;
+  --demand:#ff5d70; --tab:#ffd400; --tabink:#14213d; --giro:#4fd1a8; color-scheme:dark }
+
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--paper)}
+#app{max-width:620px;margin:0 auto;padding-block:0 28px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:16px}
+h1,h2,h3,p{margin:0}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--demand);outline-offset:2px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.up{color:var(--giro)} .down{color:var(--demand)}
+.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);font-weight:600}
+
+/* masthead */
+.mast{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);padding-top:12px;display:flex;flex-direction:column;gap:8px}
+.mast-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.year{font-family:var(--f-head);font-size:64px;line-height:.85;letter-spacing:.01em}
+.who{text-align:right;min-width:0}
+.who b{display:block;font-weight:600}
+.who span{color:var(--mute);font-size:13px}
+.proj{display:inline-block;background:var(--demand);color:#fff;font:600 10px var(--f-body);letter-spacing:.12em;padding:2px 6px;text-transform:uppercase}
+.ticker{background:var(--tab);color:var(--tabink);padding:8px 10px;font-weight:600;font-size:14px;display:flex;gap:10px;align-items:baseline;min-height:2.9em}
+.ticker b{font-family:var(--f-head);font-weight:400;letter-spacing:.05em;flex:none}
+.ticker span{min-width:0}
+
+/* title screen */
+.title{font-family:var(--f-head);font-size:clamp(64px,22vw,128px);line-height:.82;text-transform:uppercase;padding-top:28px}
+.title i{font-style:normal;color:var(--demand);display:block}
+.lede{font-size:17px;max-width:52ch}
+.chars{display:flex;flex-direction:column;gap:10px}
+.char{display:grid;grid-template-columns:1fr auto;gap:2px 12px;text-align:left;background:var(--card);border:1px solid var(--rule);border-left:6px solid var(--ink);padding:12px 14px;border-radius:2px}
+.char:hover{border-left-color:var(--demand)}
+.char b{font-size:17px}
+.char .pay{grid-row:1 / span 2;grid-column:2;align-self:center;text-align:right;font-size:13px;color:var(--mute)}
+.char .pay strong{display:block;font:600 18px var(--f-mono);color:var(--ink)}
+.char span{color:var(--mute);font-size:14px;min-width:0}
+.char.rich{border-left-color:var(--tab)}
+.char[disabled]{opacity:.55;cursor:not-allowed}
+
+/* paperwork */
+.card{background:var(--card);border:1px solid var(--rule);border-radius:2px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.slip{border-top:2px dashed var(--rule)}
+.lines{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-family:var(--f-mono);font-size:14px;font-variant-numeric:tabular-nums}
+.lines .tot{border-top:1px solid var(--ink);padding-top:4px;font-weight:600}
+.lines dt,.lines dd{margin:0}.lines dd{text-align:right}
+.small{font-size:13px;color:var(--mute)}
+.letter{border-top:6px solid var(--demand)}
+.letter h2{font-size:18px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{display:flex;justify-content:space-between;gap:12px;text-align:left;background:transparent;border:1px solid var(--rule);border-radius:2px;padding:10px 12px}
+.opt[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 4px 0 0 var(--ink);background:var(--paper)}
+.opt em{font-style:normal;font-family:var(--f-mono);font-size:13px;color:var(--mute);flex:none;text-align:right}
+.row{display:flex;flex-direction:column;gap:6px}
+.row-h{display:flex;justify-content:space-between;gap:10px;font-weight:600}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1 1 150px;min-width:0;background:transparent;border:1px solid var(--rule);border-radius:2px;padding:8px 10px;text-align:left;font-size:14px}
+.seg button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--card)}
+.seg small{display:block;font-family:var(--f-mono);font-size:12px;opacity:.8}
+
+.meters{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.meter{display:flex;flex-direction:column;gap:4px;min-width:0}
+.meter b{font:600 20px var(--f-mono);font-variant-numeric:tabular-nums}
+.bar{height:8px;background:var(--rule);border-radius:1px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--giro)}
+.bar i.low{background:var(--demand)}
+
+.foot{position:sticky;bottom:0;background:var(--paper);padding-block:10px calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:12px;align-items:center;justify-content:space-between;border-top:2px solid var(--ink)}
+.foot .left b{display:block;font:600 22px var(--f-mono);font-variant-numeric:tabular-nums}
+.go{background:var(--ink);color:var(--card);border:0;border-radius:2px;padding:14px 16px;font-family:var(--f-head);font-size:19px;letter-spacing:.04em;text-transform:uppercase}
+.go[disabled]{opacity:.4;cursor:not-allowed}
+.ghost{background:transparent;border:1px solid var(--ink);border-radius:2px;padding:10px 14px;font-weight:600}
+.btns{display:flex;gap:10px;flex-wrap:wrap}
+
+.stamp{font-family:var(--f-head);font-size:clamp(40px,12vw,72px);line-height:.9;text-transform:uppercase;color:var(--demand);border:5px solid var(--demand);padding:10px 14px;transform:rotate(-2deg);align-self:flex-start;margin-top:28px;text-wrap:balance}
+.stamp.win{color:var(--giro);border-color:var(--giro)}
+.share{font-family:var(--f-mono);font-size:13px;background:var(--paper);border:1px dashed var(--rule);padding:10px;-webkit-user-select:all;user-select:all;white-space:pre-wrap}
+details{border-top:1px solid var(--rule);padding-top:10px}
+summary{cursor:pointer;font-weight:600}
+details ul{margin:8px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--mute)}
+details a{color:var(--ink)}
+@media (prefers-reduced-motion:no-preference){ .tick-in{animation:tick .35s ease-out} @keyframes tick{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}} }
+</style>
+
+<div id="app"></div>
+
+<script>
+(() => {
+/*DATA-START*/
+const DATA = {
+  placeholder: true,
+  medianPay:[25165,25800,25900,26100,26500,27000,27200,27600,28200,28800,29600,30400,31500,31300,33000,35000,37400,39000],
+  minWage:[5.73,5.80,5.93,6.08,6.19,6.31,6.50,6.70,7.20,7.50,7.83,8.21,8.72,8.91,9.50,10.42,11.44,12.21],
+  cpi:[84.7,86.6,89.4,93.4,96.1,98.5,100,100,100.7,103.4,105.9,107.8,108.7,111.6,121.7,130.5,133.9,138.5],
+  food:[82,86.5,89.4,94.3,97.3,101,100.8,98.2,95.8,97.9,100,101.4,102.1,102.4,114,131,134,139.5],
+  rent:[780,785,790,805,820,835,850,870,890,905,915,930,945,960,1000,1090,1250,1335],
+  energy:[1050,1100,1060,1130,1220,1290,1270,1210,1120,1130,1190,1200,1150,1200,1900,2300,1750,1780],
+  house:[172000,155000,167000,165000,166000,170000,184000,196000,210000,220000,227000,230000,237000,258000,280000,283000,283000,270000],
+  ceo:[3900000,3700000,4200000,4300000,4300000,4400000,4400000,4300000,3500000,4000000,3600000,3300000,2500000,3400000,3900000,4200000,4600000,4600000],
+  parcels:[26000,41000,61000,129000,347000,913000,1085000,1110000,1180000,1330000,1600000,1900000,2580000,2180000,2990000,3120000,2890000,null],
+  pa:[6035,6475,6475,7475,8105,9440,10000,10600,11000,11500,11850,12500,12500,12570,12570,12570,12570,12570],
+  hr:[40835,43875,43875,42475,42475,41450,41865,42385,43000,45000,46350,50000,50000,50270,50270,50270,50270,50270],
+  pt:[5435,5715,5715,7225,7605,7755,7956,8060,8060,8164,8424,8632,9500,9568,11908,12570,12570,12570],
+  ni:[.11,.11,.11,.12,.12,.12,.12,.12,.12,.12,.12,.12,.12,.12,.1273,.115,.08,.08],
+  uel:[40040,43875,43875,42475,42475,41450,41865,42385,43000,45000,46350,50000,50000,50270,50270,50270,50270,50270],
+  ni2:[.01,.01,.01,.02,.02,.02,.02,.02,.02,.02,.02,.02,.02,.02,.0273,.02,.02,.02],
+  freezeUntil: 2030,
+  base: { food:175, essentials:190, bus:55, car:210, social:65, holiday:170 },   // 2008 pounds a month, single adult
+  sources: []
+};
+/*DATA-END*/
+
+const Y0 = 2008, YN = Y0 + DATA.medianPay.length - 1, YEND = 2040;
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const $ = id => document.getElementById(id);
+const money = n => (n < 0 ? '−' : '') + '£' + Math.abs(Math.round(n)).toLocaleString('en-GB');
+const big = n => n >= 1e6 ? '£' + (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + 'm' : money(n);
+const pct = n => (n >= 0 ? '+' : '−') + Math.abs(n * 100).toFixed(1) + '%';
+
+// A series value for any year. After the last real year, each series carries on at its own 2008-to-latest average growth rate.
+function v(key, y){
+  const s = DATA[key], n = s.length - 1;
+  let last = n; while (s[last] == null) last--;
+  if (y - Y0 <= last) return s[y - Y0];
+  const g = Math.pow(s[last] / s[0], 1 / last);
+  return s[last] * Math.pow(g, y - Y0 - last);
+}
+const idx = (key, y) => v(key, y) / v(key, Y0);
+function threshold(key, y){               // tax thresholds: real values, then frozen, then rising with prices
+  if (y <= YN) return DATA[key][y - Y0];
+  const lastV = DATA[key][YN - Y0];
+  return y <= DATA.freezeUntil ? lastV : lastV * v('cpi', y) / v('cpi', DATA.freezeUntil);
+}
+function taxOn(g, y){
+  const pa = threshold('pa', y), hr = threshold('hr', y), pt = threshold('pt', y), uel = threshold('uel', y);
+  const k = Math.min(y, YN) - Y0;
+  const top = y >= 2010 ? (y >= 2013 ? .45 : .5) : .4, topAt = y >= 2023 ? 125140 : 150000;
+  const allow = g > 100000 && y >= 2010 ? Math.max(0, pa - (g - 100000) / 2) : pa;
+  const it = .2 * Math.max(0, Math.min(g, hr) - allow) + .4 * Math.max(0, Math.min(g, topAt) - Math.max(hr, allow)) + top * Math.max(0, g - topAt);
+  const ni = DATA.ni[k] * Math.max(0, Math.min(g, uel) - pt) + DATA.ni2[k] * Math.max(0, g - uel);
+  return it + ni;
+}
+
+// ---- cast (all fictional) -------------------------------------------
+const CH = {
+  dee:  {name:'Dee', job:'Care worker', blurb:'Full time on the legal minimum wage. Called a hero roughly once a decade.', start:300, home:0,
+         gross:y => v('minWage', y) * 37.5 * 52},
+  sam:  {name:'Sam', job:'Office administrator', blurb:'Paid exactly the UK median full-time wage. Statistically, doing fine.', start:1500, home:1,
+         gross:y => v('medianPay', y)},
+  priya:{name:'Priya', job:'Café owner', blurb:'A small business owner. Her rent, energy, stock and wage bill all rise before her prices can.', start:1000, home:1,
+         gross:y => Math.max(0, 78000 * idx('cpi', y) - v('minWage', y) * 37.5 * 52 * 1.1 - 14000 * idx('rent', y) - 6000 * idx('energy', y) - 22000 * idx('food', y))},
+  giles:{name:'Sir Giles Hoard-Whittle', job:'Chief executive, OmniGrab plc', blurb:'Paid the real median for a FTSE 100 boss. Same years. Slightly different game.', start:2000000, rich:true,
+         gross:y => v('ceo', y)}
+};
+
+const B = DATA.base;
+const CHOICES = [
+  {k:'home', label:'Home', opts:[
+    {l:'Room in a shared house', rent:.45, en:.4, ess:.7, wb:-4},
+    {l:'One-bed flat', rent:.8, en:.7, ess:1, wb:0},
+    {l:'Two-bed house', rent:1.15, en:1, ess:1.1, wb:3}]},
+  {k:'heat', label:'Heating', opts:[
+    {l:'Off. Wear the coat', f:.55, wb:-8},
+    {l:'An hour, morning and night', f:.8, wb:-1},
+    {l:'Actually warm', f:1, wb:2}]},
+  {k:'food', label:'Food', opts:[
+    {l:'Yellow stickers and beans', f:.7, wb:-5},
+    {l:'A normal shop', f:1, wb:0},
+    {l:'Nice things sometimes', f:1.3, wb:3}]},
+  {k:'travel', label:'Getting about', opts:[
+    {l:'Walk and bus', c:B.bus, wb:-1},
+    {l:'Run a car', c:B.car, wb:2}]},
+  {k:'life', label:'A life', opts:[
+    {l:'Nothing. Stay in', c:0, wb:-8},
+    {l:'A pint and a takeaway now and then', c:B.social, wb:2},
+    {l:'A proper holiday too', c:B.holiday, wb:6}]}
+];
+const RICH_CHOICES = [
+  {k:'home', label:'Homes', opts:[
+    {l:'Just the Mayfair townhouse', c:12000, wb:0},
+    {l:'Add the Cotswolds estate', c:30000, wb:3},
+    {l:'Add the yacht, Trickle Down II', c:70000, wb:6}]},
+  {k:'tax', label:'Tax affairs', opts:[
+    {l:'Pay it all, like staff do', c:0, cut:0, wb:-2},
+    {l:'A tasteful offshore "arrangement"', c:9000, cut:.4, wb:3}]},
+  {k:'give', label:'Giving back', opts:[
+    {l:'Thoughts and prayers', c:0, wb:0},
+    {l:'A gala with your name on it', c:4000, wb:4}]}
+];
+
+const EVENTS = [
+  {t:'The boiler has died', from:'LettItRot Lettings', body:'Your landlord, Mr Havisham-Lett, "will look into it" at some point this decade.',
+   opts:[{l:'Pay for the repair yourself', cost:180},{l:'Coat indoors until spring', wb:-8}]},
+  {t:'Rent review', from:'LettItRot Lettings', body:'"Due to market conditions" your rent is going up 8%. Market conditions are that he can.',
+   opts:[{l:'Accept it', rent:1.08},{l:'Move somewhere just as bad', cost:600, wb:-5}]},
+  {t:'No NHS dentist within 40 miles', from:'Your tooth', body:'It has gone from a twinge to a personality.',
+   opts:[{l:'Go private', cost:220},{l:'Chew on the other side', wb:-7}]},
+  {t:'Your hours have been "flexed"', from:'Your manager', body:'Two quiet months, so two thin payslips. You are thanked for your flexibility.',
+   opts:[{l:'Absorb the loss', cost:420},{l:'Evening bar shifts to cover it', wb:-9}]},
+  {t:'Your bus route has been cut', from:'The council', body:'It has been replaced by a consultation.',
+   opts:[{l:'Share taxis when you must', cost:300},{l:'Walk the 50 minutes', wb:-5}]},
+  {t:'Your oldest friend is getting married', from:'A thick envelope', body:'In Tuscany. On a Tuesday.',
+   opts:[{l:'Go, obviously', cost:450, wb:6},{l:'Send a card and feel terrible', wb:-6}]},
+  {t:'Your phone has given up', from:'A black screen', body:'Your shifts, your bank and your bus tickets all live in it.',
+   opts:[{l:'New contract', cost:190},{l:'Second-hand with a cracked corner', cost:60, wb:-2}]},
+  {t:'Pay review', from:'Head office', body:'In recognition of a record year, the company is delighted to offer you a pizza party.',
+   opts:[{l:'Eat the pizza', wb:-3},{l:'Ask for an actual raise', luck:{p:.4, pay:1.03, win:'They gave you 3%. Do not tell the others.', lose:'"Now is not the right time." It is never the right time.', loseWb:-5}}]},
+  {t:'Overtime is available', from:'Your manager', body:'Every weekend until further notice. Entirely voluntary. Rota attached.',
+   opts:[{l:'Take it', gain:900, wb:-8},{l:'Keep your weekends'}]},
+  {t:'Deposit deductions', from:'LettItRot Lettings', body:'£400 has been kept for "wear" on a carpet that predates decimal currency.',
+   opts:[{l:'Let it go', cost:400},{l:'Fight it for four months', cost:100, wb:-5}]},
+  {t:'Black mould in the bedroom', from:'The wall', body:'The letting agent suggests you try breathing less.',
+   opts:[{l:'Buy a dehumidifier', cost:130},{l:'Live with it', wb:-7}]},
+  {t:'A catch-up bill', from:'EnergiSqueeze', body:'Your meter was estimated for a year. The estimate was optimistic, in their favour.',
+   opts:[{l:'Pay it', cost:260},{l:'Fourteen hours on hold to dispute it', wb:-6}]},
+  {t:'Earn in your spare time', from:'Deliverii app', body:'Be your own boss. Your boss is an algorithm that does not like you.',
+   opts:[{l:'Ride evenings in the rain', gain:1200, wb:-9},{l:'No thanks'}]},
+  {t:'You are properly ill', from:'Your body', body:'Statutory sick pay would not cover the bus to collect it.',
+   opts:[{l:'Take the time off', cost:320},{l:'Work through it', wb:-9}]},
+  {t:'A mate is short this month', from:'A text at 11pm', body:'They would do it for you. They have done it for you.',
+   opts:[{l:'Lend the money', cost:200, wb:3},{l:'Say you cannot', wb:-4}]},
+  {t:'December', from:'The calendar', body:'Everyone on television is having a wonderful time.',
+   opts:[{l:'Do Christmas properly', cost:300, wb:5},{l:'Skip it this year', wb:-6}]},
+  {t:'The washing machine floods the kitchen', from:'A noise', body:'The warranty expired on Thursday.',
+   opts:[{l:'Replace it', cost:250},{l:'Launderette and regret', cost:90, wb:-4}]},
+  {t:'A flyer through the door', from:'WongaWonga Loans', body:'Cash by lunchtime. The APR has four digits and a comma.',
+   opts:[{l:'Borrow £500 now', gain:500, later:900, wb:-2},{l:'Bin it'}]}
+];
+const RICH_EVENTS = [
+  {t:'Shareholders query your bonus', from:'The remuneration committee (your friends)', body:'A few small investors feel 190 times the average worker is "a lot".',
+   opts:[{l:'Commission a report into it', gain:0, wb:1},{l:'Award yourself a retention bonus', gain:900000, wb:3}]},
+  {t:'Efficiency drive', from:'Strategy consultants', body:'Removing 600 jobs would delight the markets.',
+   opts:[{l:'Do it by email', gain:1200000, wb:1},{l:'Do it by email, with a sad emoji', gain:1200000, wb:2}]},
+  {t:'A call from the Minister', from:'Rt Hon Rupert Tightbelt', body:'He wonders whether you would like to advise on living standards.',
+   opts:[{l:'Chair the review', gain:150000, wb:4},{l:'Accept a peerage instead', wb:6}]},
+  {t:'Record profits at EnergiSqueeze', from:'The board you also sit on', body:'A hard winter for customers has been a warm one for dividends.',
+   opts:[{l:'Take the dividend', gain:700000, wb:2},{l:'Take it in shares', gain:800000, wb:2}]},
+  {t:'Staff ask for a pay rise', from:'Human Resources', body:'They mention something called "rent".',
+   opts:[{l:'Send a pizza', cost:400, wb:1},{l:'Send a motivational email', wb:2}]}
+];
+
+const HEADLINES = {
+  2008:['Northern Crock bank rescued with public money. Bonuses "contractual".'],
+  2009:['Interest rates cut to the floor. Savers advised to "think positive".'],
+  2010:['Chancellor Rupert Tightbelt: "We are all in this together." Spoken from the good chairs.'],
+  2011:['Public sector pay frozen. Boardroom pay left out to thaw.'],
+  2012:['Tightbelt trims the top rate of tax "to lift morale". Morale of whom not specified.'],
+  2013:['Payday lender WongaWonga sponsors a football shirt.'],
+  2014:['Recovery declared. Please check behind the sofa for yours.'],
+  2015:['Zero-hours contracts rebranded "flexi-freedom".'],
+  2016:['Referendum held. Pound falls. Everything imported costs more.'],
+  2017:['Minister confirms there is no magic money tree. Tree later located for other purposes.'],
+  2018:['Rail fares rise again. Trains remain theoretical.'],
+  2019:['The Daily Blame: "Why can\'t the young just stop buying coffee?"'],
+  2020:['Nation claps for carers at 8pm. Landlords do not accept claps.'],
+  2021:['Shelves empty in supply crisis. Yachts unaffected.'],
+  2022:['EnergiSqueeze posts record profit, advises customers to "cuddle a pet for warmth".'],
+  2023:['Mortgage rates jump. Landlords pass it on with a sad emoji.'],
+  2024:['Tidewater Utilities raises bills to fund fixing what it did not fix.'],
+  2025:['Tax thresholds stay frozen. A slice of your pay rise goes straight back.'],
+  2026:['Government launches Help to Rent a Shed.'],
+  2027:['OmniGrab trials a subscription for the staff toilets.'],
+  2028:['First-time buyer, 61, celebrated on the front of The Daily Blame.'],
+  2029:['Minister suggests the young try "having wealthier parents".'],
+  2030:['Avocado toast formally cleared after a 15-year inquiry.'],
+  2031:['Heating reclassified as a luxury good.'],
+  2032:['Landlord of the Year wins for "most creative use of a cupboard".'],
+  2033:['OmniGrab acquires the weather. Rain now Premium.'],
+  2034:['Retirement age raised to "we will let you know".'],
+  2035:['National clap for renters announced.'],
+  2036:['Bus route replaced by a motivational poster.'],
+  2037:['Sir Giles knighted a second time, for services to Sir Giles.'],
+  2038:['Economists confirm wealth will trickle down "any decade now".'],
+  2039:['Lord Hoard-Whittle unveils a personal moon.'],
+  2040:['Official report finds people "could have budgeted better".']
+};
+const TIPS = [
+  'Have you considered cancelling a streaming subscription?',
+  'Batch-cook lentils on a Sunday. Sundays are when you rest from your second job.',
+  'Try turning the thermostat down by one degree, from off.',
+  'A packed lunch could save you £3 a day towards your £30,000 deposit.',
+  'Ask your parents for a house.',
+  'Make your own coffee. Home ownership will follow.',
+  'Consider earning more money.',
+  'Put on a jumper. Then another jumper.'
+];
+
+// ---- state -----------------------------------------------------------
+let meta = {unlocked:false, best:{}};
+try { Object.assign(meta, JSON.parse(localStorage.getItem('trickle-down') || '{}')); } catch (e) {}
+const persist = () => { try { localStorage.setItem('trickle-down', JSON.stringify(meta)); } catch (e) {} };
+let S = null, tickI = 0, tickTimer = 0;
+
+const choicesFor = () => CH[S.ck].rich ? RICH_CHOICES : CHOICES;
+const eventsFor = () => CH[S.ck].rich ? RICH_EVENTS : EVENTS;
+const evOpt = () => S.ev.pick == null ? null : eventsFor()[S.ev.id].opts[S.ev.pick];
+
+function deal(){
+  const pool = eventsFor();
+  if (S.used.length >= pool.length) S.used = [];
+  let id; do { id = Math.floor(Math.random() * pool.length); } while (S.used.includes(id));
+  S.used.push(id);
+  S.ev = {id, pick:null, month:1 + Math.floor(Math.random() * 12)};
+}
+function newGame(ck){
+  const ch = CH[ck];
+  S = {ck, year:Y0, bal:ch.start, wb:70, picks: ch.rich ? {home:0, tax:0, give:0} : {home:ch.home, heat:1, food:1, travel:0, life:1},
+       livedHome: ch.rich ? 0 : ch.home, rentMult:1, payMult:1, owed:0, used:[], ev:null, note:'', earned:0, giles:0, over:null};
+  deal(); tickI = 0; render(); scrollTo(0, 0);
+}
+
+function optCost(c, o, y){                 // the headline monthly cost shown on a choice button
+  const ci = idx('cpi', y);
+  if (o.rent != null) return v('rent', y) * o.rent * S.rentMult * ((evOpt() || {}).rent || 1);
+  if (c.k === 'heat') return v('energy', y) / 12 * CHOICES[0].opts[S.picks.home].en * o.f;
+  if (c.k === 'food') return B.food * idx('food', y) * o.f;
+  return (o.c || 0) * ci;
+}
+function calc(){
+  const y = S.year, ch = CH[S.ck], ci = idx('cpi', y), eo = evOpt() || {};
+  const gross = ch.gross(y) * S.payMult;
+  let tx = taxOn(gross, y);
+  const rows = [];
+  for (const c of choicesFor()){
+    const o = c.opts[S.picks[c.k]];
+    rows.push({k:c.k, label:c.label, amt:optCost(c, o, y)});
+    if (o.cut) tx *= 1 - o.cut;
+  }
+  if (!ch.rich) rows.push({k:'ess', label:'Council tax, water, phone, the rest', amt:B.essentials * ci * CHOICES[0].opts[S.picks.home].ess});
+  if (S.bal < 0) rows.push({k:'debt', label:'Interest on what you owe', amt:-S.bal * .25 / 12});
+  const net = (gross - tx) / 12, out = rows.reduce((a, r) => a + r.amt, 0);
+  let wb = (S.bal < 0 ? -4 : 0) + (eo.wb || 0);
+  for (const c of choicesFor()) wb += c.opts[S.picks[c.k]].wb;
+  return {gross, tx, net, rows, out, left:net - out, limit:net * 3, wb, ci};
+}
+
+function liveYear(){
+  const c = calc(), ch = CH[S.ck], eo = evOpt(), y = S.year;
+  let one = ((eo.cost || 0) - (eo.gain || 0)) * (ch.rich ? 1 : c.ci), wb = c.wb, note = '';
+  if (eo.luck){
+    if (Math.random() < eo.luck.p){ S.payMult *= eo.luck.pay; note = eo.luck.win; }
+    else { wb += eo.luck.loseWb; note = eo.luck.lose; }
+  }
+  const moved = !ch.rich && S.picks.home !== S.livedHome;
+  let bal = S.bal - (moved ? 350 * c.ci : 0) - S.owed, bust = 0;
+  S.owed = eo.later ? eo.later * c.ci : 0;
+  for (let m = 1; m <= 12; m++){
+    bal += c.left; if (m === S.ev.month) bal -= one;
+    if (!ch.rich && bal < -c.limit){ bust = m; break; }
+  }
+  if (eo.rent) S.rentMult *= eo.rent;
+  S.livedHome = S.picks.home;
+  S.earned += c.net * 12; S.giles += v('ceo', y);
+  const diff = bal - S.bal;
+  S.wb = Math.max(ch.rich ? 50 : 0, Math.min(100, S.wb + wb));
+  if (bust){
+    const worst = c.rows.slice().sort((a, b) => b.amt - a.amt)[0];
+    S.over = {kind:'bust', month:bust, cause: bust === S.ev.month && one > 0 ? eventsFor()[S.ev.id].t.toLowerCase() : worst.label.toLowerCase() + ' (' + money(worst.amt) + ' a month)'};
+  } else if (S.wb <= 0){
+    S.over = {kind:'burnout', month:12, cause:'years of going without'};
+  } else if (y >= YEND){
+    S.over = {kind:'survived'};
+  }
+  S.bal = bust ? -c.limit : (ch.rich ? bal * v('house', y + 1) / v('house', y) : bal);
+  if (S.over){
+    meta.unlocked = true;
+    const yrs = y - Y0 + (S.over.kind === 'survived' ? 1 : 0);
+    meta.best[S.ck] = Math.max(meta.best[S.ck] || 0, yrs); persist();
+  } else {
+    S.note = y + ': ' + (diff >= 0 ? 'you put away ' + money(diff) : 'you went ' + money(-diff) + ' backwards') + '. ' + note;
+    S.year++; deal(); tickI = 0;
+  }
+  render(); scrollTo(0, 0);
+}
+
+// ---- screens ---------------------------------------------------------
+function tickerLines(){
+  const y = S.year, ch = CH[S.ck], c = calc(), lines = HEADLINES[y].slice();
+  const real = (v('medianPay', y) / v('medianPay', Y0)) / idx('cpi', y) - 1;
+  lines.push('Median full-time pay, after inflation: ' + pct(real) + ' since 2008.');
+  if (!ch.rich){
+    const d = new Date(y, 0, 1 + Math.floor(365 / (v('ceo', y) / c.gross)));
+    lines.push('The median FTSE 100 boss made ' + big(v('ceo', y)) + '. That covered your whole year by ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + '.');
+    lines.push('Average house: ' + money(v('house', y)) + ', or ' + (v('house', y) / c.gross).toFixed(1) + ' times your pay.');
+  } else lines.push('Your pay is ' + Math.round(c.gross / v('medianPay', y)) + ' times the median full-time wage.');
+  const p = DATA.parcels[y - Y0];
+  if (p) lines.push('Emergency food parcels handed out by the largest food bank network: ' + p.toLocaleString('en-GB') + '.');
+  return lines;
+}
+function sourcesHTML(){
+  const li = DATA.sources.map(s => '<li><a href="' + s.url + '" target="_blank" rel="noopener">' + s.title + '</a>. ' + s.note + '</li>').join('');
+  return '<details><summary>Where the numbers come from</summary><ul>' + li +
+    '<li>People, companies and headlines are invented. Pay, prices, rents, bills and tax rules for ' + Y0 + ' to ' + YN + ' are published figures.</li>' +
+    '<li>Years after ' + YN + ' are a projection, not a forecast: each series simply carries on at its own average rate since ' + Y0 + '.</li>' +
+    '<li>Simplified: one adult, no children, no benefits or pension, renting privately. Lifestyle costs and one-off events are illustrative.</li></ul></details>';
+}
+function renderStart(){
+  const cards = Object.keys(CH).map(k => {
+    const ch = CH[k], g = ch.gross(Y0), net = (g - taxOn(g, Y0)) / 12, lock = ch.rich && !meta.unlocked;
+    return '<button class="char' + (ch.rich ? ' rich' : '') + '" id="pick-' + k + '" type="button"' + (lock ? ' disabled' : '') + '>' +
+      '<b>' + ch.name + '</b><span class="pay"><strong>' + big(net) + '</strong>a month in ' + Y0 + '</span>' +
+      '<span>' + ch.job + '. ' + (lock ? 'Unlocks after your first game.' : ch.blurb) + (meta.best[k] ? ' Best: ' + meta.best[k] + ' years.' : '') + '</span></button>';
+  }).join('');
+  $('app').innerHTML =
+    '<h1 class="title">Trickle <i>Down</i></h1>' +
+    '<p class="lede">It is 2008. You have a job, a landlord and a boss who earns your salary before the bank holiday is over. Make it to 2040. The wages, rents, bills and tax rules are real. The people are not.</p>' +
+    '<p class="eyebrow">Choose who to be</p><div class="chars">' + cards + '</div>' + sourcesHTML();
+  for (const k of Object.keys(CH)) $('pick-' + k).addEventListener('click', () => newGame(k));
+}
+function renderGame(){
+  const y = S.year, ch = CH[S.ck], c = calc(), ev = eventsFor()[S.ev.id], lines = tickerLines();
+  const prevG = y > Y0 ? ch.gross(y - 1) * S.payMult : 0;
+  const payCh = prevG ? c.gross / prevG - 1 : 0, priceCh = y > Y0 ? v('cpi', y) / v('cpi', y - 1) - 1 : 0;
+  const dep = v('house', y) * .1, lend = c.gross * 4.5;
+  let h = '<div class="mast"><div class="mast-row"><div><div class="year">' + y + '</div>' + (y > YN ? '<span class="proj">Projection</span>' : '') + '</div>' +
+    '<div class="who"><b>' + ch.name + '</b><span>' + ch.job + '</span></div></div>' +
+    '<div class="ticker"><b>LATEST</b><span id="tick" class="tick-in">' + lines[tickI % lines.length] + '</span></div></div>';
+  if (S.note) h += '<p class="small">' + S.note + '</p>';
+  h += '<div class="meters">' +
+    '<div class="meter"><span class="eyebrow">' + (S.bal < 0 ? 'You owe' : 'In the bank') + '</span><b class="' + (S.bal < 0 ? 'down' : '') + '">' + big(Math.abs(S.bal)) + '</b>' +
+      (ch.rich ? '' : '<span class="small">Credit runs out at ' + money(c.limit) + ' owed</span>') + '</div>' +
+    '<div class="meter"><span class="eyebrow">' + (ch.rich ? 'Smugness' : 'Wellbeing') + '</span><b>' + Math.round(S.wb) + '<span class="small"> ' + (c.wb >= 0 ? '+' : '−') + Math.abs(c.wb) + ' this year</span></b><div class="bar"><i class="' + (S.wb < 30 ? 'low' : '') + '" style="width:' + S.wb + '%"></i></div></div>' +
+    (ch.rich ? '' : '<div class="meter"><span class="eyebrow">Deposit on the average home</span><b>' + money(dep) + '</b><span class="small">You have ' + Math.max(0, Math.round(S.bal / dep * 100)) + '%. A bank would lend you ' + big(lend) + ' of the ' + big(v('house', y) * .9) + ' you would need.</span></div>') +
+    '</div>';
+  h += '<section class="card slip"><p class="eyebrow">Payslip ' + y + (S.ck === 'priya' ? ' (what the café leaves you)' : '') + '</p><dl class="lines">' +
+    '<dt>Gross for the year</dt><dd>' + money(c.gross) + '</dd><dt>Income tax and NI</dt><dd>' + money(-c.tx) + '</dd>' +
+    '<dt class="tot">Take-home each month</dt><dd class="tot">' + money(c.net) + '</dd></dl>' +
+    (y > Y0 ? '<p class="small">Your pay: <b class="' + (payCh >= priceCh ? 'up' : 'down') + '">' + pct(payCh) + '</b> on last year. Prices: ' + pct(priceCh) + '.</p>' : '') + '</section>';
+  h += '<section class="card letter"><p class="eyebrow">From: ' + ev.from + '</p><h2>' + ev.t + '</h2><p>' + ev.body + '</p><div class="opts">' +
+    ev.opts.map((o, i) => {
+      const bits = [];
+      const k = ch.rich ? 1 : c.ci;
+      if (o.cost) bits.push(money(-o.cost * k)); if (o.gain) bits.push('+' + big(o.gain * k));
+      if (o.later) bits.push('repay ' + money(o.later * k) + ' next year');
+      if (o.rent) bits.push('rent ' + pct(o.rent - 1) + ' for good'); if (o.wb) bits.push((ch.rich ? 'smug ' : 'wellbeing ') + (o.wb > 0 ? '+' : '−') + Math.abs(o.wb)); if (o.luck) bits.push('a gamble');
+      return '<button class="opt" id="ev-' + i + '" type="button" aria-pressed="' + (S.ev.pick === i) + '"><span>' + o.l + '</span><em>' + (bits.join(', ') || 'no cost') + '</em></button>';
+    }).join('') + '</div></section>';
+  h += '<section class="card"><p class="eyebrow">Your month</p>';
+  for (const cdef of choicesFor()){
+    h += '<div class="row"><div class="row-h"><span>' + cdef.label + '</span></div><div class="seg">' +
+      cdef.opts.map((o, i) => '<button id="c-' + cdef.k + '-' + i + '" type="button" aria-pressed="' + (S.picks[cdef.k] === i) + '">' + o.l +
+        '<small>' + money(optCost(cdef, o, y)) + (cdef.k === 'home' && !ch.rich && i !== S.livedHome ? ' + ' + money(350 * c.ci) + ' to move' : '') + '</small></button>').join('') + '</div></div>';
+  }
+  h += '<dl class="lines">' + c.rows.filter(r => r.k === 'ess' || r.k === 'debt').map(r => '<dt>' + r.label + '</dt><dd>' + money(r.amt) + '</dd>').join('') +
+    '<dt class="tot">Going out each month</dt><dd class="tot">' + money(c.out) + '</dd></dl>' +
+    (ch.rich ? '' : '<p class="small">Official advice from the Department for Belt-Tightening: ' + TIPS[(y + S.ck.length) % TIPS.length] + '</p>') + '</section>';
+  h += '<div class="foot"><div class="left"><span class="eyebrow">Left each month</span><b class="' + (c.left < 0 ? 'down' : 'up') + '">' + big(c.left).replace('£', c.left < 0 ? '£' : '+£') + '</b></div>' +
+    '<button class="go" id="go" type="button"' + (S.ev.pick == null ? ' disabled' : '') + '>' + (S.ev.pick == null ? 'Answer the letter' : 'Live through ' + y) + '</button></div>';
+  $('app').innerHTML = h;
+  ev.opts.forEach((o, i) => $('ev-' + i).addEventListener('click', () => { S.ev.pick = i; keepScroll(render); }));
+  for (const cdef of choicesFor()) cdef.opts.forEach((o, i) => $('c-' + cdef.k + '-' + i).addEventListener('click', () => { S.picks[cdef.k] = i; keepScroll(render); }));
+  $('go').addEventListener('click', liveYear);
+  clearInterval(tickTimer);
+  tickTimer = setInterval(() => { const el = $('tick'); if (!el) return; tickI++; el.textContent = lines[tickI % lines.length]; el.classList.remove('tick-in'); void el.offsetWidth; el.classList.add('tick-in'); }, 5000);
+}
+function keepScroll(fn){ const y = scrollY; fn(); scrollTo(0, y); }
+
+function renderEnd(){
+  clearInterval(tickTimer);
+  const ch = CH[S.ck], o = S.over, y = S.year, first = ch.name.split(' ')[0] === 'Sir' ? 'Sir Giles' : ch.name;
+  let stamp, line, share;
+  if (ch.rich){
+    stamp = 'Sir Giles won. Obviously.';
+    line = 'He finished ' + YEND + ' worth ' + big(S.bal) + ' without once looking at a price. Dee would need ' + Math.round(S.bal / ((CH.dee.gross(YEND) - taxOn(CH.dee.gross(YEND), YEND)))).toLocaleString('en-GB') + ' years of take-home pay to match it.';
+    share = 'I played Trickle Down as a FTSE 100 boss and finished 2040 worth ' + big(S.bal) + '. It was not hard. That is the joke.';
+  } else if (o.kind === 'survived'){
+    stamp = first + ' made it to ' + YEND;
+    line = 'Thirty-three years of work, ' + (S.bal >= 0 ? money(S.bal) + ' in the bank' : money(-S.bal) + ' in debt') + ' and no home of their own. A 10% deposit on the average house is now ' + money(v('house', YEND) * .1) + '.';
+    share = 'I played Trickle Down as ' + first + ', a ' + ch.job.toLowerCase() + ', and survived to 2040 with ' + money(S.bal) + ' and no house.';
+  } else {
+    stamp = first + ' lasted until ' + MONTHS[o.month - 1] + ' ' + y;
+    line = o.kind === 'bust' ? 'The credit ran out. Finished off by ' + o.cause + '.' : 'Not the money in the end. Burnt out after ' + o.cause + '.';
+    share = 'I played Trickle Down as ' + first + ', a ' + ch.job.toLowerCase() + '. I lasted until ' + MONTHS[o.month - 1] + ' ' + y + '. Finished off by ' + o.cause + '.';
+  }
+  const yrs = y - Y0 + 1;
+  $('app').innerHTML =
+    '<div class="stamp' + (o.kind === 'survived' ? ' win' : '') + '">' + stamp + '</div>' +
+    '<p class="lede">' + line + '</p>' +
+    '<section class="card slip"><p class="eyebrow">Final statement, ' + Y0 + ' to ' + y + (y > YN ? ' (later years projected)' : '') + '</p><dl class="lines">' +
+    '<dt>' + first + ' took home, in total</dt><dd>' + big(S.earned) + '</dd>' +
+    '<dt>Median FTSE 100 boss was paid, same years</dt><dd>' + big(S.giles) + '</dd>' +
+    '<dt class="tot">Years ' + first + ' would need to work for that</dt><dd class="tot">' + Math.round(S.giles / (S.earned / yrs)).toLocaleString('en-GB') + '</dd></dl></section>' +
+    '<section class="card"><p class="eyebrow">Tell someone</p><p class="share" id="share">' + share + '</p>' +
+    '<div class="btns"><button class="ghost" id="copy" type="button">Copy result</button></div></section>' +
+    '<div class="btns"><button class="go" id="again" type="button">Play again</button>' +
+    (ch.rich ? '' : '<button class="ghost" id="asgiles" type="button">Now play the same years as the boss</button>') + '</div>' + sourcesHTML();
+  $('again').addEventListener('click', () => { S = null; render(); scrollTo(0, 0); });
+  if (!ch.rich) $('asgiles').addEventListener('click', () => newGame('giles'));
+  $('copy').addEventListener('click', () => {
+    const done = () => { $('copy').textContent = 'Copied'; };
+    const fallback = () => { const r = document.createRange(); r.selectNodeContents($('share')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); $('copy').textContent = 'Selected. Press copy'; };
+    try { navigator.clipboard.writeText(share).then(done, fallback); } catch (e) { fallback(); }
+  });
+}
+function render(){ if (!S) renderStart(); else if (S.over) renderEnd(); else renderGame(); }
+
+window.__td = {v, idx, taxOn, CH, get S(){ return S; }, newGame, liveYear, calc, pick:(k, i) => { S.picks[k] = i; }, answer:i => { S.ev.pick = i; }};
+const boot = d => { if (d && d.S) S = d.S; render(); };
+window.claude?.hot?.snapshot?.(() => ({S}));
+window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});
+})();
+</script>
