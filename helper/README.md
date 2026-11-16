@@ -14,6 +14,13 @@ start, read Cloudflare's terms yourself: this is a personal page that compares p
 4. Copy the worker's address. It looks like `https://betiq-helper.YOURNAME.workers.dev`. Opening it should show "BetIQ Lite helper is running".
 5. In the app: **More > Free weekly prices > Load it automatically**. Paste the address and press **Save and load**.
 
+## What it does once connected
+
+- Loads the newest prices file into the app by itself.
+- Fills in football results for free, so finished bets and the app's track record settle without spending credits. Results appear when the source site publishes them, which can be a day or two after a match.
+
+When this file changes in the repository, paste the new `helper/worker.js` over the old code in Cloudflare (**Edit code**, replace everything, **Deploy**). The helper's front page shows its version.
+
 ## Phone notifications (optional)
 
 1. Install the free **ntfy** app and subscribe to a topic with a long random name. Anyone who knows the name can read the alerts, so keep it private.

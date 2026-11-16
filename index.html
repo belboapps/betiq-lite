@@ -772,12 +772,12 @@ body.simple .adv { display: none !important; }
 <script>
 (function () {
   "use strict";
-  var VERSION = "v26 (16 Nov 2026)";   /* shown in the footer; bump on every release */
+  var VERSION = "v27 (16 Nov 2026)";   /* shown in the footer; bump on every release */
   var LS = "betiqlite.v1";
   var API = "https://api.the-odds-api.com/v4";
   var DEFAULTS = { key: "", selected: [], mode: "value", minOdds: 1.3, windowH: 72, group: "all",
                    sports: [], sportsAt: 0, cache: {}, remaining: null, used: null, picked: false,
-                   bankroll: 100, weekly: 0, league: "all", sugg: [], exYard: true, helperUrl: "", helperAt: 0, planDone: false, freeMode: false, freeInfo: null, series: {}, accts: {}, fMaxOdds: 0, fMinEdge: 0, fMinScore: 0, live: null, simple: true, recAt: 0, autoKick: true, sharp: false, sharpBad: false, placeMin: 60, tuneN: 0, tomb: [], sb: { url: "", key: "", email: "", session: null, last: 0, status: "" }, extras: true, extraMax: 12, extraFreshH: 3, lossLimit: 0, lossStreak: 5, tour: false, afKey: "", newsOn: true, news: {}, afUse: { d: "", n: 0 }, afStatus: "", xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
+                   bankroll: 100, weekly: 0, league: "all", sugg: [], exYard: true, helperUrl: "", helperAt: 0, helperResAt: 0, planDone: false, freeMode: false, freeInfo: null, series: {}, accts: {}, fMaxOdds: 0, fMinEdge: 0, fMinScore: 0, live: null, simple: true, recAt: 0, autoKick: true, sharp: false, sharpBad: false, placeMin: 60, tuneN: 0, tomb: [], sb: { url: "", key: "", email: "", session: null, last: 0, status: "" }, extras: true, extraMax: 12, extraFreshH: 3, lossLimit: 0, lossStreak: 5, tour: false, afKey: "", newsOn: true, news: {}, afUse: { d: "", n: 0 }, afStatus: "", xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
   var GROUPS = { "Soccer": "Football", "American Football": "US football", "Ice Hockey": "Ice hockey",
                  "Mixed Martial Arts": "MMA", "Rugby League": "Rugby", "Rugby Union": "Rugby", "Aussie Rules": "Aussie rules" };
   var DEFAULT_FOOTBALL = ["soccer_epl", "soccer_efl_champ", "soccer_uefa_champs_league", "soccer_uefa_europa_league"];
@@ -1682,7 +1682,7 @@ body.simple .adv { display: none !important; }
     var now = Date.now(), added = 0;
     buildPicks("value", true).filter(function (p) { return p.isValue && !p.suspect; }).slice(0, 10).forEach(function (p) {
       if (S.sugg.some(function (x) { return x.pid === p.id; })) return;
-      if (p.free && !apiKeyFor(p.key)) return;      /* no way to fetch the result later, so it would sit open for ever */
+      if (p.free && !apiKeyFor(p.key) && !S.helperUrl) return;      /* no way to fetch the result later, so it would sit open for ever */
       var s = p.pick, sc = scoreFor(p);
       S.sugg.push({ sugg: true, pid: p.id, evId: p.ev.id, key: p.key, league: p.league, h: p.ev.h, a: p.ev.a, sel: s.name, odds: s.best, book: s.bestBook,
         fair: s.fair, ev: s.ev, score: sc.total, v: decision(p).k, stake: 1, time: p.time, at: now, mkt: s.market || "", point: s.point, side: s.side, rule: s.rule, status: "open", profit: 0 });
@@ -1707,6 +1707,7 @@ body.simple .adv { display: none !important; }
     return null;
   }
   function checkResults(withRecord) {
+    if (S.helperUrl && !checkResults.viaHelper) { checkResults.viaHelper = true; return helperSettle(true).then(function () { var r = checkResults(withRecord); checkResults.viaHelper = false; return r; }, function () { checkResults.viaHelper = false; }); }
     var keys = dueKeys();
     if (withRecord) { suggKeys().forEach(function (k) { if (keys.indexOf(k) < 0) keys.push(k); }); S.recAt = Date.now(); }
     if (!keys.length || busy) return Promise.resolve();
@@ -3000,7 +3001,7 @@ body.simple .adv { display: none !important; }
   $("changeKey").addEventListener("click", function () {
     S.key = ""; S.remaining = null; save(); renderAll(); $("keyInput").focus();
   });
-  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") { renderAll(); autoRun(); if (S.helperUrl) loadHelper(false); if (sbReady()) syncNow(true); } });
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") { renderAll(); autoRun(); if (S.helperUrl) { loadHelper(false); helperSettle(false); } if (sbReady()) syncNow(true); } });
 
   /* ---------- Matched betting calculator ---------- */
   function initCalc() {
@@ -3191,10 +3192,48 @@ body.simple .adv { display: none !important; }
       S.helperErr = e && /^(format|empty|nomatches)$/.test(e.message) ? "The helper answered, but not with the prices file." : "Could not reach the helper. Check the address, and that the helper is deployed."; save(); renderHelper(); return false;
     });
   }
+  /* Free results through the helper: settles bets and the track record from football-data.co.uk's results, with no credits.
+     Free-file bets match by exact team names. Bets from live prices match by similar names, so a few may still need the paid check. */
+  function divFor(key) {
+    if (isFree(key)) return key.slice(3);
+    var d = Object.keys(FD_LEAGUES).filter(function (x) { return FD_LEAGUES[x][0] === key; })[0]; return d || null;
+  }
+  function applyResult(bt, hs, as) {
+    var w = hs > as ? bt.h : as > hs ? bt.a : "Draw", sc = {}, res; sc[bt.h] = hs; sc[bt.a] = as;
+    if (bt.mkt === "totals") { var tot = hs + as; res = tot === bt.point ? "void" : ((tot > bt.point) === (bt.side === "Over")) ? "won" : "lost"; }
+    else if (bt.rule && bt.mkt) res = ruleResult(bt.rule, w, hs, as, sc);
+    else res = bt.sel === w ? "won" : "lost";
+    if (!res) return false;
+    if (bt.sugg) { bt.status = res; bt.profit = res === "won" ? Math.round((bt.odds - 1) * 100) / 100 : res === "lost" ? -1 : 0; bt.settledAt = Date.now(); }
+    else settle(bt, res);
+    return true;
+  }
+  function helperSettle(force) {
+    var u = (S.helperUrl || "").replace(/\/+$/, ""); if (!/^https:\/\//.test(u)) return Promise.resolve(0);
+    var now = Date.now(), due = S.bets.concat(S.pbets).concat(S.sugg).filter(function (b) { return b.status === "open" && now > b.time + 2.5 * 3600000 && divFor(b.key); });
+    if (!due.length || (!force && now - (S.helperResAt || 0) < 3 * 3600000)) return Promise.resolve(0);
+    var divs = []; due.forEach(function (b) { var d = divFor(b.key); if (divs.indexOf(d) < 0) divs.push(d); });
+    var n = 0; S.helperResAt = now;
+    return Promise.all(divs.slice(0, 12).map(function (div) {
+      return fetch(u + "/results?div=" + encodeURIComponent(div)).then(function (r) { return r.ok ? r.text() : ""; }, function () { return ""; }).then(function (t) {
+        var rows = t ? parseCsv(t) : []; if (rows.length < 2) return;
+        var col = {}; rows[0].forEach(function (h, i) { col[h.trim()] = i; }); if (col.HomeTeam === undefined || col.FTHG === undefined) return;
+        rows.slice(1).forEach(function (r) {
+          var hs = parseInt(r[col.FTHG], 10), as = parseInt(r[col.FTAG], 10), dm = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/.exec((r[col.Date] || "").trim()); if (isNaN(hs) || isNaN(as) || !dm) return;
+          var day = londonEpoch(+dm[3] < 100 ? 2000 + +dm[3] : +dm[3], +dm[2], +dm[1], 12, 0), h = (r[col.HomeTeam] || "").trim(), a = (r[col.AwayTeam] || "").trim();
+          due.forEach(function (bt) {
+            if (bt.status !== "open" || divFor(bt.key) !== div || Math.abs(bt.time - day) > 30 * 3600000) return;
+            var same = isFree(bt.key) ? (bt.h === h && bt.a === a) : (teamMatch(bt.h, h) && teamMatch(bt.a, a));
+            if (same && applyResult(bt, hs, as)) n++;
+          });
+        });
+      });
+    })).then(function () { save(); if (n) { renderAll(); showAlert(n + (n === 1 ? " result" : " results") + " filled in free through your helper.", true); } return n; });
+  }
   function renderHelper() {
     var m = $("helperMsg"); if (!m) return; m.textContent = "";
     if (S.helperErr) m.appendChild(el("div", "msg", S.helperErr));
-    else if (S.helperUrl && S.helperAt) m.appendChild(el("div", "msg info", "Helper connected. Prices last loaded " + ago(S.helperAt) + ". They reload by themselves when you open the app."));
+    else if (S.helperUrl && S.helperAt) m.appendChild(el("div", "msg info", "Helper connected. Prices last loaded " + ago(S.helperAt) + ". They reload by themselves when you open the app, and finished football bets are settled free where the helper has the result."));
   }
   function renderFree() {
     var m = $("freeMsg"); if (!m) return; m.textContent = "";
@@ -3381,7 +3420,7 @@ body.simple .adv { display: none !important; }
   initCalc();
   renderAll();
   if (S.key || S.freeMode) renderSettings();
-  if (S.helperUrl) loadHelper(false);
+  if (S.helperUrl) { loadHelper(false); helperSettle(false); }
   if (S.sb.session && S.sb.url) { if (sbArrived) setTab("more"); syncNow(true); }
   if (S.live) { if (liveActive() && Date.now() - S.live.time > liveMins(S.live.group) * 60000) S.live.stopped = true; renderLive(); if (liveActive()) { scheduleLive(); liveCheck(); } }
   if (S.key && !S.tour && !S.booksSet && !S.bets.length && !S.pbets.length && !S.sb.session) openTour();
