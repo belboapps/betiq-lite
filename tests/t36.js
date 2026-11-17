@@ -13,7 +13,7 @@ let fails=0; function check(name,ok,info){ if(!ok) fails++; console.log((ok?'PAS
  await p.addInitScript(()=>{ if(!localStorage.getItem('betiqlite.v1')) localStorage.setItem('betiqlite.v1',JSON.stringify({key:'dummy',auto:false,ver:2,booksSet:true,pracAsked:true,tour:true,simple:true,sports:[{key:'soccer_epl',group:'Soccer',title:'EPL'}],selected:['soccer_epl'],windowH:72,bankroll:100})); });
  await p.goto('file://'+require('path').resolve(__dirname,'..','index.html')); await p.waitForTimeout(500);
  await p.click('[data-tab=more]'); await p.waitForSelector('#toolsBox');
- check('tools show in Simple view',await p.isVisible('#toolsBox')&&await p.$$eval('#toolsBox details',d=>d.length)===3);
+ check('tools show in Simple view',await p.isVisible('#toolsBox')&&await p.$$eval('#toolsBox details',d=>d.length)===5);
  const stats=async(sel)=>p.$$eval(sel+' .stat',e=>Object.fromEntries(e.map(x=>[x.querySelector('span').innerText.toLowerCase(),x.querySelector('b').innerText+' / '+(x.querySelector('small')||{innerText:''}).innerText])));
  // ---- odds converter: 6/4 = 2.50 = 40%
  await p.click('#tOdds > summary');

@@ -798,10 +798,12 @@ body.simple .adv { display: none !important; }
       </section>
       <section class="panel" id="toolsBox">
         <h2>Bet tools</h2>
-        <p>Three small calculators for checking a bet before you place it. Nothing here places a bet or uses credits.</p>
+        <p>Small calculators for checking a bet before you place it. Nothing here places a bet or uses credits.</p>
         <details class="learn" id="tOdds"><summary>Odds converter</summary><div class="body" id="tOddsBody"></div></details>
         <details class="learn" id="tEw"><summary>Each-way calculator</summary><div class="body" id="tEwBody"></div></details>
         <details class="learn" id="tAcca"><summary>Accumulator checker</summary><div class="body" id="tAccaBody"></div></details>
+        <details class="learn" id="tSame"><summary>Same-match bet checker</summary><div class="body" id="tSameBody"></div></details>
+        <details class="learn" id="tRun"><summary>Losing-run simulator</summary><div class="body" id="tRunBody"></div></details>
       </section>
       <section class="panel" id="tourBox"><h2>New here?</h2><p>A short walk-through of how to read the page and stay in control.</p><button class="btn" id="tourAgain" type="button">Show the tour</button></section>
       <section class="panel" id="freeBox">
@@ -3037,6 +3039,7 @@ body.simple .adv { display: none !important; }
 
   function renderSettings() {
     renderAcca();      /* the accumulator's pick list follows whatever prices are loaded */
+    renderSame();
     var box = $("leagues"); box.textContent = "";
     var byGroup = {}, order = [];
     S.sports.forEach(function (s) {
@@ -3480,6 +3483,78 @@ body.simple .adv { display: none !important; }
     var winPart = stake * (odds - 1), placePart = stake * (odds - 1) * frac;
     return { cost: stake * 2, ifWins: winPart + placePart, ifPlaces: placePart - stake, ifLoses: -stake * 2, breakEven: 1 + 1 / frac };
   }
+  /* ----- Same-match bets. Picks from one match are linked: if the favourite wins, goals are likelier too. To price a combination
+     properly the match is modelled as two independent goal counts (Poisson), fitted to the fair match-result chances and, when goals
+     prices are loaded, the over 2.5 chance. Every pick here is a set of final scores, so a combination is just the scores in all of them. */
+  function pois(l, k) { var p = Math.exp(-l); for (var i = 1; i <= k; i++) p *= l / i; return p; }
+  function scoreGrid(lh, la) { var g = [], i, j, ph = [], pa = []; for (i = 0; i <= 10; i++) { ph.push(pois(lh, i)); pa.push(pois(la, i)); } for (i = 0; i <= 10; i++) for (j = 0; j <= 10; j++) g.push([i, j, ph[i] * pa[j]]); return g; }
+  function gridProb(g, test) { var t = 0, all = 0; g.forEach(function (c) { all += c[2]; if (test(c[0], c[1])) t += c[2]; }); return t / all; }
+  function fitGoals(pH, pD, pA, pOver) {
+    var best = null;
+    function err(lh, la) {
+      var g = scoreGrid(lh, la), e = Math.pow(gridProb(g, function (h, a) { return h > a; }) - pH, 2) + Math.pow(gridProb(g, function (h, a) { return h === a; }) - pD, 2) + Math.pow(gridProb(g, function (h, a) { return h < a; }) - pA, 2);
+      if (pOver !== null && pOver !== undefined) e += Math.pow(gridProb(g, function (h, a) { return h + a > 2.5; }) - pOver, 2);
+      return e;
+    }
+    function sweep(h0, h1, a0, a1, step) { for (var lh = h0; lh <= h1 + 1e-9; lh += step) for (var la = a0; la <= a1 + 1e-9; la += step) { var e = err(lh, la); if (!best || e < best.e) best = { lh: lh, la: la, e: e }; } }
+    sweep(0.2, 4.4, 0.2, 4.4, 0.1);
+    sweep(Math.max(0.05, best.lh - 0.1), best.lh + 0.1, Math.max(0.05, best.la - 0.1), best.la + 0.1, 0.01);
+    return best;
+  }
+  var SAME_RESULT = [["", "No pick"], ["h", "{h} to win"], ["d", "Draw"], ["a", "{a} to win"], ["hd", "{h} or draw"], ["ad", "{a} or draw"]];
+  var SAME_GOALS = [["", "No pick"], ["o1.5", "Over 1.5 goals"], ["u1.5", "Under 1.5 goals"], ["o2.5", "Over 2.5 goals"], ["u2.5", "Under 2.5 goals"], ["o3.5", "Over 3.5 goals"], ["u3.5", "Under 3.5 goals"]];
+  var SAME_BTTS = [["", "No pick"], ["y", "Both teams to score"], ["n", "At least one team fails to score"]];
+  function sameTest(code) {
+    if (code === "h") return function (h, a) { return h > a; };
+    if (code === "d") return function (h, a) { return h === a; };
+    if (code === "a") return function (h, a) { return h < a; };
+    if (code === "hd") return function (h, a) { return h >= a; };
+    if (code === "ad") return function (h, a) { return h <= a; };
+    if (code === "y") return function (h, a) { return h > 0 && a > 0; };
+    if (code === "n") return function (h, a) { return h === 0 || a === 0; };
+    var line = parseFloat(code.slice(1));
+    return code.charAt(0) === "o" ? function (h, a) { return h + a > line; } : function (h, a) { return h + a < line; };
+  }
+  /* codes: the picks chosen (any of result, goals, both-teams-to-score). Returns the chance all happen, and what it would be if they were unrelated. */
+  function sameCalc(fit, codes) {
+    var g = scoreGrid(fit.lh, fit.la), tests = codes.map(sameTest), naive = 1;
+    tests.forEach(function (t) { naive *= gridProb(g, t); });
+    return { chance: gridProb(g, function (h, a) { return tests.every(function (t) { return t(h, a); }); }), naive: naive };
+  }
+  function sameMatches() {
+    var now = Date.now(), out = [];
+    Object.keys(S.cache).forEach(function (key) {
+      S.cache[key].events.forEach(function (ev) {
+        var t = Date.parse(ev.c); if (!(t > now)) return; var a = analyse(ev); if (!a) return;
+        var f = {}; a.sels.forEach(function (s) { f[s.name] = s.fair; });
+        if (!(f[ev.h] > 0 && f[ev.a] > 0 && f.Draw > 0)) return;       /* football only: needs a draw price */
+        var tot = f[ev.h] + f[ev.a] + f.Draw, over = null;
+        analyseTotals(ev, "").forEach(function (r) { if (r.point === 2.5 && r.side === "Over") over = r.fair; });
+        out.push({ id: ev.id, h: ev.h, a: ev.a, time: t, pH: f[ev.h] / tot, pD: f.Draw / tot, pA: f[ev.a] / tot, pOver: over });
+      });
+    });
+    out.sort(function (x, y) { return x.time - y.time; });
+    return out.slice(0, 60);
+  }
+  /* ----- Losing runs. A small fixed-seed random generator, so the same inputs always give the same answer. */
+  function seeded(seed) { var a = seed >>> 0; return function () { a = (a + 0x6D2B79F5) >>> 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  function runSim(chance, odds, stake, budget, bets, runs) {
+    var rnd = seeded(20261117), longest = [], ends = [], bust = 0, behind = 0;
+    for (var r = 0; r < (runs || 4000); r++) {
+      var bal = budget, streak = 0, worst = 0, out = false;
+      for (var i = 0; i < bets; i++) {
+        if (bal < stake) { out = true; break; }
+        if (rnd() < chance) { bal += stake * (odds - 1); streak = 0; } else { bal -= stake; streak++; if (streak > worst) worst = streak; }
+      }
+      if (out || bal < stake) bust++;
+      if (bal < budget) behind++;
+      longest.push(worst); ends.push(bal - budget);
+    }
+    longest.sort(function (x, y) { return x - y; }); ends.sort(function (x, y) { return x - y; });
+    var n = longest.length;
+    return { runTypical: longest[Math.floor(n / 2)], runBad: longest[Math.floor(n * 0.9)], bust: bust / n, behind: behind / n,
+             endPoor: ends[Math.floor(n * 0.1)], endTypical: ends[Math.floor(n / 2)], endGood: ends[Math.floor(n * 0.9)], edge: chance * odds - 1 };
+  }
   var accaLegs = [];
   function toolField(grid, label, input) { var l = el("label", null, label); l.appendChild(input); grid.appendChild(l); return input; }
   function toolInput(type, value, ph) { var i = document.createElement("input"); i.type = type; if (value !== undefined) i.value = value; if (ph) i.placeholder = ph; if (type === "number") { i.step = "0.5"; i.min = "0"; i.setAttribute("inputmode", "decimal"); } else { i.autocomplete = "off"; i.setAttribute("autocapitalize", "off"); } return i; }
@@ -3536,6 +3611,81 @@ body.simple .adv { display: none !important; }
     stakeIn.addEventListener("input", renderAccaOut);
     accaLegs = [{ text: "", odds: NaN, fair: 0, evId: "", label: "" }, { text: "", odds: NaN, fair: 0, evId: "", label: "" }];
     renderAcca();
+    /* same-match bets */
+    var sb = $("tSameBody");
+    sb.appendChild(el("p", null, "A bet builder joins several picks from one match. The picks are linked, so their chances cannot simply be multiplied. This estimates the real chance and compares it with the price you are offered."));
+    var smg = el("div", "mbgrid"), sm = document.createElement("select"); sm.id = "sameMatch"; toolField(smg, "Match", sm);
+    function pickSel(id, label) { var s2 = document.createElement("select"); s2.id = id; toolField(smg, label, s2); return s2; }
+    var sr = pickSel("sameResult", "Result"), sgo = pickSel("sameGoals", "Goals"), sbt = pickSel("sameBtts", "Both teams to score");
+    var so = toolField(smg, "Odds you are offered", toolInput("text", "", "e.g. 5.5 or 9/2")); so.id = "sameOdds";
+    sb.appendChild(smg); var sout = el("div"); sout.id = "sameOut"; sb.appendChild(sout);
+    [sm, sr, sgo, sbt].forEach(function (x) { x.addEventListener("change", function () { if (x === sm) fillSamePicks(); renderSameOut(); }); });
+    so.addEventListener("input", renderSameOut);
+    renderSame();
+    /* losing runs */
+    var rb = $("tRunBody");
+    rb.appendChild(el("p", null, "Even good bets lose in runs. This plays your betting forward thousands of times to show what losing streaks and swings to expect, so they do not come as a shock."));
+    var rg = el("div", "mbgrid");
+    var rc = toolField(rg, "Chance each bet wins %", toolInput("number", "45")); rc.id = "runChance";
+    var ro = toolField(rg, "Typical odds", toolInput("text", "2.3")); ro.id = "runOdds";
+    var rs = toolField(rg, "Stake per bet £", toolInput("number", "2")); rs.id = "runStake";
+    var rbud = toolField(rg, "Budget £", toolInput("number", String(S.bankroll || 100))); rbud.id = "runBudget";
+    var rn = toolField(rg, "Number of bets", toolInput("number", "100")); rn.id = "runBets"; rn.step = "10";
+    rb.appendChild(rg); var rout = el("div"); rout.id = "runOut"; rb.appendChild(rout);
+    function run() {
+      rout.textContent = "";
+      var ch = parseFloat(rc.value) / 100, od = parseOdds(ro.value), st = parseFloat(rs.value), bu = parseFloat(rbud.value), nb = Math.round(parseFloat(rn.value));
+      if (!(ch > 0 && ch < 1) || !isFinite(od) || !(st > 0) || !(bu >= st) || !(nb >= 10 && nb <= 2000)) { rout.appendChild(el("div", "msg", "Enter a chance between 1 and 99, odds, a stake no bigger than the budget, and between 10 and 2,000 bets.")); return; }
+      var r = runSim(ch, od, st, bu, nb), g = el("div", "stats");
+      g.appendChild(statBox("Longest losing run", r.runTypical + " in a row", "in a typical " + nb + " bets"));
+      g.appendChild(statBox("1 time in 10", r.runBad + " or more", "losses in a row"));
+      g.appendChild(statBox("Behind after " + nb, pct(r.behind), "chance you are down", r.behind > 0.5 ? "neg" : null));
+      g.appendChild(statBox("Budget gone", pct(r.bust, r.bust < 0.1 && r.bust > 0 ? 1 : 0), "chance you cannot cover a stake", r.bust > 0.05 ? "neg" : null));
+      g.appendChild(statBox("Typical result", sgbp(r.endTypical), "poor " + sgbp(r.endPoor) + ", good " + sgbp(r.endGood), r.endTypical >= 0 ? "pos" : "neg"));
+      rout.appendChild(g);
+      var pl = el("div", "plain"); pl.appendChild(el("b", null, "In plain English"));
+      pl.appendChild(document.createTextNode((r.edge > 0.0005 ? "These bets have an edge of " + signed(r.edge) + " in your favour. Even so, " : r.edge < -0.0005 ? "These bets lose " + pct(-r.edge, 1) + " of each stake on average, so the longer you go the further behind you get. Along the way, " : "These bets break even on average. Along the way, ")
+        + "expect to lose about " + r.runTypical + " in a row at some point in " + nb + " bets, and " + r.runBad + " or more is not unusual. A run like that says nothing about whether the bets are good. "
+        + (r.bust > 0.05 ? "At this stake there is a real chance of running out of money: a smaller stake makes the budget last." : "At this stake the budget comfortably survives the bad runs.")));
+      rout.appendChild(pl);
+    }
+    [rc, ro, rs, rbud, rn].forEach(function (x) { x.addEventListener("input", run); });
+    run();
+  }
+  var sameList = [];
+  function fillSamePicks() {
+    var m = sameList.filter(function (x) { return x.id === $("sameMatch").value; })[0];
+    [["sameResult", SAME_RESULT], ["sameGoals", SAME_GOALS], ["sameBtts", SAME_BTTS]].forEach(function (x) {
+      var sel = $(x[0]), cur = sel.value; sel.textContent = "";
+      x[1].forEach(function (o) { var op = el("option", null, o[1].replace("{h}", m ? m.h : "Home").replace("{a}", m ? m.a : "Away")); op.value = o[0]; sel.appendChild(op); });
+      sel.value = cur;
+    });
+  }
+  function renderSame() {
+    var sel = $("sameMatch"); if (!sel) return; var cur = sel.value; sameList = sameMatches(); sel.textContent = "";
+    if (!sameList.length) { var o0 = el("option", null, "No football prices loaded"); o0.value = ""; sel.appendChild(o0); }
+    sameList.forEach(function (m) { var op = el("option", null, m.h + " v " + m.a + " · " + TF.format(new Date(m.time))); op.value = m.id; sel.appendChild(op); });
+    if (sameList.some(function (m) { return m.id === cur; })) sel.value = cur;
+    fillSamePicks(); renderSameOut();
+  }
+  function renderSameOut() {
+    var out = $("sameOut"); if (!out) return; out.textContent = "";
+    var m = sameList.filter(function (x) { return x.id === $("sameMatch").value; })[0];
+    if (!m) { out.appendChild(el("p", "subnote", "Load some football prices first (Today, then Refresh, or the free weekly file).")); return; }
+    var codes = [$("sameResult").value, $("sameGoals").value, $("sameBtts").value].filter(Boolean);
+    if (codes.length < 2) { out.appendChild(el("p", "subnote", "Choose at least two picks from this match.")); return; }
+    var fit = fitGoals(m.pH, m.pD, m.pA, m.pOver), r = sameCalc(fit, codes), offered = parseOdds($("sameOdds").value), g = el("div", "stats");
+    if (r.chance < 0.0005) { out.appendChild(el("div", "msg", "Those picks cannot all happen in the same match.")); return; }
+    g.appendChild(statBox("Chance all happen", pct(r.chance, r.chance < 0.2 ? 1 : 0), inN(r.chance)));
+    g.appendChild(statBox("A fair price", (1 / r.chance).toFixed(2), "about " + fracNear(1 / r.chance).text));
+    g.appendChild(statBox("If unrelated", pct(r.naive, r.naive < 0.2 ? 1 : 0), "what multiplying the picks gives"));
+    if (isFinite(offered)) { var cut = 1 - offered * r.chance; g.appendChild(statBox("Bookmaker's cut", pct(Math.abs(cut), 1), cut >= 0 ? "of every pound staked" : "in your favour, on this estimate", cut > 0 ? "neg" : "pos")); }
+    out.appendChild(g);
+    var pl = el("div", "plain"); pl.appendChild(el("b", null, "In plain English"));
+    var link = r.chance > r.naive * 1.03 ? "These picks tend to happen together, so the combination is likelier than multiplying them suggests." : r.chance < r.naive * 0.97 ? "These picks pull against each other, so the combination is less likely than multiplying them suggests." : "These picks are close to unrelated.";
+    pl.appendChild(document.createTextNode(link + (isFinite(offered) ? (1 - offered * r.chance > 0 ? " At " + offered.toFixed(2) + " you are paid less than the fair price of " + (1 / r.chance).toFixed(2) + ": on average every £10 staked comes back as " + gbp(10 * offered * r.chance) + "." : " At " + offered.toFixed(2) + " you are paid more than this estimate of the fair price. Treat that with caution: the estimate is rough, and bookmakers price these bets carefully.") : " Type the odds you are offered to see the bookmaker's cut.")));
+    out.appendChild(pl);
+    out.appendChild(el("p", "subnote", "An estimate, not a fact. It treats each team's goals as independent and is fitted to the fair match-result chances" + (m.pOver !== null ? " and the over 2.5 goals chance" : " only, because no goals prices are loaded for this match") + " (about " + fit.lh.toFixed(2) + " goals for " + m.h + ", " + fit.la.toFixed(2) + " for " + m.a + "). Picks about players, corners or cards are not covered."));
   }
   /* Outcomes from the loaded prices, soonest first, for picking accumulator legs without typing. */
   function accaChoices() {
