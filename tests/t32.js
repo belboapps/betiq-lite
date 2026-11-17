@@ -14,7 +14,9 @@ let fails=0; function check(name,ok,info){ if(!ok) fails++; console.log((ok?'PAS
  await p.addInitScript(()=>{ if(!localStorage.getItem('betiqlite.v1')) localStorage.setItem('betiqlite.v1',JSON.stringify({key:'dummy',auto:false,ver:2,booksSet:true,pracAsked:true,tour:true,simple:false,sports:[{key:'soccer_epl',group:'Soccer',title:'EPL'}],selected:['soccer_epl'],windowH:72,bankroll:100})); });
  await p.goto('file://'+require('path').resolve(__dirname,'..','index.html')); await p.waitForTimeout(500);
  check('five tabs',await p.$$eval('#tabbar button',e=>e.length)===5);
- await p.click('[data-tab=offers]'); await p.waitForSelector('#mbCalcOut');
+ await p.click('[data-tab=offers]'); await p.waitForSelector('#mbList');
+ // the calculator and finder now live under "Do the sums yourself"
+ await p.click('#mbTools > summary'); await p.waitForSelector('#mbCalcOut');
  check('empty state',/No offers yet/.test(await p.innerText('#mbList'))&&/Load some prices first/.test(await p.innerText('#mbMatches')));
  // ---- the sums, against figures worked out by hand
  const stat=async(label)=>p.evaluate((l)=>{const s=[...document.querySelectorAll('#mbCalcOut .stat')].find(x=>x.querySelector('span').innerText.toLowerCase()===l.toLowerCase()); return s?s.querySelector('b').innerText:null;},label);
@@ -49,20 +51,22 @@ let fails=0; function check(name,ok,info){ if(!ok) fails++; console.log((ok?'PAS
  check('lay price is never offered as a price to back at',await p.evaluate(()=>{const s=JSON.parse(localStorage.getItem('betiqlite.v1')); const b=s.cache.soccer_epl.events[0].books.find(x=>x.k==='betfair_ex_uk'); return Array.isArray(b.l)&&b.l.length===1&&b.o.every(o=>o[1]!==2.2);}));
  await p.click('#mbMatches .mbmatch:has-text("Arsenal v Everton") >> nth=0 >> button'); await p.waitForTimeout(100);
  check('Use fills the calculator with the real lay price',await p.inputValue('#mbBack')==='2.10'&&await p.inputValue('#mbLay')==='2.20'&&await p.inputValue('#mbEx')==='0.05',await p.inputValue('#mbBack')+' / '+await p.inputValue('#mbLay'));
- // ---- offer tracker
- await p.click('#mbAdd'); check('needs a name',/Enter the bookmaker/.test(await p.innerText('#mbAddMsg')));
- await p.fill('#mbNewBook','Test Bookie'); await p.fill('#mbNewName','Bet £10 get £30'); await p.fill('#mbNewQual','10'); await p.fill('#mbNewMin','2'); await p.fill('#mbNewFree','30');
+ // ---- offer tracker, edited by hand
+ await p.click('#mbAdd'); check('needs the three basics',/Enter the bookmaker, how much you must bet/.test(await p.innerText('#mbAddMsg')));
+ await p.fill('#mbNewBook','Test Bookie'); await p.fill('#mbNewQual','10'); await p.fill('#mbNewFree','30');
+ await p.click('text=More details (optional)'); await p.fill('#mbNewName','Welcome offer'); await p.fill('#mbNewMin','2');
  await p.fill('#mbNewExp',new Date(Date.now()+2*864e5).toISOString().slice(0,10)); await p.click('#mbAdd'); await p.waitForTimeout(150);
- let card=await p.innerText('#mbList .mboffer'); check('offer added with next step',/Test Bookie: Bet £10 get £30/.test(card)&&/place the qualifying bet of £10\.00 at odds of 2\.00 or more/.test(card));
+ let card=await p.innerText('#mbList .mboffer'); check('offer added at step 1',/Test Bookie: Welcome offer/.test(card)&&/STEP 1 OF 3: PLACE THE FIRST BET/i.test(card));
  check('expiry warning',/DAYS? LEFT|ENDS TODAY/.test(card)&&/runs out within 3 days: Test Bookie/.test(await p.innerText('#mbWarn')),(card.match(/\d DAYS? LEFT|ENDS TODAY/)||[''])[0]);
- await p.fill('#mbList .mboffer input >> nth=0','-0.46'); await p.dispatchEvent('#mbList .mboffer input >> nth=0','change'); await p.waitForTimeout(100);
- await p.selectOption('#mbList .mboffer select','wait'); await p.waitForTimeout(100);
- await p.click('#mbList .mboffer .btn >> nth=0'); await p.waitForTimeout(100);
- check('free-bet step prefills the calculator',await p.inputValue('#mbType')==='free'&&await p.inputValue('#mbStake')==='30');
- await p.fill('#mbList .mboffer input >> nth=1','22.69'); await p.dispatchEvent('#mbList .mboffer input >> nth=1','change'); await p.waitForTimeout(100);
- await p.selectOption('#mbList .mboffer select','done'); await p.waitForTimeout(150);
+ await p.evaluate(()=>{document.querySelector('#mbList .mbedit').open=true;});
+ await p.fill('#mbList .mbedit input >> nth=0','-0.46'); await p.dispatchEvent('#mbList .mbedit input >> nth=0','change'); await p.waitForTimeout(100);
+ await p.evaluate(()=>{document.querySelector('#mbList .mbedit').open=true;}); await p.selectOption('#mbList .mbedit select','wait'); await p.waitForTimeout(100);
+ await p.evaluate(()=>{document.querySelector('#mbList .mbedit').open=true;}); await p.click('#mbList .mbedit .btn >> nth=0'); await p.waitForTimeout(100);
+ check('opens the calculator for the free bet',await p.inputValue('#mbType')==='free'&&await p.inputValue('#mbStake')==='30'&&await p.evaluate(()=>document.getElementById('mbTools').open));
+ await p.evaluate(()=>{document.querySelector('#mbList .mbedit').open=true;}); await p.fill('#mbList .mbedit input >> nth=1','22.69'); await p.dispatchEvent('#mbList .mbedit input >> nth=1','change'); await p.waitForTimeout(100);
+ await p.evaluate(()=>{document.querySelector('#mbList .mbedit').open=true;}); await p.selectOption('#mbList .mbedit select','done'); await p.waitForTimeout(150);
  const sum=(await p.innerText('#mbSum')).replace(/\n/g,' '); check('totals',/\+£22\.23/.test(sum)&&/1 offer finished/.test(sum),sum);
  const stored=await p.evaluate(()=>JSON.parse(localStorage.getItem('betiqlite.v1')).mb.offers[0]); check('saved',stored.step==='done'&&stored.q===-0.46&&stored.f===22.69,JSON.stringify(stored).slice(0,140));
- await p.click('#mbList .mboffer .btn >> nth=1'); await p.waitForTimeout(150); check('delete',/No offers yet/.test(await p.innerText('#mbList')));
+ await p.evaluate(()=>{document.querySelector('#mbList .mbedit').open=true;}); await p.click('#mbList .mbedit .btn >> nth=1'); await p.waitForTimeout(150); check('delete',/No offers yet/.test(await p.innerText('#mbList')));
  console.log('errs',errs,'overflow',await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),'fails',fails); await b.close(); process.exit(fails||errs.length?1:0);
 })();
