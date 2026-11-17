@@ -408,6 +408,13 @@ details.acc .pcheck { margin-bottom: 12px; }
 .legend, .legendli { font-size: 13px; color: var(--muted); list-style: none; margin: 0; }
 .panel p.legend { color: var(--muted); }
 .trio + .legend { margin-top: 4px; }
+.howto { display: block; text-align: left; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-top: 10px; }
+.howto > b { display: block; font: 700 15px/1.2 var(--display); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+.hstep { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; line-height: 1.35; padding: 3px 0; }
+.hstep i { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font: 700 13px/22px var(--display); font-style: normal; text-align: center; }
+.hint { font-size: 14px; color: var(--muted); margin: 0 0 10px; }
+/* Simple view: the steps say everything a beginner needs, so the analyst's numbers stay in the details sheet */
+body.simple .bmain .cgrid, body.simple .bmain .sbox, body.simple .bmain .pillev { display: none; }
 .cgist { display: block; font-size: 14px; color: var(--muted); margin-top: 6px; text-align: left; }
 .bmain .trio { text-align: left; margin-bottom: 10px; }
 .mksort { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; }
@@ -500,7 +507,7 @@ body.simple .adv { display: none !important; }
 .card .bacts { padding: 4px 14px 14px; }
 .card .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .card .actions .btn { flex: none; min-height: 46px; }
-.card .actions .go { grid-column: 1 / -1; grid-row: 2; background: #1b2027; color: var(--ink); border-color: var(--line); }
+.card .actions .go { grid-column: 1 / -1; grid-row: 1; background: #1b2027; color: var(--ink); border-color: var(--line); }
 .card.gold .actions .go { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .why { margin: 4px 0; padding-left: 18px; font-size: 14px; display: flex; flex-direction: column; gap: 3px; }
 .why li.pos { color: var(--accent); } .why li.neg { color: var(--warn); }
@@ -554,6 +561,7 @@ body.simple .adv { display: none !important; }
     </div>
 
     <div class="tab" id="tab-all" hidden>
+      <p class="hint">Every bet the app found, best first. You do not need this page to bet: Today already shows the ones worth acting on.</p>
     <div class="controls">
       <div class="seg" role="group" aria-label="Ranking">
         <button id="modeValue" aria-pressed="true">Best bets</button>
@@ -609,6 +617,7 @@ body.simple .adv { display: none !important; }
     </div>
 
     <div class="tab" id="tab-bets" hidden>
+      <p class="hint">Your record. Nothing to do here most days: finished bets fill in their own results when prices or results load.</p>
       <section class="panel" id="betsBox"><h2 id="betsSum">My bets</h2><div id="betsBody" class="bodyflow"></div></section>
       <section class="panel" id="scoreBox"><h2>Your scorecard</h2><div id="scoreBody" class="bodyflow"></div></section>
       <section class="panel" id="recordBox"><h2>The app's track record</h2><div id="recordBody" class="bodyflow"></div></section>
@@ -670,6 +679,7 @@ body.simple .adv { display: none !important; }
     </div>
 
     <div class="tab" id="tab-more" hidden>
+      <p class="hint">Settings. Set these once and leave them. The two that matter most are your weekly budget and which bookmakers you use.</p>
     <section class="panel" id="settings">
       <h2>Settings</h2>
       <label class="check"><input type="checkbox" id="simpleOn"> Simple view: Today shows only bets worth acting on. Untick it to show the advanced tools: cloud backup, team news, Pinnacle yardstick, calculator and scenarios</label>
@@ -2052,6 +2062,30 @@ body.simple .adv { display: none !important; }
   function legend() {
     return el("p", "legend", "Risk: how often a bet like this loses. Low means it wins more often than not, high means it wins under 3 times in 10. Reward: profit as a % of your stake if it wins. Value: how much better than the market average the price is.");
   }
+  /* UK bookmaker apps usually show fractional odds (5/6), not decimals (1.83). FRACS are the standard steps.
+     fracAtLeast gives the smallest standard fraction that is not worse than the decimal, so "X or higher" stays true in either format. */
+  var FRACS = [[1,5],[2,9],[1,4],[2,7],[3,10],[1,3],[4,11],[2,5],[4,9],[1,2],[8,15],[4,7],[8,13],[4,6],[8,11],[4,5],[5,6],[10,11],[1,1],[11,10],[6,5],[5,4],[11,8],[6,4],[13,8],[7,4],[15,8],[2,1],
+               [9,4],[5,2],[11,4],[3,1],[10,3],[7,2],[4,1],[9,2],[5,1],[11,2],[6,1],[13,2],[7,1],[15,2],[8,1],[9,1],[10,1],[12,1],[14,1],[16,1],[20,1],[25,1],[33,1],[50,1],[100,1]];
+  function fracAtLeast(dec) {
+    for (var i = 0; i < FRACS.length; i++) { if (1 + FRACS[i][0] / FRACS[i][1] >= dec - 1e-9) return FRACS[i][0] === FRACS[i][1] ? "evens" : FRACS[i][0] + "/" + FRACS[i][1]; }
+    return null;
+  }
+  function oddsBoth(dec) { var f = fracAtLeast(dec); return dec.toFixed(2) + (f ? " (shown as " + f + " on some apps)" : ""); }
+  /* The exact steps to place a bet, for someone who has never placed one. Only for bets the app says to place or consider. */
+  function howTo(p, st) {
+    var d = decision(p).k; if ((d !== "place" && d !== "consider") || st.amount < 0.5) return null;
+    var s = p.pick, box = el("span", "howto"), n = 0;
+    box.appendChild(el("b", null, "How to place this bet"));
+    function step(t) { n++; var r = el("span", "hstep"); r.appendChild(el("i", null, String(n))); r.appendChild(el("span", null, t)); box.appendChild(r); }
+    step("Open " + s.bestBook + (s.bestEx ? ", which is a betting exchange and needs its own account." : "."));
+    step("Find the match " + p.ev.h + " v " + p.ev.a + ".");
+    step(s.market ? "Choose " + betWords(p) + "." : "Under the match result (who wins), choose " + (s.name === "Draw" ? "Draw" : s.name) + ".");
+    step("Check the odds are " + oddsBoth(minRaw(s)) + " or higher. If they are lower, do not bet.");
+    if (S.practice) step("Practice mode: stop here and do not pay. You are only learning where things are.");
+    else step("Type in a stake of " + gbp(st.amount) + " and confirm. If it wins you get " + gbp(st.amount * s.best) + " back, if it loses you lose the " + gbp(st.amount) + ".");
+    step("Come back here and tap " + (S.practice ? "Log practice bet" : "I placed it") + ".");
+    return box;
+  }
   /* The whole bet in one line of plain words: how likely, how much it pays, and whether the price is any good. */
   function gist(fair, best, ev, suspect) {
     var rw = best - 1, like = likeWord(fair);
@@ -2157,6 +2191,7 @@ body.simple .adv { display: none !important; }
     pills.appendChild(el("span", "pillev " + (s.ev > 0 ? "pos" : "neg"), signed(s.ev) + " EV")); top.appendChild(pills); main.appendChild(top);
     main.appendChild(el("span", "cmatch", p.ev.h + " vs " + p.ev.a));
     main.appendChild(verdictStrip(p));
+    var ht0 = howTo(p, st); if (ht0) main.appendChild(ht0);
     main.appendChild(el("span", "cgist", gist(s.fair, s.best, s.ev, p.suspect)));
     main.appendChild(trio(p));
     var when = el("span", "cwhen", "Starts " + TF.format(new Date(p.time)));
@@ -2443,6 +2478,7 @@ body.simple .adv { display: none !important; }
     head.appendChild(ht); root.appendChild(head);
     root.appendChild(el("div", "cgist", gist(s.fair, s.best, s.ev, p.suspect)));
     root.appendChild(verdictStrip(p));
+    var ht1 = howTo(p, st); if (ht1) root.appendChild(ht1);
     if (!p.sub) {
       var allBtn = el("button", "btn small", "See all " + matchRows(p).length + " bets for this match"); allBtn.type = "button";
       allBtn.addEventListener("click", function () { sheetMatch = true; sheetVia = "match"; renderSheet(); var ps = document.querySelector(".panelsheet"); if (ps) ps.scrollTop = 0; });
