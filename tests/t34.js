@@ -23,9 +23,13 @@ let fails=0; function check(name,ok,info){ if(!ok) fails++; console.log((ok?'PAS
  check('steps name the bookmaker, match and selection',/Open Paddy Power\./.test(card.steps[0])&&/Arsenal v Everton/.test(card.steps[1])&&/match result.*choose Arsenal\./.test(card.steps[2]));
  // minimum price 1.79: the smallest standard fraction that is not worse is 4/5 (1.80)
  check('minimum odds in decimal and fractional',/odds are 1\.79 \(shown as 4\/5 on some apps\) or higher\. If they are lower, do not bet\./.test(card.steps[3]),card.steps[3]);
- check('practice mode says not to pay',/Practice mode: stop here and do not pay/.test(card.steps[4])&&/tap Log practice bet/.test(card.steps[5]));
+ check('practice mode gives the stake but says not to pay',/Practice mode: the stake would be £1\.50, winning £1\.26\. Stop here and do not pay/.test(card.steps[4])&&/tap Log practice bet/.test(card.steps[5]),card.steps[4]);
  check('steps come straight after the verdict',card.order.indexOf('howto')===card.order.indexOf('verdict')+1,card.order.join(' > '));
  check('simple view hides the analyst numbers, keeps the three displays',card.hidden.every(Boolean)&&card.trio===3);
+ // the short card: verdict, steps, summary, three displays, two buttons
+ const short=await p.$eval('#tab-today .brow:has-text("Arsenal")',e=>{const vis=s=>[...e.querySelectorAll(s)].filter(x=>getComputedStyle(x).display!=='none'&&x.offsetParent!==null); return {h:Math.round(e.getBoundingClientRect().height),btns:vis('.actions .btn').map(x=>x.innerText.trim()),links:vis('.bacts > .accbtn').length,pay:vis('.cpay').length,more:vis('.cmore').length};});
+ console.log('   short card:',JSON.stringify(short));
+ check('short card: two buttons, bookmaker first, nothing else to tap',short.btns.length===2&&/^Place on Paddy Power/.test(short.btns[0])&&/Log practice bet/.test(short.btns[1])&&short.links===0&&short.pay===0&&short.more===1);
  // ---- real-money wording
  await p.click('[data-tab=more]'); await p.waitForSelector('#practiceOn'); await p.uncheck('#practiceOn'); await p.waitForTimeout(200);
  await p.click('[data-tab=today]'); await p.waitForSelector('#tab-today .brow');
@@ -33,9 +37,12 @@ let fails=0; function check(name,ok,info){ if(!ok) fails++; console.log((ok?'PAS
  check('real mode gives the stake and both outcomes',/Type in a stake of £[\d.]+ and confirm\. If it wins you get £[\d.]+ back, if it loses you lose the £[\d.]+\./.test(real[4])&&/tap I placed it/.test(real[5]),real[4]);
  // ---- detail sheet carries the same steps; full view keeps the analyst numbers
  await p.click('#tab-today .brow:has-text("Arsenal") >> .bmain'); await p.waitForSelector('#sheetBody .detail');
- check('detail sheet shows the steps too',await p.$$eval('#sheetBody .detail > .howto .hstep',e=>e.length)===6); await p.click('#sheetClose'); await p.waitForFunction(()=>document.getElementById('sheet').hidden);
+ check('detail sheet shows the steps too',await p.$$eval('#sheetBody .detail > .howto .hstep',e=>e.length)===6);
+ check('what left the card is one tap away in the details',await p.$eval('#sheetBody',e=>/Copy bet/.test(e.innerText)&&/Suggested stake/i.test(e.innerText)&&/reminder to my calendar/.test(e.innerText))); await p.click('#sheetClose'); await p.waitForFunction(()=>document.getElementById('sheet').hidden);
  await p.click('[data-tab=more]'); await p.uncheck('#simpleOn'); await p.waitForTimeout(200); await p.click('[data-tab=all]'); await p.waitForSelector('#list .brow');
- check('full view still shows the analyst numbers',await p.$eval('#list .brow:has-text("Arsenal")',e=>['.cgrid','.sbox'].every(s=>getComputedStyle(e.querySelector(s)).display!=='none')));
+ check('full view still shows the analyst numbers',await p.$eval('#list .brow:has-text("Arsenal")',e=>['.cgrid','.sbox','.cpay','.actions .copy'].every(s=>getComputedStyle(e.querySelector(s)).display!=='none')));
+ const full=await p.$eval('#list .brow:has-text("Arsenal")',e=>Math.round(e.getBoundingClientRect().height)); console.log('   card height: simple',short.h,'px, full',full,'px');
+ check('the simple card is clearly shorter',short.h<full*0.8,short.h+' vs '+full);
  // ---- a bet the app does not recommend gets no steps
  const others=await p.$$eval('#list .brow',r=>r.map(x=>({v:x.querySelector('.verdict b').innerText,how:!!x.querySelector('.howto')})));
  check('no steps on bets that are not PLACE or CONSIDER',others.every(o=>/PLACE|CONSIDER/.test(o.v)===o.how),JSON.stringify(others));

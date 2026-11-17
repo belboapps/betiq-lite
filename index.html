@@ -423,6 +423,9 @@ details.acc .pcheck { margin-bottom: 12px; }
 .hint { font-size: 14px; color: var(--muted); margin: 0 0 10px; }
 /* Simple view: the steps say everything a beginner needs, so the analyst's numbers stay in the details sheet */
 body.simple .bmain .cgrid, body.simple .bmain .sbox, body.simple .bmain .pillev { display: none; }
+/* ...and so do the stake box, Copy bet and the calendar and live-watch links: the card keeps the verdict, the steps, the summary and two buttons */
+body.simple .bmain .cpay, body.simple .brow .actions .copy, body.simple .brow .bacts > .accbtn { display: none; }
+body.simple .brow .actions .btn:not(.go):not(.copy) { grid-column: 1 / -1; }
 .cgist { display: block; font-size: 14px; color: var(--muted); margin-top: 6px; text-align: left; }
 .bmain .trio { text-align: left; margin-bottom: 10px; }
 .mksort { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; }
@@ -1961,7 +1964,7 @@ body.simple .adv { display: none !important; }
     var a = el("a", "btn primary go", "Place on " + s.bestBook + " ↗");
     a.href = bookUrl(p); a.target = "_blank"; a.rel = "noopener noreferrer";
     box.appendChild(a);
-    var cp = el("button", "btn", "Copy bet"); cp.type = "button";
+    var cp = el("button", "btn copy", "Copy bet"); cp.type = "button";
     cp.addEventListener("click", function () {
       copyText(s.name + (s.market ? "" : " to win") + " · " + p.ev.h + " v " + p.ev.a + " · " + gbp(st.amount) + " @ " + s.best.toFixed(2) + " · " + s.bestBook, cp);
     });
@@ -2102,7 +2105,7 @@ body.simple .adv { display: none !important; }
     step("Find the match " + p.ev.h + " v " + p.ev.a + ".");
     step(s.market ? "Choose " + betWords(p) + "." : "Under the match result (who wins), choose " + (s.name === "Draw" ? "Draw" : s.name) + ".");
     step("Check the odds are " + oddsBoth(minRaw(s)) + " or higher. If they are lower, do not bet.");
-    if (S.practice) step("Practice mode: stop here and do not pay. You are only learning where things are.");
+    if (S.practice) step("Practice mode: the stake would be " + gbp(st.amount) + ", winning " + gbp(st.amount * (s.best - 1)) + ". Stop here and do not pay. You are only learning where things are.");
     else step("Type in a stake of " + gbp(st.amount) + " and confirm. If it wins you get " + gbp(st.amount * s.best) + " back, if it loses you lose the " + gbp(st.amount) + ".");
     step("Come back here and tap " + (S.practice ? "Log practice bet" : "I placed it") + ".");
     return box;
