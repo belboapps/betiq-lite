@@ -1167,7 +1167,13 @@ body.simple .adv { display: none !important; }
       if (!m || !m.outcomes) return;
       var base = safeLink(m.link) || safeLink(b.link);
       var o = m.outcomes.filter(function (x) { return x.price > 1; }).map(function (x) { return [x.name, x.price, safeLink(x.link) || base]; });
-      if (o.length >= 2) books.push({ t: b.title, k: b.key, o: o });
+      if (o.length >= 2) {
+        var bk = { t: b.title, k: b.key, o: o };
+        /* Exchanges also send the price to bet AGAINST each outcome (market key h2h_lay). Kept for the Offers tab; never used as a price to back at. */
+        var lm = (b.markets || []).filter(function (x) { return x.key === "h2h_lay"; })[0];
+        if (lm && lm.outcomes) { var lay = lm.outcomes.filter(function (x) { return x.price > 1; }).map(function (x) { return [x.name, x.price]; }); if (lay.length) bk.l = lay; }
+        books.push(bk);
+      }
     });
     return { id: ev.id, c: ev.commence_time, h: ev.home_team, a: ev.away_team, books: books, tb: tb };
   }
@@ -3224,7 +3230,8 @@ body.simple .adv { display: none !important; }
     if (type === "qual" && lay < back) out.appendChild(el("div", "msg", "The exchange price is lower than the bookmaker's. That would be a profit with no offer at all, which is rare: check both prices are for the same outcome."));
     if (lay > back * 1.15) out.appendChild(el("div", "msg", "These two prices are far apart, so this costs more than it should. Look for a closer match."));
   }
-  /* Outcomes where a bookmaker's price is close to an exchange's. The loaded prices only hold the exchange's BACK price, so the lay price shown is an estimate. */
+  /* Outcomes where a bookmaker's price is close to an exchange's. Uses the exchange's real lay price when the price service sent one
+     (h2h_lay); otherwise falls back to its back price as an estimate, and says so on the row. */
   function mbMatches(bookTitle, minOdds, type, stake) {
     var now = Date.now(), out = [];
     Object.keys(S.cache).forEach(function (key) {
@@ -3233,14 +3240,16 @@ body.simple .adv { display: none !important; }
         var bk = ev.books.filter(function (b) { return b.t === bookTitle && !EXCH[b.k] && !b.sharp; })[0]; if (!bk) return;
         ev.books.filter(function (b) { return EXCH[b.k]; }).forEach(function (ex) {
           bk.o.forEach(function (x) {
-            var m = ex.o.filter(function (y) { return y[0] === x[0]; })[0]; if (!m || x[1] < minOdds) return;
+            if (x[1] < minOdds) return;
+            var real = (ex.l || []).filter(function (y) { return y[0] === x[0]; })[0], m = real || ex.o.filter(function (y) { return y[0] === x[0]; })[0]; if (!m) return;
             var r = mbCalc(type, x[1], m[1], stake, EXCH[ex.k]); if (!r) return;
-            out.push({ ev: ev, time: t, name: x[0], back: x[1], lay: m[1], ex: ex.t, comm: EXCH[ex.k], r: r });
+            out.push({ ev: ev, time: t, name: x[0], back: x[1], lay: m[1], real: !!real, ex: ex.t, comm: EXCH[ex.k], r: r });
           });
         });
       });
     });
-    out.sort(function (a, b) { return b.r.worst - a.r.worst; });
+    /* Real lay prices first: an estimate understates the cost, so it must not outrank a price that is known. */
+    out.sort(function (a, b) { return (b.real - a.real) || (b.r.worst - a.r.worst); });
     var seen = {}; return out.filter(function (m) { var k = m.ev.id + "|" + m.name; if (seen[k]) return false; seen[k] = 1; return true; }).slice(0, 6);
   }
   function renderMbMatches() {
@@ -3254,13 +3263,17 @@ body.simple .adv { display: none !important; }
     list.forEach(function (m) {
       var row = el("div", "mbmatch"), txt = el("div");
       txt.appendChild(el("b", null, m.name)); txt.appendChild(document.createTextNode(" · " + m.ev.h + " v " + m.ev.a + " · " + TF.format(new Date(m.time))));
-      txt.appendChild(el("div", "subnote", sel.value + " " + m.back.toFixed(2) + ", " + m.ex + " about " + m.lay.toFixed(2) + ": " + (type === "free" ? "keep about " + gbp(m.r.worst) + " (" + pct(m.r.keep) + ")" : m.r.worst >= 0 ? "make about " + gbp(m.r.worst) : "lose about " + gbp(m.r.worst))));
+      txt.appendChild(el("div", "subnote", sel.value + " " + m.back.toFixed(2) + ", " + m.ex + (m.real ? " lay " : " about ") + m.lay.toFixed(2) + (m.real ? "" : " (estimate)") + ": " + (type === "free" ? "keep about " + gbp(m.r.worst) + " (" + pct(m.r.keep) + ")" : m.r.worst >= 0 ? "make about " + gbp(m.r.worst) : "lose about " + gbp(m.r.worst))));
       row.appendChild(txt);
       var use = el("button", "btn small", "Use"); use.type = "button";
       use.addEventListener("click", function () { $("mbBack").value = m.back.toFixed(2); $("mbLay").value = m.lay.toFixed(2); $("mbEx").value = String(m.comm); renderMbCalc(); var x = $("mbCalcBox"); if (x.scrollIntoView) x.scrollIntoView({ block: "start" }); });
       row.appendChild(use); box.appendChild(row);
     });
-    box.appendChild(el("p", "subnote", "The exchange price shown is its back price, used as an estimate. The lay price is usually a little higher, so open the exchange, check the real lay price and that enough money is waiting at it, and type that into the calculator."));
+    var est = list.filter(function (m) { return !m.real; }).length;
+    box.appendChild(el("p", "subnote", (est === 0 ? "Lay prices are the exchange's own, as of your last refresh."
+      : est === list.length ? "No lay prices were loaded for these, so each shows the exchange's back price as an estimate. The real lay price is usually a little higher. Refreshing prices with an Odds API key loads real ones."
+      : "Rows marked (estimate) use the exchange's back price because no lay price was loaded for them. The real lay price is usually a little higher.")
+      + " Prices move, so before betting open the exchange, check the lay price and that enough money is waiting at it, and type what you see into the calculator."));
   }
   function mbAddOffer() {
     var m = $("mbAddMsg"); m.textContent = "";

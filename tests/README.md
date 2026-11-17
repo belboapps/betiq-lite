@@ -28,7 +28,7 @@ Each script prints what it checked; `errs []` at the end means no page errors. t
 | t30 | free results through the helper |
 | t28 | exchange yardstick, free weekly file (pass a real fixtures.csv as an argument to test it), credit saver |
 | t31 | evidence that matches your bookmakers, pounds outlook, STRONG EVIDENCE badge, minimum-chance filter, phone alerts |
-| t32 | Offers tab: matched-betting sums against hand-worked figures, close-match finder, offer tracker |
+| t32 | Offers tab: matched-betting sums against hand-worked figures, close-match finder with real and estimated lay prices, offer tracker |
 | t33 | Risk / Reward / Value displays, plain-words line, sortable bets, the match page, the scorecard |
 
 Mock data is for testing only and never ships in the page.
