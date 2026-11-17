@@ -3650,7 +3650,7 @@ body.simple .adv { display: none !important; }
       rout.appendChild(pl);
     }
     [rc, ro, rs, rbud, rn].forEach(function (x) { x.addEventListener("input", run); });
-    run();
+    $("tRun").addEventListener("toggle", function () { if ($("tRun").open) run(); });     /* worked out when opened, not on every page load */
   }
   var sameList = [];
   function fillSamePicks() {
