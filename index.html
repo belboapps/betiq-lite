@@ -280,10 +280,18 @@ body { padding-bottom: 0; }
 .pmid .match { grid-column: auto; }
 .pmid .slip { grid-column: auto; margin-top: 6px; }
 .linkbtn { width: 100%; }
-.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: grid; grid-template-columns: repeat(4, 1fr); background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: grid; grid-template-columns: repeat(5, 1fr); background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
 .tabbar button { border: 0; background: transparent; padding: 8px 4px 6px; min-height: 58px; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 12px; font-weight: 600; color: var(--muted); }
 .tabbar svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .tabbar button[aria-current="page"] { color: var(--accent); }
+.mbgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+.mbgrid label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); min-width: 0; }
+.mbgrid input, .mbgrid select { flex: none; width: 100%; min-height: 44px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font-size: 16px; }
+.mboffer { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+.mboffer.done { opacity: .7; }
+.mbmatch { border-top: 1px solid var(--line); padding: 10px 0; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+.mbmatch:first-child { border-top: 0; }
+.mbmatch div { min-width: 0; font-size: 14px; }
 .sheet { position: fixed; inset: 0; z-index: 30; display: flex; align-items: flex-end; justify-content: center; }
 .sheet .backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.5); }
 .panelsheet { position: relative; width: 100%; max-width: 640px; max-height: 92vh; max-height: 92dvh; overflow-y: auto; background: var(--surface); border-radius: 22px 22px 0 0; padding: 14px 14px max(20px, env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 12px; }
@@ -597,6 +605,61 @@ body.simple .adv { display: none !important; }
       <section class="panel" id="recordBox"><h2>The app's track record</h2><div id="recordBody" class="bodyflow"></div></section>
     </div>
 
+    <div class="tab" id="tab-offers" hidden>
+      <section class="panel">
+        <h2>Bookmaker offers</h2>
+        <p>Matched betting turns a bookmaker's free-bet offer into a known amount, whatever the result. You bet with the bookmaker and bet against the same outcome on an exchange, so the two cancel out. You place every bet yourself: this page does the sums and keeps track.</p>
+        <div class="stats" id="mbSum"></div>
+        <div id="mbWarn"></div>
+        <details class="learn"><summary>Before you place anything</summary><div class="body">
+          <p>1. Read the offer's terms: minimum odds, which markets count, and when the free bet expires.</p>
+          <p>2. Have enough in the exchange account to cover the liability shown by the calculator.</p>
+          <p>3. Place the bookmaker bet first, then the exchange bet straight away. Prices move.</p>
+          <p>4. Check you are betting on the same match, the same outcome and the same market in both places. Most losses come from a slip here.</p>
+          <p>5. Bookmakers restrict accounts that only take offers. That also removes them as places to take value bets.</p>
+        </div></details>
+      </section>
+      <section class="panel" id="mbCalcBox">
+        <h2>Calculator</h2>
+        <div class="mbgrid">
+          <label>What you are doing
+            <select id="mbType"><option value="qual">Qualifying bet (your own money)</option><option value="free">Using a free bet (stake not returned)</option></select>
+          </label>
+          <label>Stake or free bet £<input id="mbStake" type="number" inputmode="decimal" min="0" step="1" value="10"></label>
+          <label>Bookmaker odds<input id="mbBack" type="number" inputmode="decimal" min="1" step="0.01" placeholder="2.10"></label>
+          <label>Exchange lay odds<input id="mbLay" type="number" inputmode="decimal" min="1" step="0.01" placeholder="2.14"></label>
+          <label>Exchange
+            <select id="mbEx"><option value="0.05">Betfair (5% commission)</option><option value="0.02">Smarkets or Matchbook (2%)</option><option value="0">No commission</option></select>
+          </label>
+        </div>
+        <div id="mbCalcOut"></div>
+      </section>
+      <section class="panel">
+        <h2>Find a close match</h2>
+        <p>Looks through the prices already loaded for outcomes where a bookmaker's price and the exchange's price are close together. Uses no credits.</p>
+        <div class="mbgrid">
+          <label>Bookmaker<select id="mbBook"></select></label>
+          <label>Minimum odds<input id="mbMin" type="number" inputmode="decimal" min="1" step="0.1" value="2"></label>
+        </div>
+        <div id="mbMatches"></div>
+      </section>
+      <section class="panel">
+        <h2>My offers</h2>
+        <div id="mbList"></div>
+        <h3>Add an offer</h3>
+        <div class="mbgrid">
+          <label>Bookmaker<input id="mbNewBook" type="text" autocomplete="off" placeholder="Bookmaker name"></label>
+          <label>Offer<input id="mbNewName" type="text" autocomplete="off" placeholder="Bet £10 get £30"></label>
+          <label>You must bet £<input id="mbNewQual" type="number" inputmode="decimal" min="0" step="1" placeholder="10"></label>
+          <label>At odds of at least<input id="mbNewMin" type="number" inputmode="decimal" min="1" step="0.1" placeholder="2.0"></label>
+          <label>Free bets you get £<input id="mbNewFree" type="number" inputmode="decimal" min="0" step="1" placeholder="30"></label>
+          <label>Use by<input id="mbNewExp" type="date"></label>
+        </div>
+        <div class="row"><button class="btn primary" id="mbAdd" type="button">Add offer</button></div>
+        <div id="mbAddMsg"></div>
+      </section>
+    </div>
+
     <div class="tab" id="tab-more" hidden>
     <section class="panel" id="settings">
       <h2>Settings</h2>
@@ -761,6 +824,7 @@ body.simple .adv { display: none !important; }
   <button data-tab="today"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7v9H4z"/></svg><span>Today</span></button>
   <button data-tab="all"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>All bets</span></button>
   <button data-tab="bets"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z M9 8h6 M9 12h6"/></svg><span id="betsTabLbl">My bets</span></button>
+  <button data-tab="offers"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16v10H4z M3 6h18v4H3z M12 6v14 M12 6c-2-4-6-3-5 0 M12 6c2-4 6-3 5 0"/></svg><span>Offers</span></button>
   <button data-tab="more"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/></svg><span>More</span></button>
 </nav>
 <div class="sheet" id="tour" hidden>
@@ -783,7 +847,7 @@ body.simple .adv { display: none !important; }
   var API = "https://api.the-odds-api.com/v4";
   var DEFAULTS = { key: "", selected: [], mode: "value", minOdds: 1.3, windowH: 72, group: "all",
                    sports: [], sportsAt: 0, cache: {}, remaining: null, used: null, picked: false,
-                   bankroll: 100, weekly: 0, league: "all", sugg: [], exYard: true, helperUrl: "", helperAt: 0, helperResAt: 0, planDone: false, freeMode: false, freeInfo: null, series: {}, accts: {}, fMaxOdds: 0, fMinEdge: 0, fMinScore: 0, fChance: 0, ntfy: "", ntfySeen: [], live: null, simple: true, recAt: 0, autoKick: true, sharp: false, sharpBad: false, placeMin: 60, tuneN: 0, tomb: [], sb: { url: "", key: "", email: "", session: null, last: 0, status: "" }, extras: true, extraMax: 12, extraFreshH: 3, lossLimit: 0, lossStreak: 5, tour: false, afKey: "", newsOn: true, news: {}, afUse: { d: "", n: 0 }, afStatus: "", xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
+                   bankroll: 100, weekly: 0, league: "all", sugg: [], exYard: true, helperUrl: "", helperAt: 0, helperResAt: 0, planDone: false, freeMode: false, freeInfo: null, series: {}, accts: {}, fMaxOdds: 0, fMinEdge: 0, fMinScore: 0, fChance: 0, ntfy: "", ntfySeen: [], mb: null, live: null, simple: true, recAt: 0, autoKick: true, sharp: false, sharpBad: false, placeMin: 60, tuneN: 0, tomb: [], sb: { url: "", key: "", email: "", session: null, last: 0, status: "" }, extras: true, extraMax: 12, extraFreshH: 3, lossLimit: 0, lossStreak: 5, tour: false, afKey: "", newsOn: true, news: {}, afUse: { d: "", n: 0 }, afStatus: "", xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
   var GROUPS = { "Soccer": "Football", "American Football": "US football", "Ice Hockey": "Ice hockey",
                  "Mixed Martial Arts": "MMA", "Rugby League": "Rugby", "Rugby Union": "Rugby", "Aussie Rules": "Aussie rules" };
   var DEFAULT_FOOTBALL = ["soccer_epl", "soccer_efl_champ", "soccer_uefa_champs_league", "soccer_uefa_europa_league"];
@@ -813,6 +877,7 @@ body.simple .adv { display: none !important; }
       if (!Array.isArray(s.pbets)) s.pbets = [];
       ['xmBad', 'xmOK', 'clog', 'tomb', 'sugg', 'ntfySeen'].forEach(function (k) { if (!Array.isArray(s[k])) s[k] = []; });
       ['series', 'accts'].forEach(function (k) { if (!s[k] || typeof s[k] !== 'object') s[k] = {}; });
+      if (!s.mb || typeof s.mb !== 'object' || !Array.isArray(s.mb.offers)) s.mb = { offers: [] };
       if (!s.sb || typeof s.sb !== 'object') s.sb = { url: '', key: '', email: '', session: null, last: 0, status: '' };
       if (!o || !o.ver || o.ver < 2) s.mode = "value";   /* v2: Best bets is the default view */
       s.ver = 2;
@@ -2533,10 +2598,10 @@ body.simple .adv { display: none !important; }
     t.appendChild(el("span", null, label)); t.appendChild(el("b", cls || null, big)); if (sub) t.appendChild(el("small", null, sub));
     t.addEventListener("click", go); return t;
   }
-  function setTab(t) { S.tab = t; save(); applyTab(); if (t === "more") renderSettings(); window.scrollTo(0, 0); }
+  function setTab(t) { S.tab = t; save(); applyTab(); if (t === "more") renderSettings(); if (t === "offers") renderOffers(); window.scrollTo(0, 0); }
   function applyTab() {
-    var t = ["today", "all", "bets", "more"].indexOf(S.tab) > -1 ? S.tab : "today";
-    ["today", "all", "bets", "more"].forEach(function (k) { $("tab-" + k).hidden = (k !== t); });
+    var t = ["today", "all", "bets", "offers", "more"].indexOf(S.tab) > -1 ? S.tab : "today";
+    ["today", "all", "bets", "offers", "more"].forEach(function (k) { $("tab-" + k).hidden = (k !== t); });
     Array.prototype.forEach.call(document.querySelectorAll("#tabbar button"), function (b) {
       if (b.getAttribute("data-tab") === t) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
     });
@@ -2888,6 +2953,7 @@ body.simple .adv { display: none !important; }
       (S.fMaxOdds ? " · max odds " + S.fMaxOdds : "") + (S.fMinEdge ? " · edge " + (S.fMinEdge * 100) + "%+" : "") + (S.fMinScore ? " · score " + S.fMinScore + "+" : "") + (S.fChance ? " · chance " + Math.round(S.fChance * 100) + "%+" : "") + " (saved)";
     renderCredits(); renderStatus(); renderChips(); renderView();
     notifyPlace();
+    if (!$("tab-offers").hidden) renderOffers();
     if (!$("tab-more").hidden) { renderCreditLog(); renderMkCheck(); }
   }
 
@@ -2918,6 +2984,134 @@ body.simple .adv { display: none !important; }
       else showAlert("Prices refreshed for " + keys.map(function (k) { return (S.sports.filter(function (x) { return x.key === k; })[0] || {}).title || k; }).join(", ") + " because a match starts within the hour. Verdicts are up to date.", true);
     });
   }
+  /* ---------- Matched betting: bookmaker offers ----------
+     The sums. type "qual": your own money at the bookmaker, stake returned if it wins. type "free": a free bet whose stake is not returned.
+     The lay stake is chosen so the result is the same whichever way the match goes; it is rounded to pence and both results are then
+     worked out from the rounded figure, so the numbers shown are the numbers you will get. comm is the exchange's commission on winnings. */
+  function mbCalc(type, back, lay, stake, comm) {
+    if (!(back > 1) || !(lay > 1) || !(stake > 0) || !(lay - comm > 0)) return null;
+    var free = type === "free";
+    var L = Math.round((free ? (back - 1) * stake : back * stake) / (lay - comm) * 100) / 100;
+    var ifBack = stake * (back - 1) - L * (lay - 1);
+    var ifLay = L * (1 - comm) - (free ? 0 : stake);
+    var worst = Math.min(ifBack, ifLay);
+    return { layStake: L, liability: L * (lay - 1), ifBack: ifBack, ifLay: ifLay, worst: worst, keep: free ? worst / stake : null };
+  }
+  var MB_STEPS = [["todo", "To do"], ["qual", "Qualifying bet placed"], ["wait", "Waiting for the free bet"], ["used", "Free bet placed"], ["done", "Finished"], ["drop", "Abandoned"]];
+  function mbNext(o) {
+    return o.step === "todo" ? "Next: place the qualifying bet of " + gbp(o.qual || 0) + (o.minOdds ? " at odds of " + (+o.minOdds).toFixed(2) + " or more" : "") + ", and lay it on the exchange."
+      : o.step === "qual" ? "Next: wait for the match to finish, then enter the result of the two bets below."
+      : o.step === "wait" ? "Next: when the free bet" + (o.free ? " of " + gbp(o.free) : "") + " arrives, use it at odds of 4.0 or more and lay it on the exchange."
+      : o.step === "used" ? "Next: when that match finishes, enter the free bet result below and mark the offer finished."
+      : o.step === "done" ? "Finished." : "Abandoned.";
+  }
+  function mbDaysLeft(o) { if (!o.exp) return null; var t = Date.parse(o.exp + "T23:59:59"); return isFinite(t) ? Math.floor((t - Date.now()) / 86400000) : null; }
+  function mbProfit(o) { return (+o.q || 0) + (+o.f || 0); }
+  function renderOffers() {
+    var offers = S.mb.offers, live = offers.filter(function (o) { return o.step !== "done" && o.step !== "drop"; }), done = offers.filter(function (o) { return o.step === "done"; });
+    var total = offers.reduce(function (t, o) { return t + mbProfit(o); }, 0);
+    var sum = $("mbSum"); sum.textContent = "";
+    sum.appendChild(statBox("Made so far", sgbp(total), done.length + " offer" + (done.length === 1 ? "" : "s") + " finished", total > 0.004 ? "pos" : total < -0.004 ? "neg" : null));
+    sum.appendChild(statBox("In progress", String(live.length), live.length ? "see My offers below" : "add one below"));
+    var soon = live.filter(function (o) { var d = mbDaysLeft(o); return d !== null && d <= 3; });
+    var warn = $("mbWarn"); warn.textContent = "";
+    if (soon.length) warn.appendChild(el("div", "msg", soon.length + " offer" + (soon.length === 1 ? " runs" : "s run") + " out within 3 days: " + soon.map(function (o) { return o.book; }).join(", ") + "."));
+    renderMbCalc(); renderMbMatches();
+    var list = $("mbList"); list.textContent = "";
+    if (!offers.length) list.appendChild(el("p", "subnote", "No offers yet. Add one from a bookmaker's promotions page below."));
+    offers.slice().reverse().forEach(function (o) {
+      var card = el("div", "mboffer" + (o.step === "done" || o.step === "drop" ? " done" : ""));
+      var top = el("div", "row"); top.appendChild(el("b", null, o.book + ": " + o.name));
+      var d = mbDaysLeft(o); if (d !== null && o.step !== "done" && o.step !== "drop") top.appendChild(el("span", "badge " + (d <= 3 ? "warn" : "move"), d < 0 ? "EXPIRED" : d === 0 ? "ENDS TODAY" : d + " DAYS LEFT"));
+      card.appendChild(top);
+      card.appendChild(el("div", "subnote", mbNext(o)));
+      var grid = el("div", "mbgrid");
+      var l1 = el("label", null, "Status"), sel = document.createElement("select"); MB_STEPS.forEach(function (x) { var op = el("option", null, x[1]); op.value = x[0]; sel.appendChild(op); }); sel.value = o.step;
+      sel.addEventListener("change", function () { o.step = sel.value; save(); renderOffers(); }); l1.appendChild(sel); grid.appendChild(l1);
+      [["q", "Qualifying bet result £"], ["f", "Free bet result £"]].forEach(function (x) {
+        var lab = el("label", null, x[1]), inp = document.createElement("input"); inp.type = "number"; inp.step = "0.01"; inp.setAttribute("inputmode", "decimal"); inp.placeholder = x[0] === "q" ? "-0.50" : "22.00";
+        inp.value = o[x[0]] === undefined || o[x[0]] === null || o[x[0]] === "" ? "" : String(o[x[0]]);
+        inp.addEventListener("change", function () { var v = parseFloat(inp.value); o[x[0]] = isFinite(v) ? v : ""; save(); renderOffers(); });
+        lab.appendChild(inp); grid.appendChild(lab);
+      });
+      card.appendChild(grid);
+      var acts = el("div", "row");
+      var cb = el("button", "btn small", o.step === "wait" || o.step === "used" ? "Work out the free bet" : "Work out the qualifying bet"); cb.type = "button";
+      cb.addEventListener("click", function () { var fr = o.step === "wait" || o.step === "used"; $("mbType").value = fr ? "free" : "qual"; $("mbStake").value = String(fr ? (o.free || "") : (o.qual || "")); renderMbCalc(); var x = $("mbCalcBox"); if (x.scrollIntoView) x.scrollIntoView({ block: "start" }); });
+      acts.appendChild(cb);
+      var rm = el("button", "btn small", "Delete"); rm.type = "button"; rm.addEventListener("click", function () { if (window.confirm("Delete this offer and its results?")) { S.mb.offers = S.mb.offers.filter(function (z) { return z.id !== o.id; }); save(); renderOffers(); } }); acts.appendChild(rm);
+      acts.appendChild(el("span", "subnote", "Result so far: " + sgbp(mbProfit(o))));
+      card.appendChild(acts);
+      list.appendChild(card);
+    });
+  }
+  function renderMbCalc() {
+    var out = $("mbCalcOut"); out.textContent = "";
+    var type = $("mbType").value, back = parseFloat($("mbBack").value), lay = parseFloat($("mbLay").value), stake = parseFloat($("mbStake").value), comm = parseFloat($("mbEx").value) || 0;
+    var r = mbCalc(type, back, lay, stake, comm);
+    if (!r) { out.appendChild(el("p", "subnote", "Enter the stake and both prices to see what to bet.")); return; }
+    var grid = el("div", "stats");
+    grid.appendChild(statBox("At the bookmaker", gbp(stake), (type === "free" ? "free bet" : "back") + " at " + back.toFixed(2)));
+    grid.appendChild(statBox("On the exchange", gbp(r.layStake), "lay at " + lay.toFixed(2)));
+    grid.appendChild(statBox("Exchange needs", gbp(r.liability), "your liability if it wins"));
+    grid.appendChild(statBox("If it wins", sgbp(r.ifBack), "after both bets", r.ifBack >= 0 ? "pos" : "neg"));
+    grid.appendChild(statBox("If it does not", sgbp(r.ifLay), "after both bets", r.ifLay >= 0 ? "pos" : "neg"));
+    out.appendChild(grid);
+    var words = type === "free"
+      ? "Whatever happens you keep about " + gbp(r.worst) + ", which is " + pct(r.keep) + " of the free bet." + (back < 3 ? " Free bets keep more of their value at higher odds: look for 4.0 or more." : "")
+      : r.worst >= 0 ? "Whatever happens you make about " + gbp(r.worst) + "."
+      : "Whatever happens you lose about " + gbp(r.worst) + ". That is the cost of unlocking the free bet.";
+    var pl = el("div", "plain"); pl.appendChild(el("b", null, "In plain English")); pl.appendChild(document.createTextNode(words)); out.appendChild(pl);
+    if (type === "qual" && lay < back) out.appendChild(el("div", "msg", "The exchange price is lower than the bookmaker's. That would be a profit with no offer at all, which is rare: check both prices are for the same outcome."));
+    if (lay > back * 1.15) out.appendChild(el("div", "msg", "These two prices are far apart, so this costs more than it should. Look for a closer match."));
+  }
+  /* Outcomes where a bookmaker's price is close to an exchange's. The loaded prices only hold the exchange's BACK price, so the lay price shown is an estimate. */
+  function mbMatches(bookTitle, minOdds, type, stake) {
+    var now = Date.now(), out = [];
+    Object.keys(S.cache).forEach(function (key) {
+      S.cache[key].events.forEach(function (ev) {
+        var t = Date.parse(ev.c); if (!(t > now)) return;
+        var bk = ev.books.filter(function (b) { return b.t === bookTitle && !EXCH[b.k] && !b.sharp; })[0]; if (!bk) return;
+        ev.books.filter(function (b) { return EXCH[b.k]; }).forEach(function (ex) {
+          bk.o.forEach(function (x) {
+            var m = ex.o.filter(function (y) { return y[0] === x[0]; })[0]; if (!m || x[1] < minOdds) return;
+            var r = mbCalc(type, x[1], m[1], stake, EXCH[ex.k]); if (!r) return;
+            out.push({ ev: ev, time: t, name: x[0], back: x[1], lay: m[1], ex: ex.t, comm: EXCH[ex.k], r: r });
+          });
+        });
+      });
+    });
+    out.sort(function (a, b) { return b.r.worst - a.r.worst; });
+    var seen = {}; return out.filter(function (m) { var k = m.ev.id + "|" + m.name; if (seen[k]) return false; seen[k] = 1; return true; }).slice(0, 6);
+  }
+  function renderMbMatches() {
+    var sel = $("mbBook"), cur = sel.value, names = seenBooks().filter(function (n) { return !/exchange|smarkets|matchbook/i.test(n); });
+    sel.textContent = ""; names.forEach(function (n) { var op = el("option", null, n); op.value = n; sel.appendChild(op); });
+    if (names.indexOf(cur) > -1) sel.value = cur;
+    var box = $("mbMatches"); box.textContent = "";
+    if (!names.length) { box.appendChild(el("p", "subnote", "Load some prices first (Today, then Refresh, or the free weekly file under More).")); return; }
+    var type = $("mbType").value, stake = parseFloat($("mbStake").value) || 10, list = mbMatches(sel.value, parseFloat($("mbMin").value) || 1, type, stake);
+    if (!list.length) { box.appendChild(el("p", "subnote", "No outcome in the loaded prices has both this bookmaker and an exchange price at these odds. Try lower minimum odds or another bookmaker.")); return; }
+    list.forEach(function (m) {
+      var row = el("div", "mbmatch"), txt = el("div");
+      txt.appendChild(el("b", null, m.name)); txt.appendChild(document.createTextNode(" · " + m.ev.h + " v " + m.ev.a + " · " + TF.format(new Date(m.time))));
+      txt.appendChild(el("div", "subnote", sel.value + " " + m.back.toFixed(2) + ", " + m.ex + " about " + m.lay.toFixed(2) + ": " + (type === "free" ? "keep about " + gbp(m.r.worst) + " (" + pct(m.r.keep) + ")" : m.r.worst >= 0 ? "make about " + gbp(m.r.worst) : "lose about " + gbp(m.r.worst))));
+      row.appendChild(txt);
+      var use = el("button", "btn small", "Use"); use.type = "button";
+      use.addEventListener("click", function () { $("mbBack").value = m.back.toFixed(2); $("mbLay").value = m.lay.toFixed(2); $("mbEx").value = String(m.comm); renderMbCalc(); var x = $("mbCalcBox"); if (x.scrollIntoView) x.scrollIntoView({ block: "start" }); });
+      row.appendChild(use); box.appendChild(row);
+    });
+    box.appendChild(el("p", "subnote", "The exchange price shown is its back price, used as an estimate. The lay price is usually a little higher, so open the exchange, check the real lay price and that enough money is waiting at it, and type that into the calculator."));
+  }
+  function mbAddOffer() {
+    var m = $("mbAddMsg"); m.textContent = "";
+    var book = $("mbNewBook").value.trim(), name = $("mbNewName").value.trim(), qual = parseFloat($("mbNewQual").value), free = parseFloat($("mbNewFree").value), min = parseFloat($("mbNewMin").value), exp = $("mbNewExp").value;
+    if (!book || !name) { m.appendChild(el("div", "msg", "Enter the bookmaker and a short name for the offer.")); return; }
+    S.mb.offers.push({ id: "o" + Date.now() + Math.floor(Math.random() * 1000), book: book.slice(0, 40), name: name.slice(0, 80), qual: isFinite(qual) && qual > 0 ? qual : 0, free: isFinite(free) && free > 0 ? free : 0, minOdds: isFinite(min) && min > 1 ? min : 0, exp: /^\d{4}-\d{2}-\d{2}$/.test(exp) ? exp : "", step: "todo", q: "", f: "", at: Date.now() });
+    ["mbNewBook", "mbNewName", "mbNewQual", "mbNewFree", "mbNewMin", "mbNewExp"].forEach(function (id) { $(id).value = ""; });
+    save(); renderOffers();
+  }
+
   /* ---------- Phone alerts (optional, through ntfy.sh). Only counts are sent: no teams, stakes or account details. ---------- */
   function ntfySend(title, body) {
     if (!S.ntfy) return Promise.resolve(false);
@@ -2960,6 +3154,9 @@ body.simple .adv { display: none !important; }
     });
   });
   $("keyInput").addEventListener("keydown", function (e) { if (e.key === "Enter") $("keySave").click(); });
+  ["mbType", "mbStake", "mbBack", "mbLay", "mbEx"].forEach(function (id) { $(id).addEventListener("input", function () { renderMbCalc(); if (id === "mbType" || id === "mbStake") renderMbMatches(); }); });
+  ["mbBook", "mbMin"].forEach(function (id) { $(id).addEventListener("input", renderMbMatches); });
+  $("mbAdd").addEventListener("click", mbAddOffer);
   $("ntfySave").addEventListener("click", function () {
     var v = $("ntfyTopic").value.trim(), m = $("ntfyMsg"); m.textContent = "";
     if (v && !/^[A-Za-z0-9_-]{6,64}$/.test(v)) { m.appendChild(el("div", "msg", "Use 6 to 64 letters, numbers, hyphens or underscores.")); return; }
@@ -3326,7 +3523,7 @@ body.simple .adv { display: none !important; }
 
   /* ---------- Backup, navigation ---------- */
   $("bkCopy").addEventListener("click", function () {
-    var data = { app: "betiqlite", v: 2, bets: S.bets, pbets: S.pbets, bankroll: S.bankroll, weekly: S.weekly, myBooks: S.myBooks, totals: S.totals, minOdds: S.minOdds, windowH: S.windowH };
+    var data = { app: "betiqlite", v: 2, bets: S.bets, pbets: S.pbets, bankroll: S.bankroll, weekly: S.weekly, myBooks: S.myBooks, totals: S.totals, minOdds: S.minOdds, windowH: S.windowH, mb: S.mb };
     copyText(JSON.stringify(data), $("bkCopy"));
   });
   $("bkRestore").addEventListener("click", function () {
@@ -3343,6 +3540,7 @@ body.simple .adv { display: none !important; }
     if (isFinite(d.bankroll) && d.bankroll >= 1) S.bankroll = d.bankroll;
     if (isFinite(d.weekly) && d.weekly >= 0) S.weekly = d.weekly;
     if (d.myBooks === null || Array.isArray(d.myBooks)) S.myBooks = d.myBooks;
+    if (d.mb && Array.isArray(d.mb.offers)) S.mb = d.mb;
     S.totals = !!d.totals;
     save(); $("bkText").value = ""; renderAll(); renderSettings(); m.appendChild(el("div", "msg info", "Restored " + d.bets.length + " bets."));
   });
