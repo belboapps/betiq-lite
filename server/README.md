@@ -9,6 +9,7 @@ A small program for an always-on machine that runs Docker. It reads your bet log
 | Closing-price collector | Saves the final fair price about 20 minutes before kick-off for each open match-result bet, so the closing-price score no longer needs the page open | Odds API key |
 | Spending guardian | A monthly line in `spending.txt` (stakes, returns, net) and one warning when the month's stakes pass your limit | Supabase |
 | Morning message | How many bets kick off today and how many are waiting for a result | ntfy topic |
+| Price watcher | Alerts when a bet reaches PLACE, with the page closed. Separate and optional: see below | Odds API key, ntfy topic |
 | Health checker | Says when Supabase, the Odds API key, the page or the backup stops working, and when it is fixed | ntfy topic |
 
 It only reports. It never places a bet, and phone messages carry counts, never amounts.
@@ -46,6 +47,38 @@ It only reports. It never places a bet, and phone messages carry counts, never a
    ```
 
    The monthly money summary is read with `docker exec betiq-agent cat /data/spending.txt`.
+
+## Price watcher (optional, spends credits)
+
+Opens the real BetIQ page in a hidden browser on the server every half hour, so the page's own automatic refresh and
+its own "N bets say PLACE" phone alert work with the page closed. Because it is the page itself, the verdict rules are
+the same ones you see on your phone.
+
+The hidden browser has its own settings, set in `.env`. It cannot see the ones on your phone, so if you have ticked
+particular bookmakers or leagues there, list the same ones in `BETIQ_BOOKS` and `BETIQ_LEAGUES`. It does not know which
+bets you have already logged, your loss limits or your tuned PLACE threshold.
+
+1. In `.env` set `ODDS_API_KEY` and `NTFY_TOPIC`, and look at the watcher lines at the bottom.
+2. Start it:
+
+   ```bash
+   docker compose --profile watcher up -d --build
+   ```
+
+3. See what the last visit did (counts only):
+
+   ```bash
+   docker logs --tail 5 betiq-watcher
+   ```
+
+Credits: one per league each time prices are reloaded. The defaults (two leagues, every six hours) use about 240 a
+month and stop when fewer than 150 remain, so your phone keeps some. It starts again by itself when credits return.
+
+To check it without spending anything, this runs the real page against made-up prices:
+
+```bash
+docker compose --profile watcher run --rm watcher node watcher.js --selftest
+```
 
 ## Good to know
 

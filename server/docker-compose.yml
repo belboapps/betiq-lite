@@ -14,5 +14,27 @@ services:
       - betiq-data:/data
       - ./backups:/backups      # nightly copies of the bet log, kept 30 days
 
+  # Price watcher: opens the BetIQ page in a hidden browser every half hour so its own PLACE alert
+  # works with the page closed. It spends Odds API credits, so it is only started when asked for:
+  #   docker compose --profile watcher up -d --build
+  watcher:
+    build: ./watcher
+    container_name: betiq-watcher
+    restart: unless-stopped
+    profiles: ["watcher"]
+    init: true
+    ipc: host
+    environment:
+      ODDS_API_KEY: ${ODDS_API_KEY:-}
+      NTFY_TOPIC: ${NTFY_TOPIC:-}
+      BETIQ_LEAGUES: ${BETIQ_LEAGUES:-}
+      BETIQ_BOOKS: ${BETIQ_BOOKS:-}
+      BETIQ_WATCH_HOURS: ${BETIQ_WATCH_HOURS:-}
+      BETIQ_MIN_CREDITS: ${BETIQ_MIN_CREDITS:-}
+      BETIQ_KICKOFF: ${BETIQ_KICKOFF:-}
+    volumes:
+      - betiq-watch:/data
+
 volumes:
   betiq-data:
+  betiq-watch:
