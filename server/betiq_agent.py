@@ -112,6 +112,9 @@ def _sb(method, path, body=None, prefer=None):
         raise Problem("sb_down", "Supabase cannot be reached.")
     if status in (401, 403):
         raise Problem("sb_key", "Supabase rejected the server's key.")
+    if status == 404 and "PGRST205" in text:
+        raise Problem("sb_table", "This Supabase project has no bets table. Either it is not the project BetIQ's "
+                                  "cloud backup uses, or supabase/setup.sql has not been run in it.")
     if status >= 400:
         raise Problem("sb_error", "Supabase is returning an error. A free project is paused after a "
                                   "period without use: check it in the Supabase dashboard.")
