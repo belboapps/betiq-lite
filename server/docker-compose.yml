@@ -1,0 +1,18 @@
+# Home server setup. Copy .env.example to .env, fill it in, then:  docker compose up -d --build
+services:
+  agent:
+    build: .
+    container_name: betiq-agent
+    restart: unless-stopped
+    environment:
+      SUPABASE_URL: ${SUPABASE_URL:?Set SUPABASE_URL in the .env file}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY:?Set SUPABASE_SERVICE_KEY in the .env file}
+      ODDS_API_KEY: ${ODDS_API_KEY:-}
+      NTFY_TOPIC: ${NTFY_TOPIC:-}
+      BETIQ_MONTHLY_LIMIT: ${BETIQ_MONTHLY_LIMIT:-}
+    volumes:
+      - betiq-data:/data
+      - ./backups:/backups      # nightly copies of the bet log, kept 30 days
+
+volumes:
+  betiq-data:
