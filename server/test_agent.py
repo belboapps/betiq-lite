@@ -192,6 +192,21 @@ class Rest(unittest.TestCase):
         A._sb = real_sb
         self.assertEqual(list(A.one_pass({}, dt.datetime(2026, 11, 17, 9, 0))), ["sb_missing"])
 
+    def test_pasted_address_is_tidied_and_the_public_key_is_refused(self):
+        real = A.http
+        self.addCleanup(setattr, A, "http", real)
+        self.addCleanup(os.environ.pop, "SUPABASE_URL", None)
+        self.addCleanup(os.environ.pop, "SUPABASE_SERVICE_KEY", None)
+        seen = []
+        A.http = lambda method, url, headers=None, body=None, timeout=20: seen.append(url) or (200, {}, "[]")
+        os.environ.update(SUPABASE_URL="https://abc.supabase.co/rest/v1/", SUPABASE_SERVICE_KEY="sb_secret_x")
+        self.assertEqual(A.fetch_rows(), [])
+        self.assertTrue(seen[0].startswith("https://abc.supabase.co/rest/v1/bets?"))
+        os.environ["SUPABASE_SERVICE_KEY"] = "sb_publishable_x"
+        with self.assertRaises(A.Problem) as c:
+            A.fetch_rows()
+        self.assertEqual(c.exception.key, "sb_key_kind")
+
 
 if __name__ == "__main__":
     unittest.main()

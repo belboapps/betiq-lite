@@ -95,9 +95,14 @@ def notify(title, body):
 
 # ---------- Supabase ----------
 def _sb(method, path, body=None, prefer=None):
-    url, key = os.environ.get("SUPABASE_URL", "").rstrip("/"), os.environ.get("SUPABASE_SERVICE_KEY", "")
+    url, key = os.environ.get("SUPABASE_URL", "").strip(), os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
     if not url or not key:
         raise Problem("sb_missing", "The Supabase address or key is not set on the server.")
+    parts = urllib.parse.urlsplit(url)
+    url = f"{parts.scheme}://{parts.netloc}"        # a pasted address may carry /rest/v1 or a trailing slash
+    if key.startswith("sb_publishable_"):
+        raise Problem("sb_key_kind", "The server has Supabase's publishable key, which cannot read the bet log. "
+                                     "It needs the secret key (it starts sb_secret_) in its .env file.")
     headers = {"apikey": key, "Authorization": "Bearer " + key, "Content-Type": "application/json"}
     if prefer:
         headers["Prefer"] = prefer

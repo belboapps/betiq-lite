@@ -25,7 +25,8 @@ It only reports. It never places a bet, and phone messages carry counts, never a
    nano .env
    ```
 
-   Fill in the Supabase address and the `service_role` key. That key can read and change every row, which is why it
+   Fill in the Supabase address and the secret key (it starts `sb_secret_`; on older projects it is called
+   `service_role`). The publishable or anon key will not work. That key can read and change every row, which is why it
    lives only in this file on your own machine. The other lines are optional.
 
 2. Build and start it.
