@@ -4,7 +4,7 @@ Headless-browser checks of `index.html` against a fake Odds API, at phone width.
 
 ```
 cd tests
-for t in t14 t15 t16 t17 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35; do node $t.js; done
+for t in t14 t15 t16 t17 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36; do node $t.js; done
 ```
 
 Each script prints what it checked; `errs []` at the end means no page errors. t23 takes a mode (`sharp`, `refuse`, `off`, `kick`), t21 and t13-style scripts take `refuse`.
@@ -32,5 +32,6 @@ Each script prints what it checked; `errs []` at the end means no page errors. t
 | t33 | Risk / Reward / Value displays, plain-words line, sortable bets, the match page, the scorecard |
 | t34 | beginner guidance: how-to-place steps, fractional odds, page hints, simpler card in Simple view |
 | t35 | Offers tab for beginners: the guided walk-through from adding an offer to finishing it |
+| t36 | Bet tools: odds converter, each-way calculator, accumulator checker, against hand-worked figures |
 
 Mock data is for testing only and never ships in the page.

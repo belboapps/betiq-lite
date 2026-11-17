@@ -292,6 +292,8 @@ body { padding-bottom: 0; }
 .mbmatch { border-top: 1px solid var(--line); padding: 10px 0; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
 .mbmatch:first-child { border-top: 0; }
 .mbmatch div { min-width: 0; font-size: 14px; }
+.accaleg { align-items: end; margin-bottom: 8px; }
+#toolsBox .learn .body > p { margin: 0; }
 .mbstage { font: 700 16px/1.2 var(--display); text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
 .mbguide { display: flex; flex-direction: column; gap: 8px; }
 .mbguide .howto { margin-top: 0; }
@@ -793,6 +795,13 @@ body.simple .adv { display: none !important; }
           <li><b>Even now it is only an estimate.</b> With over a thousand flagged bets the margin of error was still about 7 points. Recent seasons have far fewer qualifying bets, so the newest evidence is thin.</li>
         </ul>
         <p>So treat betting as paid entertainment, not income. If you only use one or two bookmakers, expect roughly to lose a few percent of what you stake over time, and only stake what you can afford to lose.</p>
+      </section>
+      <section class="panel" id="toolsBox">
+        <h2>Bet tools</h2>
+        <p>Three small calculators for checking a bet before you place it. Nothing here places a bet or uses credits.</p>
+        <details class="learn" id="tOdds"><summary>Odds converter</summary><div class="body" id="tOddsBody"></div></details>
+        <details class="learn" id="tEw"><summary>Each-way calculator</summary><div class="body" id="tEwBody"></div></details>
+        <details class="learn" id="tAcca"><summary>Accumulator checker</summary><div class="body" id="tAccaBody"></div></details>
       </section>
       <section class="panel" id="tourBox"><h2>New here?</h2><p>A short walk-through of how to read the page and stay in control.</p><button class="btn" id="tourAgain" type="button">Show the tour</button></section>
       <section class="panel" id="freeBox">
@@ -3027,6 +3036,7 @@ body.simple .adv { display: none !important; }
   }
 
   function renderSettings() {
+    renderAcca();      /* the accumulator's pick list follows whatever prices are loaded */
     var box = $("leagues"); box.textContent = "";
     var byGroup = {}, order = [];
     S.sports.forEach(function (s) {
@@ -3439,6 +3449,147 @@ body.simple .adv { display: none !important; }
     S.mb.offers.push({ id: "o" + Date.now() + Math.floor(Math.random() * 1000), book: (mbBookTitle(book) || book).slice(0, 40), name: name.slice(0, 80), qual: qual, free: free, minOdds: isFinite(min) && min > 1 ? min : 0, exp: /^\d{4}-\d{2}-\d{2}$/.test(exp) ? exp : "", step: "todo", q: "", f: "", at: Date.now() });
     ["mbNewBook", "mbNewName", "mbNewQual", "mbNewFree", "mbNewMin", "mbNewExp"].forEach(function (id) { $(id).value = ""; });
     save(); renderOffers();
+  }
+
+  /* ---------- Bet tools: odds converter, each-way calculator, accumulator checker ---------- */
+  /* Reads odds however they are written: 2.5, 6/4, evens, or a chance such as 40%. Returns decimal odds, or NaN. */
+  function parseOdds(text) {
+    var t = String(text || "").trim().toLowerCase().replace(/\s+/g, "");
+    if (!t) return NaN;
+    if (t === "evens" || t === "evs" || t === "even") return 2;
+    var m = t.match(/^(\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)$/);
+    if (m) return +m[2] > 0 ? 1 + (+m[1]) / (+m[2]) : NaN;
+    m = t.match(/^(\d+(?:\.\d+)?)%$/);
+    if (m) return +m[1] > 0 && +m[1] < 100 ? 100 / (+m[1]) : NaN;
+    var d = parseFloat(t);
+    return /^\d+(\.\d+)?$/.test(t) && d > 1 ? d : NaN;
+  }
+  /* The nearest standard fraction, and whether it is exact. */
+  function fracNear(dec) {
+    var best = null, gap = Infinity;
+    FRACS.forEach(function (f) { var g = Math.abs(1 + f[0] / f[1] - dec); if (g < gap) { gap = g; best = f; } });
+    return { text: best[0] === best[1] ? "evens" : best[0] + "/" + best[1], exact: gap < 0.005 };
+  }
+  var MARGIN_GUESS = 0.05;      /* a typical bookmaker margin on one football outcome, used when a leg is typed in by hand */
+  function accaCalc(legs, stake) {
+    var odds = 1, chance = 1, singles = 0;
+    legs.forEach(function (l) { var f = l.fair || 1 / (l.odds * (1 + MARGIN_GUESS)); odds *= l.odds; chance *= f; singles += 1 - l.odds * f; });
+    return { odds: odds, chance: chance, fairOdds: 1 / chance, cut: 1 - odds * chance, singles: singles / legs.length, pays: stake * odds, fairPays: stake / chance, avg: stake * (odds * chance - 1) };
+  }
+  function ewCalc(stake, odds, frac) {
+    var winPart = stake * (odds - 1), placePart = stake * (odds - 1) * frac;
+    return { cost: stake * 2, ifWins: winPart + placePart, ifPlaces: placePart - stake, ifLoses: -stake * 2, breakEven: 1 + 1 / frac };
+  }
+  var accaLegs = [];
+  function toolField(grid, label, input) { var l = el("label", null, label); l.appendChild(input); grid.appendChild(l); return input; }
+  function toolInput(type, value, ph) { var i = document.createElement("input"); i.type = type; if (value !== undefined) i.value = value; if (ph) i.placeholder = ph; if (type === "number") { i.step = "0.5"; i.min = "0"; i.setAttribute("inputmode", "decimal"); } else { i.autocomplete = "off"; i.setAttribute("autocapitalize", "off"); } return i; }
+  function initTools() {
+    /* odds converter */
+    var ob = $("tOddsBody"), og = el("div", "mbgrid"), oin = toolField(og, "Odds, any way they are written", toolInput("text", "", "6/4, 2.5, evens or 40%")), oout = el("div");
+    ob.appendChild(og); ob.appendChild(oout);
+    function conv() {
+      oout.textContent = ""; if (!oin.value.trim()) return;
+      var d = parseOdds(oin.value);
+      if (!isFinite(d)) { oout.appendChild(el("div", "msg", "That does not look like odds. Try 6/4, 2.5, evens or 40%.")); return; }
+      var f = fracNear(d), g = el("div", "stats");
+      g.appendChild(statBox("Decimal", d.toFixed(2), "what this app uses"));
+      g.appendChild(statBox("Fraction", (f.exact ? "" : "about ") + f.text, "what most UK apps show"));
+      g.appendChild(statBox("Chance needed", pct(1 / d, 1), "to break even"));
+      g.appendChild(statBox("£10 returns", gbp(10 * d), gbp(10 * (d - 1)) + " profit"));
+      oout.appendChild(g);
+      var pl = el("div", "plain"); pl.appendChild(el("b", null, "In plain English"));
+      pl.appendChild(document.createTextNode("At these odds you break even if it happens " + inN(1 / d).replace("about ", "") + " times. Bet only if you think the real chance is higher than " + pct(1 / d, 0) + ".")); oout.appendChild(pl);
+    }
+    oin.addEventListener("input", conv);
+    /* each-way */
+    var eb = $("tEwBody"), eg = el("div", "mbgrid"), eout = el("div");
+    eb.appendChild(el("p", null, "An each-way bet is two bets of the same size: one on your pick to win, one on it to finish in the places. £5 each way costs £10."));
+    var es = toolField(eg, "Stake each way £", toolInput("number", "5")), eo = toolField(eg, "Odds", toolInput("text", "", "8/1 or 9.0"));
+    var et = document.createElement("select"); [["0.2", "1/5 of the odds"], ["0.25", "1/4 of the odds"], ["0.3333333", "1/3 of the odds"], ["0.5", "1/2 of the odds"]].forEach(function (x) { var op = el("option", null, x[1]); op.value = x[0]; et.appendChild(op); });
+    toolField(eg, "Place part pays", et); eb.appendChild(eg); eb.appendChild(eout);
+    function ew() {
+      eout.textContent = ""; if (!eo.value.trim()) return;
+      var st = parseFloat(es.value), d = parseOdds(eo.value), fr = parseFloat(et.value);
+      if (!(st > 0) || !isFinite(d)) { eout.appendChild(el("div", "msg", "Enter a stake and the odds, for example 8/1 or 9.0.")); return; }
+      var r = ewCalc(st, d, fr), g = el("div", "stats");
+      g.appendChild(statBox("You pay", gbp(r.cost), gbp(st) + " to win, " + gbp(st) + " to place"));
+      g.appendChild(statBox("If it wins", sgbp(r.ifWins), "both parts pay", "pos"));
+      g.appendChild(statBox("If it only places", sgbp(r.ifPlaces), "win part lost, place part pays", r.ifPlaces >= 0 ? "pos" : "neg"));
+      g.appendChild(statBox("If it does neither", sgbp(r.ifLoses), "both parts lost", "neg"));
+      eout.appendChild(g);
+      var pl = el("div", "plain"); pl.appendChild(el("b", null, "In plain English"));
+      pl.appendChild(document.createTextNode(r.ifPlaces >= 0 ? "A place alone still leaves you " + gbp(r.ifPlaces) + " up."
+        : "A place alone loses you " + gbp(r.ifPlaces) + ": at these terms the place part only covers the lost win part when the odds are above " + r.breakEven.toFixed(2) + " (" + fracNear(r.breakEven).text + ")."));
+      eout.appendChild(pl);
+      eout.appendChild(el("p", "subnote", "How many places are paid depends on the race and the bookmaker. Check the terms on the bet slip."));
+    }
+    [es, eo, et].forEach(function (x) { x.addEventListener("input", ew); });
+    /* accumulator */
+    var ab = $("tAccaBody");
+    ab.appendChild(el("p", null, "An accumulator joins several picks into one bet that only pays if every one wins. The bookmaker takes its cut on each pick, and the cuts multiply. This shows what that costs."));
+    var legsBox = el("div"); legsBox.id = "accaLegs"; ab.appendChild(legsBox);
+    var row = el("div", "row"), add = el("button", "btn small", "Add a pick"); add.type = "button"; row.appendChild(add);
+    var sg = el("div", "mbgrid"), stakeIn = toolField(sg, "Stake £", toolInput("number", "5")); stakeIn.id = "accaStake";
+    ab.appendChild(row); ab.appendChild(sg);
+    var aout = el("div"); aout.id = "accaOut"; ab.appendChild(aout);
+    add.addEventListener("click", function () { accaLegs.push({ text: "", odds: NaN, fair: 0, evId: "", label: "" }); renderAcca(); });
+    stakeIn.addEventListener("input", renderAccaOut);
+    accaLegs = [{ text: "", odds: NaN, fair: 0, evId: "", label: "" }, { text: "", odds: NaN, fair: 0, evId: "", label: "" }];
+    renderAcca();
+  }
+  /* Outcomes from the loaded prices, soonest first, for picking accumulator legs without typing. */
+  function accaChoices() {
+    var now = Date.now(), out = [];
+    Object.keys(S.cache).forEach(function (key) {
+      S.cache[key].events.forEach(function (ev) {
+        var t = Date.parse(ev.c); if (!(t > now)) return; var a = analyse(ev); if (!a) return;
+        a.sels.forEach(function (s) { out.push({ id: ev.id + "|" + s.name, evId: ev.id, time: t, odds: s.best, fair: s.fair, label: (s.name === "Draw" ? "Draw" : s.name + " to win") + " · " + ev.h + " v " + ev.a + " · " + s.best.toFixed(2) }); });
+      });
+    });
+    out.sort(function (x, y) { return x.time - y.time; });
+    return out.slice(0, 90);
+  }
+  function renderAcca() {
+    var box = $("accaLegs"); if (!box) return; box.textContent = "";
+    var choices = accaChoices();
+    accaLegs.forEach(function (leg, i) {
+      var g = el("div", "mbgrid accaleg");
+      var sel = document.createElement("select"), o0 = el("option", null, choices.length ? "Choose from loaded prices" : "No prices loaded: type the odds"); o0.value = ""; sel.appendChild(o0);
+      choices.forEach(function (c) { var op = el("option", null, c.label); op.value = c.id; sel.appendChild(op); });
+      if (leg.pick) sel.value = leg.pick;
+      sel.addEventListener("change", function () {
+        var c = choices.filter(function (x) { return x.id === sel.value; })[0];
+        if (c) { leg.pick = c.id; leg.odds = c.odds; leg.fair = c.fair; leg.evId = c.evId; leg.text = c.odds.toFixed(2); leg.label = c.label; }
+        else { leg.pick = ""; leg.fair = 0; leg.evId = ""; leg.label = ""; }
+        renderAcca();
+      });
+      toolField(g, "Pick " + (i + 1), sel);
+      var oi = toolInput("text", leg.text, "odds, e.g. 2.1 or 11/10");
+      oi.addEventListener("input", function () { leg.text = oi.value; leg.odds = parseOdds(oi.value); if (leg.pick) { leg.pick = ""; leg.fair = 0; leg.evId = ""; leg.label = ""; sel.value = ""; } renderAccaOut(); });
+      toolField(g, "Odds", oi);
+      if (accaLegs.length > 2) { var rm = el("button", "btn small", "Remove"); rm.type = "button"; rm.addEventListener("click", function () { accaLegs.splice(i, 1); renderAcca(); }); g.appendChild(rm); }
+      box.appendChild(g);
+    });
+    renderAccaOut();
+  }
+  function renderAccaOut() {
+    var out = $("accaOut"); if (!out) return; out.textContent = "";
+    var legs = accaLegs.filter(function (l) { return isFinite(l.odds) && l.odds > 1; }), stake = parseFloat($("accaStake").value);
+    if (legs.length < 2 || !(stake > 0)) { out.appendChild(el("p", "subnote", "Add at least two picks with odds, and a stake.")); return; }
+    var r = accaCalc(legs, stake), g = el("div", "stats");
+    g.appendChild(statBox("Pays if all win", gbp(r.pays), "odds of " + r.odds.toFixed(2)));
+    g.appendChild(statBox("Chance all win", pct(r.chance, r.chance < 0.2 ? 1 : 0), inN(r.chance)));
+    g.appendChild(statBox("A fair payout", gbp(r.fairPays), "with no bookmaker's cut"));
+    g.appendChild(statBox("Bookmaker's cut", pct(Math.abs(r.cut), 1), r.cut >= 0 ? "of every pound staked" : "in your favour", r.cut > 0 ? "neg" : "pos"));
+    out.appendChild(g);
+    var pl = el("div", "plain"); pl.appendChild(el("b", null, "In plain English"));
+    pl.appendChild(document.createTextNode(r.cut > 0
+      ? "On average every " + gbp(stake) + " staked on this comes back as " + gbp(stake + r.avg) + ", a loss of " + gbp(r.avg) + ". As " + legs.length + " separate bets the same picks would cost about " + pct(Math.max(0, r.singles), 1) + " each. Every pick you add multiplies the bookmaker's cut, which is why bookmakers promote accumulators."
+      : "On average every " + gbp(stake) + " staked on this comes back as " + gbp(stake + r.avg) + ". The prices on these picks are better than the market, so the accumulator is in your favour, but it still loses far more often than it wins."));
+    out.appendChild(pl);
+    var seen = {}, dup = false; legs.forEach(function (l) { if (l.evId) { if (seen[l.evId]) dup = true; seen[l.evId] = 1; } });
+    if (dup) out.appendChild(el("div", "msg", "Two of your picks are from the same match. Their results are linked, so the sums above do not hold, and bookmakers usually will not accept them as a normal accumulator."));
+    if (legs.some(function (l) { return !l.fair; })) out.appendChild(el("p", "subnote", "For odds you typed in, the bookmaker's cut is assumed to be " + pct(MARGIN_GUESS) + " per pick, which is typical for football match results. Picks chosen from loaded prices use the real figure."));
   }
 
   /* ---------- Phone alerts (optional, through ntfy.sh). Only counts are sent: no teams, stakes or account details. ---------- */
@@ -3993,6 +4144,7 @@ body.simple .adv { display: none !important; }
   sbFromHash();
   $("verLine").textContent = "BetIQ Lite " + VERSION + ". If the page looks out of date, add ?" + VERSION.slice(0, 3) + " to the address to skip your phone's saved copy.";
   initCalc();
+  initTools();
   renderAll();
   if (S.key || S.freeMode) renderSettings();
   if (S.helperUrl) { loadHelper(false); helperSettle(false); }
