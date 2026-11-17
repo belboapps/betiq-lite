@@ -3104,6 +3104,24 @@ body.simple .adv { display: none !important; }
       box.appendChild(rb);
     }
   }
+  /* Account health: signs in the logged bets that a bookmaker may limit the account. It is a guess from your own
+     records, not something the bookmaker tells the app. Two or more signs, or a strong closing-price record, is "high". */
+  function acctHealth(mine) {
+    var done = mine.filter(function (b) { return b.status !== "open"; }), signs = [], strong = false;
+    var staked = 0, profit = 0; done.forEach(function (b) { staked += b.stake; profit += b.profit; });
+    if (done.length >= 20 && staked && profit / staked > 0.1) signs.push("You are winning well here (" + signed(profit / staked) + " over " + done.length + " bets).");
+    var clv = mine.map(clvOf).filter(function (c) { return c !== null; });
+    if (clv.length >= 15) {
+      var beat = clv.filter(function (c) { return c > 0; }).length / clv.length, avg = clv.reduce(function (t, c) { return t + c; }, 0) / clv.length;
+      if (beat >= 0.65 && avg > 0.02) { signs.push("You beat the final price on " + Math.round(beat * 100) + "% of " + clv.length + " bets, which is what bookmakers look for."); strong = beat >= 0.75 && clv.length >= 30; }
+    }
+    var st = mine.slice().sort(function (x, y) { return (x.at || x.time || 0) - (y.at || y.time || 0); }).map(function (b) { return +b.stake || 0; }).filter(function (v) { return v > 0; });
+    if (st.length >= 15) {
+      var mean = function (a) { return a.reduce(function (t, v) { return t + v; }, 0) / a.length; }, late = mean(st.slice(-5)), early = mean(st.slice(-15, -5));
+      if (late < early * 0.5) signs.push("Your last five stakes here are less than half your earlier ones.");
+    }
+    return { level: !signs.length ? "ok" : signs.length >= 2 || strong ? "high" : "watch", signs: signs };
+  }
   function renderAccts() {
     var box = $("acctList"); if (!box) return; box.textContent = "";
     var names = {}; seenBooks().forEach(function (n) { names[n] = 1; }); Object.keys(S.accts).forEach(function (n) { names[n] = 1; });
@@ -3123,7 +3141,7 @@ body.simple .adv { display: none !important; }
       var nl = el("label", "field", "Note"), ni = document.createElement("input"); ni.type = "text"; ni.value = a.note || ""; ni.placeholder = "bonus, limit, anything"; ni.addEventListener("change", function () { a.note = ni.value; S.accts[n] = a; save(); }); nl.appendChild(ni); mid.appendChild(nl);
       row.appendChild(mid);
       if (mine.length) row.appendChild(el("div", "subnote", mine.length + " bet" + (mine.length === 1 ? "" : "s") + " logged here" + (done.length ? " · " + done.length + " settled · " + sgbp(profit) + (staked ? " (" + signed(profit / staked) + ")" : "") : "") + "."));
-      if (done.length >= 20 && staked && profit / staked > 0.1 && a.status === "active") row.appendChild(el("div", "msg", "You are winning well here. Bookmakers often limit accounts like this, so spreading bets across several is sensible."));
+      if (a.status === "active") { var hl = acctHealth(mine); if (hl.signs.length) row.appendChild(el("div", "msg", (hl.level === "high" ? "Likely to be limited. " : "Worth watching. ") + hl.signs.join(" ") + " Spreading bets across several bookmakers is sensible. If your stake is cut or refused, set this account to Limited.")); }
       box.appendChild(row);
     });
     box.appendChild(el("p", "subnote", "Total across your accounts: " + gbp(total) + ". " + (S.accts && Object.keys(S.accts).some(function (k) { return S.accts[k].status === "limited" || S.accts[k].status === "closed"; }) ? "Limited and closed accounts are left out of the bets suggested." : "")));
