@@ -4,7 +4,7 @@ Headless-browser checks of `index.html` against a fake Odds API, at phone width.
 
 ```
 cd tests
-for t in t14 t15 t16 t17 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30; do node $t.js; done
+for t in t14 t15 t16 t17 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31; do node $t.js; done
 ```
 
 Each script prints what it checked; `errs []` at the end means no page errors. t23 takes a mode (`sharp`, `refuse`, `off`, `kick`), t21 and t13-style scripts take `refuse`.
@@ -27,5 +27,6 @@ Each script prints what it checked; `errs []` at the end means no page errors. t
 | t29 | helper auto-load and the My plan guide |
 | t30 | free results through the helper |
 | t28 | exchange yardstick, free weekly file (pass a real fixtures.csv as an argument to test it), credit saver |
+| t31 | evidence that matches your bookmakers, pounds outlook, STRONG EVIDENCE badge, minimum-chance filter, phone alerts |
 
 Mock data is for testing only and never ships in the page.

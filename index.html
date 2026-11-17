@@ -579,6 +579,9 @@ body.simple .adv { display: none !important; }
         <label for="fMinScore">Minimum BetIQ score
           <select id="fMinScore"><option value="0">Any</option><option value="50">50</option><option value="60">60</option><option value="70">70</option></select>
         </label>
+        <label for="fChance">Minimum chance of winning
+          <select id="fChance"><option value="0">Any</option><option value="0.3">30%</option><option value="0.5">50% (safer bets)</option></select>
+        </label>
       </div>
       </details>
       <div class="chips" id="groupChips" role="group" aria-label="Sport"></div>
@@ -642,6 +645,9 @@ body.simple .adv { display: none !important; }
       <div id="sharpMsg" class="adv"></div>
       <h2>Automatic</h2>
       <label class="check"><input type="checkbox" id="autoOn"> Refresh odds when I open this page</label>
+      <p class="subnote">Phone alert when a bet says PLACE: install the free ntfy app, subscribe to a long random topic name, and enter the same name here. Alerts are sent only while this page is open, and say how many bets qualify, nothing else. Anyone who knows the name can read them, so keep it private.</p>
+      <div class="row"><input id="ntfyTopic" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="my-long-random-topic" aria-label="ntfy topic name"><button class="btn" id="ntfySave" type="button">Save and test</button></div>
+      <div id="ntfyMsg"></div>
       <label class="check"><input type="checkbox" id="autoKick"> Also refresh a league's prices when I open the page within an hour of one of its matches (1 credit per league, 2 with goals)</label>
       <div class="filters">
         <label for="autoHours">Only if the odds are older than
@@ -777,7 +783,7 @@ body.simple .adv { display: none !important; }
   var API = "https://api.the-odds-api.com/v4";
   var DEFAULTS = { key: "", selected: [], mode: "value", minOdds: 1.3, windowH: 72, group: "all",
                    sports: [], sportsAt: 0, cache: {}, remaining: null, used: null, picked: false,
-                   bankroll: 100, weekly: 0, league: "all", sugg: [], exYard: true, helperUrl: "", helperAt: 0, helperResAt: 0, planDone: false, freeMode: false, freeInfo: null, series: {}, accts: {}, fMaxOdds: 0, fMinEdge: 0, fMinScore: 0, live: null, simple: true, recAt: 0, autoKick: true, sharp: false, sharpBad: false, placeMin: 60, tuneN: 0, tomb: [], sb: { url: "", key: "", email: "", session: null, last: 0, status: "" }, extras: true, extraMax: 12, extraFreshH: 3, lossLimit: 0, lossStreak: 5, tour: false, afKey: "", newsOn: true, news: {}, afUse: { d: "", n: 0 }, afStatus: "", xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
+                   bankroll: 100, weekly: 0, league: "all", sugg: [], exYard: true, helperUrl: "", helperAt: 0, helperResAt: 0, planDone: false, freeMode: false, freeInfo: null, series: {}, accts: {}, fMaxOdds: 0, fMinEdge: 0, fMinScore: 0, fChance: 0, ntfy: "", ntfySeen: [], live: null, simple: true, recAt: 0, autoKick: true, sharp: false, sharpBad: false, placeMin: 60, tuneN: 0, tomb: [], sb: { url: "", key: "", email: "", session: null, last: 0, status: "" }, extras: true, extraMax: 12, extraFreshH: 3, lossLimit: 0, lossStreak: 5, tour: false, afKey: "", newsOn: true, news: {}, afUse: { d: "", n: 0 }, afStatus: "", xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
   var GROUPS = { "Soccer": "Football", "American Football": "US football", "Ice Hockey": "Ice hockey",
                  "Mixed Martial Arts": "MMA", "Rugby League": "Rugby", "Rugby Union": "Rugby", "Aussie Rules": "Aussie rules" };
   var DEFAULT_FOOTBALL = ["soccer_epl", "soccer_efl_champ", "soccer_uefa_champs_league", "soccer_uefa_europa_league"];
@@ -805,7 +811,7 @@ body.simple .adv { display: none !important; }
       var s = {}; for (var k in DEFAULTS) s[k] = (o && o[k] !== undefined) ? o[k] : DEFAULTS[k];
       if (!Array.isArray(s.bets)) s.bets = [];
       if (!Array.isArray(s.pbets)) s.pbets = [];
-      ['xmBad', 'xmOK', 'clog', 'tomb', 'sugg'].forEach(function (k) { if (!Array.isArray(s[k])) s[k] = []; });
+      ['xmBad', 'xmOK', 'clog', 'tomb', 'sugg', 'ntfySeen'].forEach(function (k) { if (!Array.isArray(s[k])) s[k] = []; });
       ['series', 'accts'].forEach(function (k) { if (!s[k] || typeof s[k] !== 'object') s[k] = {}; });
       if (!s.sb || typeof s.sb !== 'object') s.sb = { url: '', key: '', email: '', session: null, last: 0, status: '' };
       if (!o || !o.ver || o.ver < 2) s.mode = "value";   /* v2: Best bets is the default view */
@@ -826,6 +832,19 @@ body.simple .adv { display: none !important; }
     var a = S.accts && S.accts[title];
     if (a && a.status && a.status !== "active") return false;     /* limited or closed accounts are not offered as places to bet */
     return !S.myBooks || S.myBooks.indexOf(title) > -1;
+  }
+  /* How many bookmakers you can actually bet with. With fewer than three, the "best price across bookmakers" history does not describe your bets:
+     the single-bookmaker figures do. Everything that quotes past results goes through evidStats so the two can never disagree. */
+  function usableBooks() { return seenBooks().filter(allowed).length; }
+  function fewBooks() { return seenBooks().length > 0 && usableBooks() < 3; }
+  function evidStats(c) {
+    var one = fewBooks() && typeof c.roiB === "number" && typeof c.ciB === "number";
+    return { roi: one ? c.roiB : c.roi, ci: one ? c.ciB : c.ci, one: one };
+  }
+  function evidFor(p) {
+    var s = p.pick, key = p.group !== "Football" ? null : s.market === "totals" ? "goals" : s.market ? null : "h2h"; if (!key) return null;
+    var tier = s.fair >= 0.5 ? "safer" : s.fair >= 0.3 ? "mid" : "long", c = EVID[key + "|" + tier + "|" + evidBucket(s.ev)];
+    return c && c.n >= 100 ? { c: c, key: key, tier: tier, es: evidStats(c) } : null;
   }
   function eff(price, k) { var c = EXCH[k]; return c ? 1 + (price - 1) * (1 - c) : price; }
 
@@ -1324,6 +1343,7 @@ body.simple .adv { display: none !important; }
     if (!raw) {   /* the user's saved filters: they shape what is shown, never what the track record logs */
       out = out.filter(function (p) {
         if (S.fMaxOdds > 0 && p.pick.best > S.fMaxOdds) return false;
+        if (S.fChance > 0 && p.pick.fair < S.fChance) return false;
         if (mode === "value" && S.fMinEdge > 0 && p.pick.ev < S.fMinEdge) return false;
         if (mode === "value" && S.fMinScore > 0 && scoreFor(p).total < S.fMinScore) return false;
         return true;
@@ -1474,12 +1494,14 @@ body.simple .adv { display: none !important; }
   var EV_TIER = { safer: "50% or better", mid: "30% to 50%", long: "under 30%" };
   var EV_EDGE = { none: "no price edge", tiny: "an edge of up to 1%", small: "an edge of 1% to 3%", value: "an edge of 3% to 6%", big: "an edge of 6% to 12%", huge: "an edge over 12%" };
   function evidBox(p) {
-    var s = p.pick, key = p.group !== "Football" ? null : s.market === "totals" ? "goals" : s.market ? null : "h2h"; if (!key) return null;
-    var tier = s.fair >= 0.5 ? "safer" : s.fair >= 0.3 ? "mid" : "long", c = EVID[key + "|" + tier + "|" + evidBucket(s.ev)];
-    if (!c || c.n < 100) return null;
+    var s = p.pick, f = evidFor(p); if (!f) return null;
+    var key = f.key, tier = f.tier, c = f.c, es = f.es;
     function sp(x) { return (x >= 0 ? "+" : "") + (x * 100).toFixed(1) + "%"; }
     var box = el("div", "plain"); box.appendChild(el("b", null, "How bets like this did in the past"));
-    var verdict = c.roi + c.ci < 0 ? "On past matches, bets like this lost money." : c.roi - c.ci > 0 ? "On past matches, bets like this made money." : "Too close to call: it could have been a profit or a loss.";
+    var verdict = es.roi + es.ci < 0 ? "On past matches, bets like this lost money." : es.roi - es.ci > 0 ? "On past matches, bets like this made money." : "Too close to call: it could have been a profit or a loss.";
+    if (es.one) verdict = "You can bet with fewer than three bookmakers, so the single-bookmaker figure is the one that applies to you. " + verdict;
+    var stake = stakeFor(s).amount;
+    if (stake >= 0.5) verdict += " At your stake of " + gbp(stake) + ", 100 bets like this came to about " + sgbp(100 * stake * es.roi) + ", and anywhere from " + sgbp(100 * stake * (es.roi - es.ci)) + " to " + sgbp(100 * stake * (es.roi + es.ci)) + " would not be surprising.";
     box.appendChild(document.createTextNode(c.n.toLocaleString("en-GB") + " past " + (key === "goals" ? "over/under 2.5 goals" : "match winner") + " bets with a chance of " + EV_TIER[tier] + " and " + EV_EDGE[evidBucket(s.ev)] +
       " won " + pct(c.won) + " of the time (the chances said " + pct(c.pred) + "). Return on money staked: " + sp(c.roi) + " at the best price" + (c.roiB !== null && c.roiB !== undefined ? ", " + sp(c.roiB) + " at a single bookmaker" : "") +
       ", give or take " + (c.ci * 100).toFixed(1) + " points. " + verdict + " Past results never guarantee the future."));
@@ -1961,10 +1983,11 @@ body.simple .adv { display: none !important; }
     if (p.group !== "Football") why.push([0, "No past-results test for this sport yet: the history covers football only"]);
     var c = key ? EVID[key + "|" + (s.fair >= 0.5 ? "safer" : s.fair >= 0.3 ? "mid" : "long") + "|" + evidBucket(s.ev)] : null;
     if (c && c.n >= 100) {
-      if (c.roi - c.ci > 0) { ev += 25; why.push([1, "Bets like this made money on past matches"]); }
-      else if (c.roi > 0) { ev += 12; why.push([1, "Bets like this were slightly ahead on past matches"]); }
-      else if (c.roi + c.ci < 0) { ev -= 15; why.push([-1, "Bets like this lost money on past matches"]); }
-      else why.push([0, "Past results for bets like this were about level"]);
+      var es = evidStats(c), at1 = es.one ? " at a single bookmaker's prices, which is what you have" : "";
+      if (es.roi - es.ci > 0) { ev += 25; why.push([1, "Bets like this made money on past matches" + at1]); }
+      else if (es.roi > 0) { ev += 12; why.push([1, "Bets like this were slightly ahead on past matches" + at1]); }
+      else if (es.roi + es.ci < 0) { ev -= 15; why.push([-1, "Bets like this lost money on past matches" + at1]); }
+      else why.push([0, "Past results for bets like this were about level" + at1]);
     } else if (key) why.push([0, "Not enough past bets of this kind to judge"]);
     if (!s.market && s.yard) {
       if (s.yard === "the bookmaker average") { ev -= 8; why.push([-1, "The fair price is only a bookmaker average: no busy exchange market to check it against"]); }
@@ -2270,6 +2293,7 @@ body.simple .adv { display: none !important; }
   }
   function badgesFor(p, host) {
     if (p.isValue) host.appendChild(el("span", "badge value", "VALUE"));
+    var ef = evidFor(p); if (p.isValue && ef && ef.es.roi - ef.es.ci > 0) host.appendChild(el("span", "badge value", "STRONG EVIDENCE"));
     if (p.suspect) host.appendChild(el("span", "badge warn", "CHECK PRICE"));
     if (moveInfo(p)) host.appendChild(el("span", "badge move", "PRICE MOVED"));
     if (newsFlag(p)) host.appendChild(el("span", "badge warn", "TEAM NEWS"));
@@ -2738,7 +2762,7 @@ body.simple .adv { display: none !important; }
     });
     if (!order.length) box.appendChild(el("p", null, "No leagues loaded yet. Press Reload leagues."));
     $("autoOn").checked = !!S.auto; $("autoHours").value = String(S.autoHours); $("totalsOn").checked = !!S.totals;
-    $("exYard").checked = !!S.exYard; $("simpleOn").checked = !!S.simple; $("sharpOn").checked = !!S.sharp; $("autoKick").checked = !!S.autoKick; renderSharpMsg();
+    $("exYard").checked = !!S.exYard; $("simpleOn").checked = !!S.simple; $("sharpOn").checked = !!S.sharp; $("autoKick").checked = !!S.autoKick; $("ntfyTopic").value = S.ntfy || ""; renderSharpMsg();
     $("extrasOn").checked = !!S.extras; $("extraMax").value = String(S.extraMax); $("extraFresh").value = String(S.extraFreshH);
     $("lossLimit").value = S.lossLimit ? String(S.lossLimit) : ""; $("lossStreak").value = String(S.lossStreak);
     renderAccts(); renderFree(); $("helperUrl").value = S.helperUrl || ""; renderHelper();
@@ -2859,10 +2883,11 @@ body.simple .adv { display: none !important; }
       ? "Best bet first, ranked by BetIQ score. Any outcome counts, not just the winner." + (S.totals ? "" : " Turn on goals prices in Settings to include over/under bets.")
       : "Sorted by chance of winning. Favourites win often but pay little.";
     var wl = { 12: "12 hours", 24: "24 hours", 48: "2 days", 72: "3 days", 168: "7 days" }[S.windowH] || (S.windowH + " hours");
-    $("fMaxOdds").value = String(S.fMaxOdds); $("fMinEdge").value = String(S.fMinEdge); $("fMinScore").value = String(S.fMinScore);
+    $("fMaxOdds").value = String(S.fMaxOdds); $("fMinEdge").value = String(S.fMinEdge); $("fMinScore").value = String(S.fMinScore); $("fChance").value = String(S.fChance);
     $("filterSum").textContent = "Filters: budget £" + S.bankroll + " · min odds " + (+S.minOdds === 1 ? "any" : (+S.minOdds).toFixed(2)) + " · next " + wl +
-      (S.fMaxOdds ? " · max odds " + S.fMaxOdds : "") + (S.fMinEdge ? " · edge " + (S.fMinEdge * 100) + "%+" : "") + (S.fMinScore ? " · score " + S.fMinScore + "+" : "") + " (saved)";
+      (S.fMaxOdds ? " · max odds " + S.fMaxOdds : "") + (S.fMinEdge ? " · edge " + (S.fMinEdge * 100) + "%+" : "") + (S.fMinScore ? " · score " + S.fMinScore + "+" : "") + (S.fChance ? " · chance " + Math.round(S.fChance * 100) + "%+" : "") + " (saved)";
     renderCredits(); renderStatus(); renderChips(); renderView();
+    notifyPlace();
     if (!$("tab-more").hidden) { renderCreditLog(); renderMkCheck(); }
   }
 
@@ -2893,6 +2918,22 @@ body.simple .adv { display: none !important; }
       else showAlert("Prices refreshed for " + keys.map(function (k) { return (S.sports.filter(function (x) { return x.key === k; })[0] || {}).title || k; }).join(", ") + " because a match starts within the hour. Verdicts are up to date.", true);
     });
   }
+  /* ---------- Phone alerts (optional, through ntfy.sh). Only counts are sent: no teams, stakes or account details. ---------- */
+  function ntfySend(title, body) {
+    if (!S.ntfy) return Promise.resolve(false);
+    return fetch("https://ntfy.sh/" + encodeURIComponent(S.ntfy), { method: "POST", body: body, headers: { Title: title } }).then(function (r) { return r.ok; }, function () { return false; });
+  }
+  var ntfyStamp = null;
+  function notifyPlace() {
+    if (!S.ntfy) return;
+    var stamp = Object.keys(S.cache).map(function (k) { return k + ":" + S.cache[k].at; }).join("|");
+    if (stamp === ntfyStamp) return;      /* nothing new loaded since the last look */
+    ntfyStamp = stamp;
+    var fresh = buildPicks("value", true).filter(function (p) { return decision(p).k === "place" && S.ntfySeen.indexOf(p.id) < 0; });
+    if (!fresh.length) return;
+    fresh.forEach(function (p) { S.ntfySeen.push(p.id); }); S.ntfySeen = S.ntfySeen.slice(-300); save();
+    ntfySend("BetIQ: " + fresh.length + (fresh.length === 1 ? " bet says PLACE" : " bets say PLACE"), "Open BetIQ Lite and check the price before betting.");
+  }
   function autoRun() {
     if (!S.key || !S.auto || busy || !creditsOk()) return Promise.resolve();
     var p = stale() ? refreshAll({ extras: false }) : (S.autoKick ? refreshLeagues(kickoffKeys()) : Promise.resolve());
@@ -2919,10 +2960,17 @@ body.simple .adv { display: none !important; }
     });
   });
   $("keyInput").addEventListener("keydown", function (e) { if (e.key === "Enter") $("keySave").click(); });
+  $("ntfySave").addEventListener("click", function () {
+    var v = $("ntfyTopic").value.trim(), m = $("ntfyMsg"); m.textContent = "";
+    if (v && !/^[A-Za-z0-9_-]{6,64}$/.test(v)) { m.appendChild(el("div", "msg", "Use 6 to 64 letters, numbers, hyphens or underscores.")); return; }
+    S.ntfy = v; save();
+    if (!v) { m.appendChild(el("div", "subnote", "Phone alerts are off.")); return; }
+    ntfySend("BetIQ test", "Phone alerts are working.").then(function (ok) { m.appendChild(el("div", ok ? "subnote" : "msg", ok ? "Sent. Check your phone." : "Could not send. Check your connection and the topic name.")); });
+  });
   $("modeLikely").addEventListener("click", function () { S.mode = "likely"; save(); renderAll(); });
   $("modeBal").addEventListener("click", function () { S.mode = "balanced"; save(); renderAll(); });
   $("modeValue").addEventListener("click", function () { S.mode = "value"; save(); renderAll(); });
-  [["fMaxOdds", +1], ["fMinEdge", +1], ["fMinScore", +1]].forEach(function (x) { $(x[0]).addEventListener("change", function (e) { S[x[0]] = +e.target.value; save(); renderAll(); }); });
+  [["fMaxOdds", +1], ["fMinEdge", +1], ["fMinScore", +1], ["fChance", +1]].forEach(function (x) { $(x[0]).addEventListener("change", function (e) { S[x[0]] = +e.target.value; save(); renderAll(); }); });
   $("minOdds").addEventListener("change", function (e) { S.minOdds = +e.target.value; save(); renderView(); });
   $("windowH").addEventListener("change", function (e) { S.windowH = +e.target.value; save(); renderView(); });
   $("weeklyIn").addEventListener("change", function (e) {
