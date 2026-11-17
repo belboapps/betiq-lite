@@ -9,6 +9,8 @@ few minutes:
   - Spending guardian: a monthly summary of money staked and returned, and one warning when
     the month's stakes pass BETIQ_MONTHLY_LIMIT.
   - Morning message: how many bets kick off today and how many are waiting for a result.
+  - Weekly review: each week, results and the closing-price score for real and practice bets.
+  - Tipster tracker: rates tipsters from tips you forward (see tipsters.py). Needs TIPS_TOPIC.
   - Health checker: says when Supabase, the Odds API key, the page or the backup has stopped
     working, once, and again when it is fixed.
 
@@ -24,6 +26,8 @@ import traceback
 import urllib.error
 import urllib.parse
 import urllib.request
+
+import tipsters
 
 EVERY = 5 * 60                 # seconds between passes
 CLOSE_WINDOW = 25 * 60000      # collect a closing price this long before kick-off (milliseconds)
@@ -315,6 +319,63 @@ def guardian(bets, today, state):
     return out
 
 
+# ---------- Weekly review ----------
+def clv_of(b):
+    """How much better the odds taken were than the final fair price. Only trusted when the
+    price was saved within three hours of kick-off, as on the page."""
+    c = b.get("close")
+    if not c or ((b.get("time") or 0) - (c.get("at") or 0)) / 3600000 > 3:
+        return None
+    return b.get("odds", 0) * c.get("f", 0) - 1 + (c.get("r") or 0)
+
+
+def review_block(label, bets, since_ms):
+    done = [b for b in bets if b.get("status") in ("won", "lost")]
+    week = [b for b in done if (b.get("settledAt") or 0) >= since_ms]
+
+    def line(name, group):
+        if not group:
+            return f"  {name}: no settled bets."
+        staked = sum(float(b.get("stake") or 0) for b in group)
+        profit = sum(float(b.get("profit") or 0) for b in group)
+        clv = [c for c in map(clv_of, group) if c is not None]
+        return (f"  {name}: {len(group)} settled, {sum(b['status'] == 'won' for b in group)} won, "
+                f"£{staked:.2f} staked, £{profit:+.2f}"
+                + (f" ({profit / staked * 100:+.1f}%)" if staked else "")
+                + (f". Beat the final price on {sum(c > 0 for c in clv)} of {len(clv)}, "
+                   f"by {sum(clv) / len(clv) * 100:+.1f}% on average" if clv else ". No final prices saved")
+                + ".")
+    out = [label, line("This week", week), line("All time", done)]
+    clv = [c for c in map(clv_of, done) if c is not None]
+    if len(done) < 100:
+        out.append(f"  Too early to judge on results: {len(done)} settled bets, and luck dominates under about 100.")
+    if len(clv) >= 30:
+        out.append("  Beating the final price is the benchmark: on average you "
+                   + ("are ahead of it, which is the best sign there is." if sum(clv) / len(clv) > 0
+                      else "are behind it, which usually means losing in the long run."))
+    return out, len(week), sum(1 for c in map(clv_of, week) if c is not None and c > 0)
+
+
+def weekly_review(rows, now, state):
+    """On or after Monday, once a week: the last seven days and the whole record, real and practice
+    bets apart, written to weekly.txt. Returns the phone message (counts only) or None."""
+    week = "%d-%02d" % now.date().isocalendar()[:2]
+    if state.get("review") == week:
+        return None
+    state["review"] = week
+    since = now_ms() - 7 * 86400000
+    real, n_real, beat_real = review_block("Real money", live_bets(rows, practice=False), since)
+    prac, n_prac, _ = review_block("Practice", live_bets(rows, practice=True), since)
+    os.makedirs(DATA, exist_ok=True)
+    with open(os.path.join(DATA, "weekly.txt"), "a") as f:
+        f.write(f"Week to {now.date().isoformat()}\n" + "\n".join(real + prac) + "\n\n")
+    if not n_real and not n_prac:
+        return None
+    return (f"Your weekly review is ready: {n_real} real bet{'s' if n_real != 1 else ''} and "
+            f"{n_prac} practice bet{'s' if n_prac != 1 else ''} settled"
+            + (f", {beat_real} beat the final price." if n_real else "."))
+
+
 # ---------- Morning message ----------
 def briefing(bets, now, state):
     today = now.date().isoformat()
@@ -384,6 +445,15 @@ def one_pass(state, now=None):
         msg = briefing(real, now, state)
         if msg:
             notify("BetIQ this morning", msg)
+        msg = weekly_review(rows, now, state)
+        if msg:
+            notify("BetIQ", msg)
+    try:
+        tipped = tipsters.run(http, demargin, DATA, now_ms())
+        if tipped and (tipped["added"] or tipped["settled"]):
+            print(f"tips: {tipped['added']} added, {tipped['settled']} settled, {tipped['tips']} in all", flush=True)
+    except Exception:
+        traceback.print_exc()
     last_ok = state.get("backup_ok")
     if last_ok and (now.date() - dt.date.fromisoformat(last_ok)).days > 2:
         found["backup"] = "The bet log backup has not worked for more than two days."

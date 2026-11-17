@@ -10,6 +10,7 @@ services:
       ODDS_API_KEY: ${ODDS_API_KEY:-}
       NTFY_TOPIC: ${NTFY_TOPIC:-}
       BETIQ_MONTHLY_LIMIT: ${BETIQ_MONTHLY_LIMIT:-}
+      TIPS_TOPIC: ${TIPS_TOPIC:-}
     volumes:
       - betiq-data:/data
       - ./backups:/backups      # nightly copies of the bet log, kept 30 days

@@ -2,7 +2,7 @@
 FROM python:3.12-slim
 WORKDIR /app
 RUN pip install --no-cache-dir tzdata
-COPY betiq_agent.py ./
+COPY betiq_agent.py tipsters.py ./
 ENV BETIQ_DATA=/data BETIQ_BACKUP_DIR=/backups PYTHONUNBUFFERED=1
 VOLUME /data
 CMD ["python", "betiq_agent.py"]

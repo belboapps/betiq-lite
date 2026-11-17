@@ -208,5 +208,122 @@ class Rest(unittest.TestCase):
         self.assertEqual(c.exception.key, "sb_key_kind")
 
 
+class Weekly(unittest.TestCase):
+    def test_review_written_once_a_week_with_counts_only_on_the_phone(self):
+        real = A.now_ms
+        self.addCleanup(setattr, A, "now_ms", real)
+        A.now_ms = lambda: NOW
+        close = dict(f=0.55, at=NOW - 86400000 - 3600000)
+        rows = [row(bet("1", status="won", profit=10, settledAt=NOW - 3600000, time=NOW - 86400000, close=close)),
+                row(bet("2", status="lost", profit=-10, settledAt=NOW - 30 * 86400000)),
+                row(bet("3", status="won", profit=5, settledAt=NOW - 3600000), practice=True)]
+        state = {}
+        msg = A.weekly_review(rows, dt.datetime(2026, 11, 23, 8, 0), state)
+        self.assertEqual(msg, "Your weekly review is ready: 1 real bet and 1 practice bet settled, 1 beat the final price.")
+        self.assertNotIn("£", msg)
+        self.assertIsNone(A.weekly_review(rows, dt.datetime(2026, 11, 24, 8, 0), state))
+        with open(os.path.join(A.DATA, "weekly.txt")) as f:
+            text = f.read()
+        self.assertIn("This week: 1 settled, 1 won, £10.00 staked, £+10.00 (+100.0%). Beat the final price on 1 of 1, by +10.0%", text)
+        self.assertIn("All time: 2 settled, 1 won, £20.00 staked, £+0.00", text)
+        self.assertIn("Too early to judge on results: 2 settled bets", text)
+
+    def test_closing_score_ignores_prices_saved_too_early(self):
+        self.assertIsNone(A.clv_of(bet("1", close=dict(f=0.55, at=NOW - 5 * 3600000))))
+        self.assertAlmostEqual(A.clv_of(bet("1", close=dict(f=0.55, at=NOW))), 0.1)
+
+
+FIX = "Div,Date,Time,HomeTeam,AwayTeam\nE0,21/11/2026,15:00,Arsenal,Everton\nE0,21/11/2026,17:30,Man United,Nott'm Forest\n"
+RES = ("Div,Date,Time,HomeTeam,AwayTeam,FTHG,FTAG,FTR,AvgCH,AvgCD,AvgCA,BFECH,BFECD,BFECA\n"
+       "E0,21/11/2026,15:00,Arsenal,Everton,2,0,H,1.60,4.2,6.0,1.62,4.4,6.6\n"
+       "E0,21/11/2026,17:30,Man United,Nott'm Forest,1,1,D,2.0,3.5,3.8,,,\n")
+
+
+class Tipsters(unittest.TestCase):
+    def setUp(self):
+        import tipsters
+        self.T = tipsters
+        self.data = tempfile.mkdtemp()
+        os.environ["TIPS_TOPIC"] = "tips-topic"
+        self.addCleanup(os.environ.pop, "TIPS_TOPIC", None)
+        self.ko = tipsters.kickoff_ms("21/11/2026", "15:00")
+        self.msgs, self.asked = [], []
+
+    def http(self, method, url, headers=None, body=None, timeout=20):
+        self.asked.append(url)
+        if "ntfy.sh" in url:
+            since = urllib_since(url)
+            ids = [m["id"] for m in self.msgs]
+            new = self.msgs[ids.index(since) + 1:] if since in ids else self.msgs
+            return 200, {}, "\n".join(json.dumps(dict(m, event="message")) for m in new)
+        if url.endswith("/fixtures.csv"):
+            return 200, {}, "\ufeff" + FIX
+        if "/mmz4281/2627/E0.csv" in url:
+            return 200, {}, RES
+        return 404, {}, ""
+
+    def post(self, mid, secs, text):
+        self.msgs.append(dict(id=mid, time=secs, message=text))
+
+    def test_parsing(self):
+        T = self.T
+        self.assertEqual(T.parse_tip("Sam; Arsenal v Everton; Arsenal; 2.10"),
+                         dict(tipster="Sam", home="Arsenal", away="Everton", sel="Arsenal", odds=2.1))
+        self.assertEqual(T.parse_tip("Sam; Arsenal vs Everton; draw; 3,5")["odds"], 3.5)
+        for bad in ("hello", "Sam; Arsenal Everton; Arsenal; 2", "Sam; A v B; A; evens", "Sam; A v B; A; 1.0", "; A v B; A; 2"):
+            self.assertIsNone(T.parse_tip(bad), bad)
+        self.assertTrue(T.same_team("Arsenal FC", "arsenal"))
+        self.assertTrue(T.same_team("Nottm Forest", "Nott'm Forest"))
+        self.assertFalse(T.same_team("Arsenal", "Everton"))
+        self.assertEqual(T.season_code(self.ko), "2627")
+        self.assertEqual(T.season_code(T.kickoff_ms("10/03/2027", "20:00")), "2627")
+
+    def test_tip_is_logged_settled_and_rated(self):
+        T, day = self.T, 86400000
+        before = self.ko // 1000 - 7200
+        self.post("a1", before, "Sam; Arsenal v Everton; Arsenal; 1.80")
+        self.post("a2", before, "Sam; Real Madrid v Barcelona; Barcelona; 2.2")       # not in the fixtures file
+        self.post("a3", before, "Sam; Man Utd v Nottingham Forest; Manchester United; 2.2")   # everyday names
+        self.post("a4", self.ko // 1000 + 600, "Late Larry; Arsenal v Everton; Arsenal; 1.80")   # after kick-off
+        self.post("a5", before, "not a tip at all")
+        out = T.run(self.http, A.demargin, self.data, self.ko - 3600000)
+        self.assertEqual(out["added"], 4)
+        book = T.load(self.data)
+        self.assertEqual([t["status"] for t in book["tips"]], ["open", "unmatched", "open", "open"])
+        self.assertEqual([t.get("counted") for t in book["tips"]], [True, None, True, False])
+        self.assertEqual(book["since"], "a5")
+        self.assertEqual(T.run(self.http, A.demargin, self.data, self.ko - 1800000)["added"], 0)   # nothing read twice
+        self.assertEqual(T.run(self.http, A.demargin, self.data, self.ko + 3600000)["settled"], 0)  # too soon
+        out = T.run(self.http, A.demargin, self.data, self.ko + day)
+        self.assertEqual(out["settled"], 3)
+        tips = T.load(self.data)["tips"]
+        self.assertEqual([t["status"] for t in tips], ["won", "unmatched", "lost", "won"])
+        fair_home = A.demargin([1 / 1.62, 1 / 4.4, 1 / 6.6])[0]                                    # busy exchange close
+        self.assertAlmostEqual(tips[0]["clv"], round(1.8 * fair_home - 1, 4))
+        self.assertIn("clv", tips[2])                                                              # bookmaker average close
+        r = T.ratings(tips)
+        self.assertEqual(sorted(r), ["Sam"])                                                       # the late tip is never counted
+        self.assertEqual((r["Sam"]["n"], r["Sam"]["wins"]), (2, 1))
+        self.assertAlmostEqual(r["Sam"]["roi"], (0.8 - 1) / 2)
+        self.assertTrue(r["Sam"]["early"])
+        with open(os.path.join(self.data, "tipsters.txt")) as f:
+            text = f.read()
+        self.assertIn("Sam: 2 tips, 1 won, return -10.0% per tip", text)
+        self.assertIn("Too early to judge: under 100 tips.", text)
+        self.assertIn("1 arrived after kick-off and are not counted. 1 could not be matched", text)
+        results_asks = [u for u in self.asked if "mmz4281" in u]
+        self.assertEqual(len(results_asks), 1)                                                     # the results file was asked for once
+
+    def test_off_without_a_topic(self):
+        os.environ.pop("TIPS_TOPIC")
+        self.assertIsNone(self.T.run(self.http, A.demargin, self.data, NOW))
+        self.assertEqual(self.asked, [])
+
+
+def urllib_since(url):
+    import urllib.parse
+    return urllib.parse.parse_qs(urllib.parse.urlsplit(url).query).get("since", [""])[0]
+
+
 if __name__ == "__main__":
     unittest.main()

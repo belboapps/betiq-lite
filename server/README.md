@@ -9,6 +9,8 @@ A small program for an always-on machine that runs Docker. It reads your bet log
 | Closing-price collector | Saves the final fair price about 20 minutes before kick-off for each open match-result bet, so the closing-price score no longer needs the page open | Odds API key |
 | Spending guardian | A monthly line in `spending.txt` (stakes, returns, net) and one warning when the month's stakes pass your limit | Supabase |
 | Morning message | How many bets kick off today and how many are waiting for a result | ntfy topic |
+| Weekly review | Each week in `weekly.txt`: results and the closing-price score, real and practice bets apart | Supabase |
+| Tipster tracker | Rates tipsters on return and on beating the final price, from tips you forward | A private ntfy topic for tips |
 | Price watcher | Alerts when a bet reaches PLACE, with the page closed. Separate and optional: see below | Odds API key, ntfy topic |
 | Health checker | Says when Supabase, the Odds API key, the page or the backup stops working, and when it is fixed | ntfy topic |
 
@@ -47,6 +49,26 @@ It only reports. It never places a bet, and phone messages carry counts, never a
    ```
 
    The monthly money summary is read with `docker exec betiq-agent cat /data/spending.txt`.
+
+## Tipster tracker (optional)
+
+1. In the ntfy app, make up a second topic with a long random name and put it in `.env` as `TIPS_TOPIC`. Anyone who
+   knows the name can post to it, so keep it private. Restart with `docker compose up -d`.
+2. When a tipster posts a tip, send one line to that topic from the ntfy app:
+
+   ```
+   Sharp Sam; Arsenal v Everton; Arsenal; 2.10
+   ```
+
+   That is the tipster, the match, the selection (one of the teams, or `draw`) and the odds, separated by semicolons.
+3. Read the table with `docker exec betiq-agent cat /data/tipsters.txt`.
+
+Only football match-result tips, in the leagues football-data.co.uk covers. The time ntfy received the line is the
+time the tip was captured: one that arrives after kick-off is kept but never counted. Each tip is scored at one unit.
+Results and final prices come from football-data.co.uk's free files, a day or two after the match. Under 100 counted
+tips a tipster is marked too early to judge. It does not read any tipster's site or feed itself.
+
+The weekly review is read with `docker exec betiq-agent cat /data/weekly.txt`.
 
 ## Price watcher (optional, spends credits)
 
