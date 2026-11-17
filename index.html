@@ -292,6 +292,14 @@ body { padding-bottom: 0; }
 .mbmatch { border-top: 1px solid var(--line); padding: 10px 0; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
 .mbmatch:first-child { border-top: 0; }
 .mbmatch div { min-width: 0; font-size: 14px; }
+.mbstage { font: 700 16px/1.2 var(--display); text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
+.mbguide { display: flex; flex-direction: column; gap: 8px; }
+.mbguide .howto { margin-top: 0; }
+.hresult { display: block; margin-top: 8px; font-weight: 600; font-size: 15px; }
+.hwarn { display: block; margin-top: 6px; font-size: 13px; color: var(--warn); }
+.mbtype > summary, .mbedit > summary { cursor: pointer; font-size: 14px; color: var(--muted); padding: 6px 0; }
+.mbtype .mbgrid, .mbedit .mbgrid { margin: 6px 0 8px; }
+.learn .body h3 { margin: 6px 0 0; font: 700 15px/1 var(--display); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .sheet { position: fixed; inset: 0; z-index: 30; display: flex; align-items: flex-end; justify-content: center; }
 .sheet .backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.5); }
 .panelsheet { position: relative; width: 100%; max-width: 640px; max-height: 92vh; max-height: 92dvh; overflow-y: auto; background: var(--surface); border-radius: 22px 22px 0 0; padding: 14px 14px max(20px, env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 12px; }
@@ -408,6 +416,16 @@ details.acc .pcheck { margin-bottom: 12px; }
 .legend, .legendli { font-size: 13px; color: var(--muted); list-style: none; margin: 0; }
 .panel p.legend { color: var(--muted); }
 .trio + .legend { margin-top: 4px; }
+.howto { display: block; text-align: left; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-top: 10px; }
+.howto > b { display: block; font: 700 15px/1.2 var(--display); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+.hstep { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; line-height: 1.35; padding: 3px 0; }
+.hstep i { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font: 700 13px/22px var(--display); font-style: normal; text-align: center; }
+.hint { font-size: 14px; color: var(--muted); margin: 0 0 10px; }
+/* Simple view: the steps say everything a beginner needs, so the analyst's numbers stay in the details sheet */
+body.simple .bmain .cgrid, body.simple .bmain .sbox, body.simple .bmain .pillev { display: none; }
+/* ...and so do the stake box, Copy bet and the calendar and live-watch links: the card keeps the verdict, the steps, the summary and two buttons */
+body.simple .bmain .cpay, body.simple .brow .actions .copy, body.simple .brow .bacts > .accbtn { display: none; }
+body.simple .brow .actions .btn:not(.go):not(.copy) { grid-column: 1 / -1; }
 .cgist { display: block; font-size: 14px; color: var(--muted); margin-top: 6px; text-align: left; }
 .bmain .trio { text-align: left; margin-bottom: 10px; }
 .mksort { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; }
@@ -500,7 +518,7 @@ body.simple .adv { display: none !important; }
 .card .bacts { padding: 4px 14px 14px; }
 .card .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .card .actions .btn { flex: none; min-height: 46px; }
-.card .actions .go { grid-column: 1 / -1; grid-row: 2; background: #1b2027; color: var(--ink); border-color: var(--line); }
+.card .actions .go { grid-column: 1 / -1; grid-row: 1; background: #1b2027; color: var(--ink); border-color: var(--line); }
 .card.gold .actions .go { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .why { margin: 4px 0; padding-left: 18px; font-size: 14px; display: flex; flex-direction: column; gap: 3px; }
 .why li.pos { color: var(--accent); } .why li.neg { color: var(--warn); }
@@ -554,6 +572,7 @@ body.simple .adv { display: none !important; }
     </div>
 
     <div class="tab" id="tab-all" hidden>
+      <p class="hint">Every bet the app found, best first. You do not need this page to bet: Today already shows the ones worth acting on.</p>
     <div class="controls">
       <div class="seg" role="group" aria-label="Ranking">
         <button id="modeValue" aria-pressed="true">Best bets</button>
@@ -609,6 +628,7 @@ body.simple .adv { display: none !important; }
     </div>
 
     <div class="tab" id="tab-bets" hidden>
+      <p class="hint">Your record. Nothing to do here most days: finished bets fill in their own results when prices or results load.</p>
       <section class="panel" id="betsBox"><h2 id="betsSum">My bets</h2><div id="betsBody" class="bodyflow"></div></section>
       <section class="panel" id="scoreBox"><h2>Your scorecard</h2><div id="scoreBody" class="bodyflow"></div></section>
       <section class="panel" id="recordBox"><h2>The app's track record</h2><div id="recordBody" class="bodyflow"></div></section>
@@ -617,59 +637,73 @@ body.simple .adv { display: none !important; }
     <div class="tab" id="tab-offers" hidden>
       <section class="panel">
         <h2>Bookmaker offers</h2>
-        <p>Matched betting turns a bookmaker's free-bet offer into a known amount, whatever the result. You bet with the bookmaker and bet against the same outcome on an exchange, so the two cancel out. You place every bet yourself: this page does the sums and keeps track.</p>
+        <p>A bookmaker gives you a free bet for placing a first bet. By betting with the bookmaker and against the same result on an exchange, the two cancel out and you keep most of the free bet, whoever wins. You place every bet yourself. This page tells you exactly what to place.</p>
+        <div id="mbTodo"></div>
         <div class="stats" id="mbSum"></div>
         <div id="mbWarn"></div>
-        <details class="learn"><summary>Before you place anything</summary><div class="body">
-          <p>1. Read the offer's terms: minimum odds, which markets count, and when the free bet expires.</p>
-          <p>2. Have enough in the exchange account to cover the liability shown by the calculator.</p>
-          <p>3. Place the bookmaker bet first, then the exchange bet straight away. Prices move.</p>
-          <p>4. Check you are betting on the same match, the same outcome and the same market in both places. Most losses come from a slip here.</p>
-          <p>5. Bookmakers restrict accounts that only take offers. That also removes them as places to take value bets.</p>
-        </div></details>
-      </section>
-      <section class="panel" id="mbCalcBox">
-        <h2>Calculator</h2>
-        <div class="mbgrid">
-          <label>What you are doing
-            <select id="mbType"><option value="qual">Qualifying bet (your own money)</option><option value="free">Using a free bet (stake not returned)</option></select>
-          </label>
-          <label>Stake or free bet £<input id="mbStake" type="number" inputmode="decimal" min="0" step="1" value="10"></label>
-          <label>Bookmaker odds<input id="mbBack" type="number" inputmode="decimal" min="1" step="0.01" placeholder="2.10"></label>
-          <label>Exchange lay odds<input id="mbLay" type="number" inputmode="decimal" min="1" step="0.01" placeholder="2.14"></label>
-          <label>Exchange
-            <select id="mbEx"><option value="0.05">Betfair (5% commission)</option><option value="0.02">Smarkets or Matchbook (2%)</option><option value="0">No commission</option></select>
-          </label>
-        </div>
-        <div id="mbCalcOut"></div>
       </section>
       <section class="panel">
-        <h2>Find a close match</h2>
+        <h2>My offers</h2>
+        <div id="mbList"></div>
+        <h3>Add an offer</h3>
+        <p class="subnote">Copy three things from the bookmaker's offer page.</p>
+        <div class="mbgrid">
+          <label>Bookmaker<input id="mbNewBook" type="text" autocomplete="off" list="mbBookList" placeholder="Bookmaker name"><datalist id="mbBookList"></datalist></label>
+          <label>You must bet £<input id="mbNewQual" type="number" inputmode="decimal" min="0" step="1" placeholder="10"></label>
+          <label>Free bets you get £<input id="mbNewFree" type="number" inputmode="decimal" min="0" step="1" placeholder="30"></label>
+        </div>
+        <details class="learn"><summary>More details (optional)</summary><div class="body">
+          <div class="mbgrid">
+            <label>Name for this offer<input id="mbNewName" type="text" autocomplete="off" placeholder="Bet £10 get £30"></label>
+            <label>At odds of at least<input id="mbNewMin" type="number" inputmode="decimal" min="1" step="0.1" placeholder="2.0"></label>
+            <label>Use by<input id="mbNewExp" type="date"></label>
+          </div>
+        </div></details>
+        <div class="row"><button class="btn primary" id="mbAdd" type="button">Add offer</button></div>
+        <div id="mbAddMsg"></div>
+      </section>
+      <details class="learn"><summary>What the words mean</summary><div class="body">
+        <p><b>Qualifying bet.</b> The first bet, with your own money, that unlocks the free bet. You aim to lose only pennies on it.</p>
+        <p><b>Free bet.</b> A bet the bookmaker pays for. If it wins you keep the winnings but not the stake.</p>
+        <p><b>Exchange.</b> A site such as Betfair or Smarkets where you bet against other people, not a bookmaker. It needs its own account with money in it.</p>
+        <p><b>Lay.</b> Betting that something will NOT happen. Laying Arsenal wins if Arsenal lose or draw.</p>
+        <p><b>Liability.</b> The money the exchange holds from your balance while a lay bet is running. You get it back unless the lay bet loses.</p>
+      </div></details>
+      <details class="learn"><summary>Before you place anything</summary><div class="body">
+        <p>1. Read the offer's terms: minimum odds, which markets count, and when the free bet expires.</p>
+        <p>2. Have enough in the exchange account to cover the liability shown.</p>
+        <p>3. Place the bookmaker bet first, then the exchange bet straight away. Prices move.</p>
+        <p>4. Check you are betting on the same match, the same outcome and the same market in both places. Most losses come from a slip here.</p>
+        <p>5. Bookmakers restrict accounts that only take offers. That also removes them as places to take value bets.</p>
+      </div></details>
+      <details class="learn" id="mbTools"><summary>Do the sums yourself</summary><div class="body">
+        <div id="mbCalcBox">
+          <h3>Calculator</h3>
+          <div class="mbgrid">
+            <label>What you are doing
+              <select id="mbType"><option value="qual">Qualifying bet (your own money)</option><option value="free">Using a free bet (stake not returned)</option></select>
+            </label>
+            <label>Stake or free bet £<input id="mbStake" type="number" inputmode="decimal" min="0" step="1" value="10"></label>
+            <label>Bookmaker odds<input id="mbBack" type="number" inputmode="decimal" min="1" step="0.01" placeholder="2.10"></label>
+            <label>Exchange lay odds<input id="mbLay" type="number" inputmode="decimal" min="1" step="0.01" placeholder="2.14"></label>
+            <label>Exchange
+              <select id="mbEx"><option value="0.05">Betfair (5% commission)</option><option value="0.02">Smarkets or Matchbook (2%)</option><option value="0">No commission</option></select>
+            </label>
+          </div>
+          <div id="mbCalcOut"></div>
+        </div>
+        <h3>Find a close match</h3>
         <p>Looks through the prices already loaded for outcomes where a bookmaker's price and the exchange's price are close together. Uses no credits.</p>
         <div class="mbgrid">
           <label>Bookmaker<select id="mbBook"></select></label>
           <label>Minimum odds<input id="mbMin" type="number" inputmode="decimal" min="1" step="0.1" value="2"></label>
         </div>
         <div id="mbMatches"></div>
-      </section>
-      <section class="panel">
-        <h2>My offers</h2>
-        <div id="mbList"></div>
-        <h3>Add an offer</h3>
-        <div class="mbgrid">
-          <label>Bookmaker<input id="mbNewBook" type="text" autocomplete="off" placeholder="Bookmaker name"></label>
-          <label>Offer<input id="mbNewName" type="text" autocomplete="off" placeholder="Bet £10 get £30"></label>
-          <label>You must bet £<input id="mbNewQual" type="number" inputmode="decimal" min="0" step="1" placeholder="10"></label>
-          <label>At odds of at least<input id="mbNewMin" type="number" inputmode="decimal" min="1" step="0.1" placeholder="2.0"></label>
-          <label>Free bets you get £<input id="mbNewFree" type="number" inputmode="decimal" min="0" step="1" placeholder="30"></label>
-          <label>Use by<input id="mbNewExp" type="date"></label>
-        </div>
-        <div class="row"><button class="btn primary" id="mbAdd" type="button">Add offer</button></div>
-        <div id="mbAddMsg"></div>
-      </section>
+      </div></details>
     </div>
 
     <div class="tab" id="tab-more" hidden>
+      <p class="hint">Settings. Set these once and leave them. The two that matter most are your weekly budget and which bookmakers you use.</p>
     <section class="panel" id="settings">
       <h2>Settings</h2>
       <label class="check"><input type="checkbox" id="simpleOn"> Simple view: Today shows only bets worth acting on. Untick it to show the advanced tools: cloud backup, team news, Pinnacle yardstick, calculator and scenarios</label>
@@ -1930,7 +1964,7 @@ body.simple .adv { display: none !important; }
     var a = el("a", "btn primary go", "Place on " + s.bestBook + " ↗");
     a.href = bookUrl(p); a.target = "_blank"; a.rel = "noopener noreferrer";
     box.appendChild(a);
-    var cp = el("button", "btn", "Copy bet"); cp.type = "button";
+    var cp = el("button", "btn copy", "Copy bet"); cp.type = "button";
     cp.addEventListener("click", function () {
       copyText(s.name + (s.market ? "" : " to win") + " · " + p.ev.h + " v " + p.ev.a + " · " + gbp(st.amount) + " @ " + s.best.toFixed(2) + " · " + s.bestBook, cp);
     });
@@ -2052,6 +2086,30 @@ body.simple .adv { display: none !important; }
   function legend() {
     return el("p", "legend", "Risk: how often a bet like this loses. Low means it wins more often than not, high means it wins under 3 times in 10. Reward: profit as a % of your stake if it wins. Value: how much better than the market average the price is.");
   }
+  /* UK bookmaker apps usually show fractional odds (5/6), not decimals (1.83). FRACS are the standard steps.
+     fracAtLeast gives the smallest standard fraction that is not worse than the decimal, so "X or higher" stays true in either format. */
+  var FRACS = [[1,5],[2,9],[1,4],[2,7],[3,10],[1,3],[4,11],[2,5],[4,9],[1,2],[8,15],[4,7],[8,13],[4,6],[8,11],[4,5],[5,6],[10,11],[1,1],[11,10],[6,5],[5,4],[11,8],[6,4],[13,8],[7,4],[15,8],[2,1],
+               [9,4],[5,2],[11,4],[3,1],[10,3],[7,2],[4,1],[9,2],[5,1],[11,2],[6,1],[13,2],[7,1],[15,2],[8,1],[9,1],[10,1],[12,1],[14,1],[16,1],[20,1],[25,1],[33,1],[50,1],[100,1]];
+  function fracAtLeast(dec) {
+    for (var i = 0; i < FRACS.length; i++) { if (1 + FRACS[i][0] / FRACS[i][1] >= dec - 1e-9) return FRACS[i][0] === FRACS[i][1] ? "evens" : FRACS[i][0] + "/" + FRACS[i][1]; }
+    return null;
+  }
+  function oddsBoth(dec) { var f = fracAtLeast(dec); return dec.toFixed(2) + (f ? " (shown as " + f + " on some apps)" : ""); }
+  /* The exact steps to place a bet, for someone who has never placed one. Only for bets the app says to place or consider. */
+  function howTo(p, st) {
+    var d = decision(p).k; if ((d !== "place" && d !== "consider") || st.amount < 0.5) return null;
+    var s = p.pick, box = el("span", "howto"), n = 0;
+    box.appendChild(el("b", null, "How to place this bet"));
+    function step(t) { n++; var r = el("span", "hstep"); r.appendChild(el("i", null, String(n))); r.appendChild(el("span", null, t)); box.appendChild(r); }
+    step("Open " + s.bestBook + (s.bestEx ? ", which is a betting exchange and needs its own account." : "."));
+    step("Find the match " + p.ev.h + " v " + p.ev.a + ".");
+    step(s.market ? "Choose " + betWords(p) + "." : "Under the match result (who wins), choose " + (s.name === "Draw" ? "Draw" : s.name) + ".");
+    step("Check the odds are " + oddsBoth(minRaw(s)) + " or higher. If they are lower, do not bet.");
+    if (S.practice) step("Practice mode: the stake would be " + gbp(st.amount) + ", winning " + gbp(st.amount * (s.best - 1)) + ". Stop here and do not pay. You are only learning where things are.");
+    else step("Type in a stake of " + gbp(st.amount) + " and confirm. If it wins you get " + gbp(st.amount * s.best) + " back, if it loses you lose the " + gbp(st.amount) + ".");
+    step("Come back here and tap " + (S.practice ? "Log practice bet" : "I placed it") + ".");
+    return box;
+  }
   /* The whole bet in one line of plain words: how likely, how much it pays, and whether the price is any good. */
   function gist(fair, best, ev, suspect) {
     var rw = best - 1, like = likeWord(fair);
@@ -2157,6 +2215,7 @@ body.simple .adv { display: none !important; }
     pills.appendChild(el("span", "pillev " + (s.ev > 0 ? "pos" : "neg"), signed(s.ev) + " EV")); top.appendChild(pills); main.appendChild(top);
     main.appendChild(el("span", "cmatch", p.ev.h + " vs " + p.ev.a));
     main.appendChild(verdictStrip(p));
+    var ht0 = howTo(p, st); if (ht0) main.appendChild(ht0);
     main.appendChild(el("span", "cgist", gist(s.fair, s.best, s.ev, p.suspect)));
     main.appendChild(trio(p));
     var when = el("span", "cwhen", "Starts " + TF.format(new Date(p.time)));
@@ -2443,6 +2502,7 @@ body.simple .adv { display: none !important; }
     head.appendChild(ht); root.appendChild(head);
     root.appendChild(el("div", "cgist", gist(s.fair, s.best, s.ev, p.suspect)));
     root.appendChild(verdictStrip(p));
+    var ht1 = howTo(p, st); if (ht1) root.appendChild(ht1);
     if (!p.sub) {
       var allBtn = el("button", "btn small", "See all " + matchRows(p).length + " bets for this match"); allBtn.type = "button";
       allBtn.addEventListener("click", function () { sheetMatch = true; sheetVia = "match"; renderSheet(); var ps = document.querySelector(".panelsheet"); if (ps) ps.scrollTop = 0; });
@@ -3163,18 +3223,112 @@ body.simple .adv { display: none !important; }
     return { layStake: L, liability: L * (lay - 1), ifBack: ifBack, ifLay: ifLay, worst: worst, keep: free ? worst / stake : null };
   }
   var MB_STEPS = [["todo", "To do"], ["qual", "Qualifying bet placed"], ["wait", "Waiting for the free bet"], ["used", "Free bet placed"], ["done", "Finished"], ["drop", "Abandoned"]];
-  function mbNext(o) {
-    return o.step === "todo" ? "Next: place the qualifying bet of " + gbp(o.qual || 0) + (o.minOdds ? " at odds of " + (+o.minOdds).toFixed(2) + " or more" : "") + ", and lay it on the exchange."
-      : o.step === "qual" ? "Next: wait for the match to finish, then enter the result of the two bets below."
-      : o.step === "wait" ? "Next: when the free bet" + (o.free ? " of " + gbp(o.free) : "") + " arrives, use it at odds of 4.0 or more and lay it on the exchange."
-      : o.step === "used" ? "Next: when that match finishes, enter the free bet result below and mark the offer finished."
-      : o.step === "done" ? "Finished." : "Abandoned.";
-  }
   function mbDaysLeft(o) { if (!o.exp) return null; var t = Date.parse(o.exp + "T23:59:59"); return isFinite(t) ? Math.floor((t - Date.now()) / 86400000) : null; }
   function mbProfit(o) { return (+o.q || 0) + (+o.f || 0); }
+  function mbLive(o) { return o.step !== "done" && o.step !== "drop"; }
+  /* Which bet, if any, has to be placed now: the qualifying bet, or the free bet once it has arrived. */
+  function mbStage(o) { return o.step === "todo" ? "qual" : (o.step === "wait" && o.arrived) ? "free" : null; }
+  function mbStageTitle(o) {
+    return o.step === "todo" ? "Step 1 of 3: place the first bet"
+      : o.step === "qual" ? "Waiting for the first bet to settle"
+      : o.step === "wait" ? (o.arrived ? "Step 3 of 3: use the free bet" : "Step 2 of 3: wait for the free bet")
+      : o.step === "used" ? "Both bets are on" : o.step === "done" ? "Finished" : "Abandoned";
+  }
+  /* The bookmaker's name as it appears in the loaded prices, so its real prices can be used. */
+  function mbBookTitle(name) { var n = String(name || "").trim().toLowerCase(); return seenBooks().filter(function (x) { return x.toLowerCase() === n; })[0] || null; }
+  /* The two bets to place, written out, for the pick stored on the offer. */
+  function mbInstructions(o, type, stake) {
+    var k = o.pick, r = mbCalc(type, k.back, k.lay, stake, k.comm), box = el("div", "howto"), n = 0; if (!r) return null;
+    box.appendChild(el("b", null, "Place these two bets"));
+    function step(t) { n++; var row = el("span", "hstep"); row.appendChild(el("i", null, String(n))); row.appendChild(el("span", null, t)); box.appendChild(row); }
+    step("At " + o.book + ": " + (type === "free" ? "use your " + gbp(stake) + " free bet" : "bet " + gbp(stake)) + " on " + k.name + (k.match ? " in " + k.match : "") + ", at odds of " + oddsBoth(k.back) + " or higher.");
+    step("Straight away on " + k.ex + ": find the same match and the same outcome and press LAY, which means betting it will not happen. Stake " + gbp(r.layStake) + " at odds of " + k.lay.toFixed(2) + " or lower.");
+    step(k.ex + " holds " + gbp(r.liability) + " from your balance until the match ends, so have at least that much there first.");
+    box.appendChild(el("span", "hresult", type === "free" ? "Whatever happens you keep about " + gbp(r.worst) + "."
+      : r.worst >= 0 ? "Whatever happens you make about " + gbp(r.worst) + "." : "Whatever happens you lose about " + gbp(r.worst) + ". That is the price of the free bet."));
+    if (!k.real && !k.manual) box.appendChild(el("span", "hwarn", "The exchange price here is an estimate. Look at the real lay price on " + k.ex + ". If it is different, choose \"Type the odds I can see\" so the stakes are right."));
+    return { box: box, r: r };
+  }
+  /* Choosing what to bet on: suggestions from loaded prices, or the odds typed in by hand. */
+  function mbChooser(o, type, stake) {
+    var wrap = el("div", "mbchoose"), title = mbBookTitle(o.book), min = type === "free" ? 4 : (o.minOdds || 2);
+    var list = title ? mbMatches(title, min, type, stake).slice(0, 3) : [];
+    if (list.length) {
+      wrap.appendChild(el("div", "subnote", type === "free" ? "Pick a match. Free bets keep more of their value at odds of 4.0 or more, so these are longer shots." : "Pick a match. These have the closest prices, so they cost the least."));
+      list.forEach(function (m) {
+        var row = el("div", "mbmatch"), txt = el("div");
+        txt.appendChild(el("b", null, m.name)); txt.appendChild(document.createTextNode(" · " + m.ev.h + " v " + m.ev.a + " · " + TF.format(new Date(m.time))));
+        txt.appendChild(el("div", "subnote", (type === "free" ? "keep about " + gbp(m.r.worst) : m.r.worst >= 0 ? "make about " + gbp(m.r.worst) : "costs about " + gbp(m.r.worst)) + (m.real ? "" : " (estimate, check the exchange price)")));
+        var use = el("button", "btn small primary", "Use this"); use.type = "button";
+        use.addEventListener("click", function () { o.pick = { type: type, name: m.name, match: m.ev.h + " v " + m.ev.a, back: m.back, lay: m.lay, real: m.real, ex: m.ex, comm: m.comm }; save(); renderOffers(); });
+        row.appendChild(txt); row.appendChild(use); wrap.appendChild(row);
+      });
+    } else {
+      wrap.appendChild(el("div", "subnote", title ? "No loaded match has both " + o.book + " and an exchange price at these odds. Type the odds you can see instead."
+        : "There are no loaded prices for " + o.book + ", so type the odds you can see. Pick any match where the two prices are close together" + (type === "free" ? ", at odds of 4.0 or more." : ".")));
+    }
+    var det = document.createElement("details"); det.className = "mbtype"; if (!list.length) det.open = true;
+    det.appendChild(el("summary", null, "Type the odds I can see"));
+    var grid = el("div", "mbgrid");
+    function field(label, ph) { var l = el("label", null, label), i = document.createElement("input"); i.type = "number"; i.step = "0.01"; i.min = "1"; i.placeholder = ph; i.setAttribute("inputmode", "decimal"); l.appendChild(i); grid.appendChild(l); return i; }
+    var bi = field(o.book + " odds", "2.10"), li = field("Exchange lay odds", "2.14");
+    var xl = el("label", null, "Exchange"), xs = document.createElement("select"); [["0.05", "Betfair"], ["0.02", "Smarkets or Matchbook"]].forEach(function (x) { var op = el("option", null, x[1]); op.value = x[0]; xs.appendChild(op); }); xl.appendChild(xs); grid.appendChild(xl);
+    det.appendChild(grid);
+    var go = el("button", "btn small", "Work it out"); go.type = "button"; var msg = el("div");
+    go.addEventListener("click", function () {
+      var bk = parseFloat(bi.value), ly = parseFloat(li.value), cm = parseFloat(xs.value); msg.textContent = "";
+      if (!mbCalc(type, bk, ly, stake, cm)) { msg.appendChild(el("div", "msg", "Enter both odds as decimals, for example 2.10. If your app shows fractions such as 11/10, switch it to decimal odds in its settings.")); return; }
+      o.pick = { type: type, name: "your chosen outcome", match: "", back: bk, lay: ly, real: true, manual: true, ex: xs.options[xs.selectedIndex].text, comm: cm }; save(); renderOffers();
+    });
+    det.appendChild(go); det.appendChild(msg); wrap.appendChild(det);
+    return wrap;
+  }
+  function mbGuide(o) {
+    var g = el("div", "mbguide"), type = mbStage(o), stake = type === "free" ? o.free : o.qual;
+    function button(text, fn, primary) { var b = el("button", "btn" + (primary ? " primary" : " small"), text); b.type = "button"; b.addEventListener("click", function () { fn(); save(); renderOffers(); }); return b; }
+    if (type) {
+      if (!(stake > 0)) { g.appendChild(el("div", "msg", "This offer has no " + (type === "free" ? "free bet amount" : "amount to bet") + ". Add it under Edit by hand.")); return g; }
+      if (o.pick && o.pick.type === type) {
+        var ins = mbInstructions(o, type, stake);
+        if (ins) {
+          g.appendChild(ins.box);
+          g.appendChild(button("I have placed both bets", function () {
+            var res = Math.round(ins.r.worst * 100) / 100;
+            if (type === "free") { o.f = res; o.step = "used"; } else { o.q = res; o.step = "wait"; o.arrived = false; }
+            o.pick = null;
+          }, true));
+          g.appendChild(button("Choose a different match", function () { o.pick = null; }));
+          return g;
+        }
+        o.pick = null;
+      }
+      g.appendChild(mbChooser(o, type, stake)); return g;
+    }
+    if (o.step === "wait") {
+      g.appendChild(el("p", "subnote", o.book + " adds your free bet" + (o.free ? " of " + gbp(o.free) : "") + " once the first bet has settled, usually soon after that match ends. Check your account there. Nothing to do until it shows."));
+      g.appendChild(button("My free bet has arrived", function () { o.arrived = true; }, true));
+    } else if (o.step === "qual") {
+      g.appendChild(el("p", "subnote", "When the first bet has settled, move this on under Edit by hand."));
+    } else if (o.step === "used") {
+      g.appendChild(el("p", "subnote", "Nothing to do until the match ends. The money then appears in whichever account won."));
+      g.appendChild(button("The match has finished", function () { o.step = "done"; }, true));
+    } else if (o.step === "done") {
+      g.appendChild(el("p", "subnote", "You made " + sgbp(mbProfit(o)) + " from this offer."));
+    }
+    return g;
+  }
   function renderOffers() {
-    var offers = S.mb.offers, live = offers.filter(function (o) { return o.step !== "done" && o.step !== "drop"; }), done = offers.filter(function (o) { return o.step === "done"; });
+    var offers = S.mb.offers, live = offers.filter(mbLive), done = offers.filter(function (o) { return o.step === "done"; });
     var total = offers.reduce(function (t, o) { return t + mbProfit(o); }, 0);
+    var dl = $("mbBookList"); dl.textContent = ""; seenBooks().filter(function (n) { return !/exchange|smarkets|matchbook/i.test(n); }).forEach(function (n) { var op = document.createElement("option"); op.value = n; dl.appendChild(op); });
+    /* what to do here: the most urgent offer that needs an action from you */
+    var acts = live.filter(function (o) { return mbStage(o) || o.step === "wait" || o.step === "used"; }).sort(function (x, y) { var a = mbDaysLeft(x), b = mbDaysLeft(y); return (a === null ? 9999 : a) - (b === null ? 9999 : b); });
+    var need = acts.filter(function (o) { return mbStage(o); })[0];
+    var td = $("mbTodo"); td.textContent = ""; var tb = el("div", "reco"); tb.appendChild(el("b", null, "What to do here"));
+    tb.appendChild(document.createTextNode(need ? need.book + ": " + mbStageTitle(need).replace(/^Step \d of 3: /, "") + ". The steps are in its card below."
+      : live.length ? "Nothing right now. Your offers are waiting on a match or on a free bet arriving."
+      : "Add an offer below. The page then walks you through it one step at a time."));
+    td.appendChild(tb);
     var sum = $("mbSum"); sum.textContent = "";
     sum.appendChild(statBox("Made so far", sgbp(total), done.length + " offer" + (done.length === 1 ? "" : "s") + " finished", total > 0.004 ? "pos" : total < -0.004 ? "neg" : null));
     sum.appendChild(statBox("In progress", String(live.length), live.length ? "see My offers below" : "add one below"));
@@ -3183,30 +3337,32 @@ body.simple .adv { display: none !important; }
     if (soon.length) warn.appendChild(el("div", "msg", soon.length + " offer" + (soon.length === 1 ? " runs" : "s run") + " out within 3 days: " + soon.map(function (o) { return o.book; }).join(", ") + "."));
     renderMbCalc(); renderMbMatches();
     var list = $("mbList"); list.textContent = "";
-    if (!offers.length) list.appendChild(el("p", "subnote", "No offers yet. Add one from a bookmaker's promotions page below."));
+    if (!offers.length) list.appendChild(el("p", "subnote", "No offers yet."));
     offers.slice().reverse().forEach(function (o) {
-      var card = el("div", "mboffer" + (o.step === "done" || o.step === "drop" ? " done" : ""));
+      var card = el("div", "mboffer" + (mbLive(o) ? "" : " done"));
       var top = el("div", "row"); top.appendChild(el("b", null, o.book + ": " + o.name));
-      var d = mbDaysLeft(o); if (d !== null && o.step !== "done" && o.step !== "drop") top.appendChild(el("span", "badge " + (d <= 3 ? "warn" : "move"), d < 0 ? "EXPIRED" : d === 0 ? "ENDS TODAY" : d + " DAYS LEFT"));
+      var d = mbDaysLeft(o); if (d !== null && mbLive(o)) top.appendChild(el("span", "badge " + (d <= 3 ? "warn" : "move"), d < 0 ? "EXPIRED" : d === 0 ? "ENDS TODAY" : d + " DAYS LEFT"));
       card.appendChild(top);
-      card.appendChild(el("div", "subnote", mbNext(o)));
+      card.appendChild(el("div", "mbstage", mbStageTitle(o)));
+      card.appendChild(mbGuide(o));
+      var det = document.createElement("details"); det.className = "mbedit"; det.appendChild(el("summary", null, "Edit by hand"));
       var grid = el("div", "mbgrid");
       var l1 = el("label", null, "Status"), sel = document.createElement("select"); MB_STEPS.forEach(function (x) { var op = el("option", null, x[1]); op.value = x[0]; sel.appendChild(op); }); sel.value = o.step;
-      sel.addEventListener("change", function () { o.step = sel.value; save(); renderOffers(); }); l1.appendChild(sel); grid.appendChild(l1);
-      [["q", "Qualifying bet result £"], ["f", "Free bet result £"]].forEach(function (x) {
+      sel.addEventListener("change", function () { o.step = sel.value; o.pick = null; save(); renderOffers(); }); l1.appendChild(sel); grid.appendChild(l1);
+      [["q", "First bet result £"], ["f", "Free bet result £"]].forEach(function (x) {
         var lab = el("label", null, x[1]), inp = document.createElement("input"); inp.type = "number"; inp.step = "0.01"; inp.setAttribute("inputmode", "decimal"); inp.placeholder = x[0] === "q" ? "-0.50" : "22.00";
         inp.value = o[x[0]] === undefined || o[x[0]] === null || o[x[0]] === "" ? "" : String(o[x[0]]);
         inp.addEventListener("change", function () { var v = parseFloat(inp.value); o[x[0]] = isFinite(v) ? v : ""; save(); renderOffers(); });
         lab.appendChild(inp); grid.appendChild(lab);
       });
-      card.appendChild(grid);
-      var acts = el("div", "row");
-      var cb = el("button", "btn small", o.step === "wait" || o.step === "used" ? "Work out the free bet" : "Work out the qualifying bet"); cb.type = "button";
-      cb.addEventListener("click", function () { var fr = o.step === "wait" || o.step === "used"; $("mbType").value = fr ? "free" : "qual"; $("mbStake").value = String(fr ? (o.free || "") : (o.qual || "")); renderMbCalc(); var x = $("mbCalcBox"); if (x.scrollIntoView) x.scrollIntoView({ block: "start" }); });
-      acts.appendChild(cb);
-      var rm = el("button", "btn small", "Delete"); rm.type = "button"; rm.addEventListener("click", function () { if (window.confirm("Delete this offer and its results?")) { S.mb.offers = S.mb.offers.filter(function (z) { return z.id !== o.id; }); save(); renderOffers(); } }); acts.appendChild(rm);
-      acts.appendChild(el("span", "subnote", "Result so far: " + sgbp(mbProfit(o))));
-      card.appendChild(acts);
+      det.appendChild(grid);
+      var row = el("div", "row");
+      var cb = el("button", "btn small", "Open in the calculator"); cb.type = "button";
+      cb.addEventListener("click", function () { var fr = o.step === "wait" || o.step === "used"; $("mbType").value = fr ? "free" : "qual"; $("mbStake").value = String(fr ? (o.free || "") : (o.qual || "")); $("mbTools").open = true; renderMbCalc(); var x = $("mbCalcBox"); if (x.scrollIntoView) x.scrollIntoView({ block: "start" }); });
+      row.appendChild(cb);
+      var rm = el("button", "btn small", "Delete"); rm.type = "button"; rm.addEventListener("click", function () { if (window.confirm("Delete this offer and its results?")) { S.mb.offers = S.mb.offers.filter(function (z) { return z.id !== o.id; }); save(); renderOffers(); } }); row.appendChild(rm);
+      det.appendChild(row); card.appendChild(det);
+      card.appendChild(el("div", "subnote", "Result so far: " + sgbp(mbProfit(o))));
       list.appendChild(card);
     });
   }
@@ -3278,8 +3434,9 @@ body.simple .adv { display: none !important; }
   function mbAddOffer() {
     var m = $("mbAddMsg"); m.textContent = "";
     var book = $("mbNewBook").value.trim(), name = $("mbNewName").value.trim(), qual = parseFloat($("mbNewQual").value), free = parseFloat($("mbNewFree").value), min = parseFloat($("mbNewMin").value), exp = $("mbNewExp").value;
-    if (!book || !name) { m.appendChild(el("div", "msg", "Enter the bookmaker and a short name for the offer.")); return; }
-    S.mb.offers.push({ id: "o" + Date.now() + Math.floor(Math.random() * 1000), book: book.slice(0, 40), name: name.slice(0, 80), qual: isFinite(qual) && qual > 0 ? qual : 0, free: isFinite(free) && free > 0 ? free : 0, minOdds: isFinite(min) && min > 1 ? min : 0, exp: /^\d{4}-\d{2}-\d{2}$/.test(exp) ? exp : "", step: "todo", q: "", f: "", at: Date.now() });
+    if (!book || !(qual > 0) || !(free > 0)) { m.appendChild(el("div", "msg", "Enter the bookmaker, how much you must bet, and how much you get in free bets.")); return; }
+    if (!name) name = "Bet " + gbp(qual).replace(/\.00$/, "") + " get " + gbp(free).replace(/\.00$/, "");
+    S.mb.offers.push({ id: "o" + Date.now() + Math.floor(Math.random() * 1000), book: (mbBookTitle(book) || book).slice(0, 40), name: name.slice(0, 80), qual: qual, free: free, minOdds: isFinite(min) && min > 1 ? min : 0, exp: /^\d{4}-\d{2}-\d{2}$/.test(exp) ? exp : "", step: "todo", q: "", f: "", at: Date.now() });
     ["mbNewBook", "mbNewName", "mbNewQual", "mbNewFree", "mbNewMin", "mbNewExp"].forEach(function (id) { $(id).value = ""; });
     save(); renderOffers();
   }
