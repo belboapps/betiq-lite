@@ -1,0 +1,48 @@
+# Tester: runs the headless-browser checks on every change. GitHub emails you when a run fails.
+# A script passes when it finishes without crashing and reports no page errors ("errs []").
+name: Tests
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Home-server agent tests
+        run: if [ -d server ]; then python3 -m unittest discover server; fi
+      - name: Install Playwright and Chromium
+        working-directory: tests
+        run: |
+          npm init -y > /dev/null
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run every script
+        working-directory: tests
+        run: |
+          failed=""
+          for t in t*.js; do
+            echo "::group::$t"
+            if node "$t" > out.txt 2>&1 && grep -q "errs \[\]" out.txt; then
+              echo "passed"
+            else
+              failed="$failed $t"
+            fi
+            cat out.txt
+            echo "::endgroup::"
+          done
+          if [ -f ../server/watcher/watcher.js ]; then
+            echo "::group::price watcher self-test"
+            if BETIQ_PAGE="file://$PWD/../index.html" NODE_PATH="$PWD/node_modules" node ../server/watcher/watcher.js --selftest; then echo passed; else failed="$failed watcher"; fi
+            echo "::endgroup::"
+          fi
+          if [ -n "$failed" ]; then
+            echo "Failed:$failed"
+            exit 1
+          fi
