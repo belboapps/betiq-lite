@@ -19,7 +19,7 @@ let fails=0; function check(name,ok,info){ if(!ok) fails++; console.log((ok?'PAS
  await p.addInitScript(()=>{ if(!localStorage.getItem('betiqlite.v1')) localStorage.setItem('betiqlite.v1',JSON.stringify({key:'dummy',auto:false,ver:2,booksSet:true,pracAsked:true,tour:true,simple:true,sports:[{key:'soccer_epl',group:'Soccer',title:'EPL'}],selected:['soccer_epl'],windowH:72,bankroll:100})); });
  await p.goto('file://'+require('path').resolve(__dirname,'..','index.html')); await p.waitForTimeout(500);
  const stats=async(sel)=>p.$$eval(sel+' .stat',e=>Object.fromEntries(e.map(x=>[x.querySelector('span').innerText.toLowerCase(),x.querySelector('b').innerText+' / '+(x.querySelector('small')||{innerText:''}).innerText])));
- await p.click('[data-tab=more]'); await p.waitForSelector('#toolsBox'); check('five tools',await p.$$eval('#toolsBox details',d=>d.length)===5);
+ await p.click('[data-tab=more]'); await p.waitForSelector('#toolsBox'); check('six tools',await p.$$eval('#toolsBox details',d=>d.length)===6);
  // ---- same-match checker with nothing loaded
  await p.click('#tSame > summary'); check('asks for prices when none are loaded',/Load some football prices first/.test(await p.innerText('#sameOut')));
  await p.click('[data-tab=today]'); await p.click('#refreshBtn'); await p.waitForTimeout(1200);

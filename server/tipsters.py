@@ -168,7 +168,12 @@ def ratings(tips):
 def report(tips):
     lines = ["Tipster tracker. One unit staked on every tip captured before kick-off.", ""]
     rs = ratings(tips)
-    for name in sorted(rs, key=lambda n: -rs[n]["n"]):
+    lines[0] = ("Tipster tracker, ranked by how often each beat the final price (the best early sign of skill), "
+                "then by sample size. One unit staked on every tip captured before kick-off.")
+    # Beating the final price settles far faster than profit, so it ranks first; a tipster with
+    # fewer than 20 final prices is ranked below those with enough to judge.
+    for name in sorted(rs, key=lambda n: (rs[n]["clv_n"] >= 20, rs[n]["clv"] if rs[n]["clv"] is not None else -9, rs[n]["n"]),
+                       reverse=True):
         r = rs[name]
         lines.append(f"{name}: {r['n']} tips, {r['wins']} won, return {r['roi'] * 100:+.1f}% per tip"
                      + (f", beat the final price on {r['beat']} of {r['clv_n']} (average {r['clv'] * 100:+.1f}%)"
