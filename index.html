@@ -202,6 +202,10 @@ details.learn[open] > summary::after { content: "\2212"; }
 .slip { grid-column: 1 / -1; margin-top: 8px; padding: 8px 10px; background: var(--accent-soft); border-radius: 8px; font-size: 14px; color: var(--ink); }
 .slip b { font: 700 18px/1.2 var(--display); text-transform: uppercase; letter-spacing: .02em; }
 .slip .cost { font-size: 13px; }
+.cline { display: block; font-weight: 700; margin: 6px 0 2px; }
+.logform { display: grid; gap: 10px; }
+.logform label { display: grid; gap: 4px; font-size: 14px; }
+.logform input, .logform select { min-height: 44px; font-size: 16px; }
 .todo { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line, rgba(127,127,127,.25)); }
 .todo:first-child { border-top: 0; }
 .todotxt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -1827,13 +1831,41 @@ body.simple .adv { display: none !important; }
 
   /* ---------- Bets ---------- */
   function findBet(id) { return BETS().filter(function (b) { return b.pid === id; })[0]; }
+  /* Before a bet is logged: the stake, odds and bookmaker you actually used, filled in with the suggestion. */
   function logBet(p) {
     if (findBet(p.id)) return;
-    var flagged = S.sugg.filter(function (x) { return x.pid === p.id; })[0];
     var st = stakeFor(p.pick);
     if (st.amount < 0.5) { var lsx = lossState(); showAlert(lsx.on ? lsx.reason : "Your weekly budget is used up, so no stake is suggested. Raise it in Settings if you want to log this bet.", false); return; }
+    sheetId = null; sheetSub = null; sheetMatch = false;   /* the sheet now holds this form, not bet details */
+    var body = $("sheetBody"); body.textContent = "";
+    var f = el("div", "detail logform");
+    f.appendChild(el("h2", null, S.practice ? "Log this practice bet" : "Log the bet you placed"));
+    f.appendChild(el("p", "subnote", p.pick.name + (p.pick.market ? "" : " to win") + " · " + p.ev.h + " v " + p.ev.a + ". Change anything that differs from what you actually did."));
+    function field(label, input) { var l = el("label", null, label); l.appendChild(input); f.appendChild(l); return input; }
+    var iS = document.createElement("input"); iS.type = "number"; iS.step = "0.01"; iS.min = "0.1"; iS.value = st.amount.toFixed(2); iS.setAttribute("inputmode", "decimal"); iS.id = "logStake";
+    var iO = document.createElement("input"); iO.type = "number"; iO.step = "0.01"; iO.min = "1.01"; iO.value = (p.pick.bestEx ? p.pick.prices.filter(function (q) { return q.book === p.pick.bestBook; }).map(function (q) { return q.raw; })[0] || p.pick.best : p.pick.best).toFixed(2); iO.setAttribute("inputmode", "decimal"); iO.id = "logOdds";
+    var iB = document.createElement("select"); iB.id = "logBook";
+    var books = seenBooks().filter(allowed); if (books.indexOf(p.pick.bestBook) < 0) books.unshift(p.pick.bestBook);
+    books.forEach(function (n) { var o = el("option", null, n); o.value = n; if (n === p.pick.bestBook) o.selected = true; iB.appendChild(o); });
+    field("Stake £", iS); field("Odds you got (as the bookmaker showed them)", iO); field("Bookmaker", iB);
+    var msg = el("div"); f.appendChild(msg);
+    var acts = el("div", "actions"), ok = el("button", "btn primary", "Save bet"), no = el("button", "btn", "Cancel");
+    ok.type = no.type = "button"; ok.id = "logSave"; acts.appendChild(ok); acts.appendChild(no); f.appendChild(acts);
+    body.appendChild(f);
+    $("sheet").hidden = false; document.body.classList.add("lock");
+    no.addEventListener("click", closeSheet);
+    ok.addEventListener("click", function () {
+      var stake = parseFloat(iS.value), raw = parseFloat(iO.value), cm = commOf(iB.value);
+      if (!(stake > 0) || !(raw > 1)) { msg.textContent = ""; msg.appendChild(el("div", "msg", "Enter the stake and the odds you got.")); return; }
+      saveLogged(p, stake, cm ? 1 + (raw - 1) * (1 - cm) : raw, iB.value);
+      closeSheet();
+    });
+  }
+  function saveLogged(p, stake, odds, book) {
+    if (findBet(p.id)) return;
+    var flagged = S.sugg.filter(function (x) { return x.pid === p.id; })[0];
     addBet({ pid: p.id, evId: p.ev.id, key: p.key, league: p.league, h: p.ev.h, a: p.ev.a, sel: p.pick.name,
-      odds: p.pick.best, book: p.pick.bestBook, stake: st.amount, fair: p.pick.fair, refund: p.pick.refund || 0, time: p.time, at: Date.now(),
+      odds: Math.round(odds * 1000) / 1000, book: book, stake: Math.round(stake * 100) / 100, fair: p.pick.fair, refund: p.pick.refund || 0, time: p.time, at: Date.now(),
       flagAt: flagged ? flagged.at : null, flagOdds: flagged ? flagged.odds : null,
       mkt: p.pick.market || "", point: p.pick.point, side: p.pick.side, rule: p.pick.rule,
       status: "open", profit: 0 });
@@ -2252,7 +2284,11 @@ body.simple .adv { display: none !important; }
     pills.appendChild(el("span", "pillev " + (s.ev > 0 ? "pos" : "neg"), signed(s.ev) + " EV")); top.appendChild(pills); main.appendChild(top);
     main.appendChild(el("span", "cmatch", p.ev.h + " vs " + p.ev.a));
     main.appendChild(verdictStrip(p));
-    var ht0 = howTo(p, st); if (ht0) main.appendChild(ht0);
+    var ht0 = S.bets.length + S.pbets.length < 3 ? howTo(p, st) : null;   /* the steps stay in the details sheet after your first few bets */
+    if (ht0) main.appendChild(ht0);
+    var dk = decision(p).k;
+    if ((dk === "place" || dk === "consider") && st.amount >= 0.5)
+      main.appendChild(el("span", "cline", "Bet " + gbp(st.amount) + " on " + (s.market ? betWords(p) : s.name === "Draw" ? "the draw" : s.name + " to win") + " with " + s.bestBook + " at " + oddsBoth(minRaw(s)) + " or better"));
     main.appendChild(el("span", "cgist", gist(s.fair, s.best, s.ev, p.suspect)));
     main.appendChild(trio(p));
     var when = el("span", "cwhen", "Starts " + TF.format(new Date(p.time)));

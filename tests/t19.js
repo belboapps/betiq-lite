@@ -21,7 +21,11 @@ const DATA={soccer_efl_champ:[ev('c1','soccer_efl_champ','Leeds','Burnley',22,[2
  await p.click('#plan .brow >> nth=0 >> .bmain'); await p.waitForTimeout(250);
  console.log('WHY:',(await p.$$eval('#sheetBody .plain',e=>e.map(x=>x.innerText).filter(t=>/Why this score/.test(t))))[0].replace(/\n+/g,' | ').slice(0,420));
  await p.evaluate(()=>{document.querySelector('.panelsheet').scrollTop=150}); await p.screenshot({path:'k_sheet.png'}); await p.click('#sheetClose');
- await p.click('#plan .brow >> nth=0 >> .bacts .btn:has-text("I placed it")'); await p.waitForTimeout(200);
+ await p.click('#plan .brow >> nth=0 >> .bacts .btn:has-text("I placed it")'); await p.waitForSelector('#logSave');
+ // the confirm step: change the stake to what was really placed, then save
+ await p.fill('#logStake','2.50'); await p.click('#logSave'); await p.waitForTimeout(200);
+ const lb=await p.evaluate(()=>JSON.parse(localStorage.getItem('betiqlite.v1')).bets[0]);
+ if(!(lb&&lb.stake===2.5)) { console.log('FAIL confirm step saves the stake you entered',JSON.stringify(lb)); }
  console.log('logged:',await p.evaluate(()=>JSON.parse(localStorage.getItem('betiqlite.v1')).bets.length), await p.$eval('#plan .brow .bacts .btn.done',e=>e.innerText));
  await p.click('[data-tab=all]'); await p.waitForTimeout(200); await p.screenshot({path:'k_all.png'}); console.log('all rows:',await p.$$eval('#list .brow',r=>r.length));
  await p.click('#modeBal'); await p.waitForTimeout(200); console.log('balanced rows:',await p.$$eval('#list .brow',r=>r.length));
