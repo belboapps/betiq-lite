@@ -23,8 +23,8 @@ let fails=0; function check(name,ok,info){ if(!ok) fails++; console.log((ok?'PAS
  // ---- every bet row: plain-words line and three displays
  const row=await p.$eval('#list .brow:has-text("Arsenal")',e=>({gist:e.querySelector('.cgist').innerText,labels:[...e.querySelectorAll('.trio .t3l')].map(x=>x.innerText),vals:[...e.querySelectorAll('.trio .t3 b')].map(x=>x.innerText)}));
  console.log('   row:',JSON.stringify(row));
- check('row has Risk, Reward, Value displays',row.labels.join(',').toLowerCase()==='risk,reward,value');
- check('risk is a word, reward and value are numbers',row.vals[0]==='Low'&&/^\+\d+%$/.test(row.vals[1])&&/^[+−-]\d+\.\d%$/.test(row.vals[2]),row.vals.join(' | '));
+ check('row has Chance, Reward, Value displays',row.labels.join(',').toLowerCase()==='chance,reward,value');
+ check('chance is in plain words, reward and value are numbers',/^Wins about \d in 10$/.test(row.vals[0])&&/^\+\d+%$/.test(row.vals[1])&&/^[+−-]\d+\.\d%$/.test(row.vals[2]),row.vals.join(' | '));
  check('plain-words line',/^(Very likely|Likely) to win, (small|decent) payout, good price\.$/.test(row.gist),row.gist);
  // ---- match page
  await p.click('#list .brow:has-text("Arsenal") >> .bmain'); await p.waitForSelector('#sheetBody .detail');

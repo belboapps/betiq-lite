@@ -909,7 +909,7 @@ body.simple .adv { display: none !important; }
   var API = "https://api.the-odds-api.com/v4";
   var DEFAULTS = { key: "", selected: [], mode: "value", minOdds: 1.3, windowH: 72, group: "all",
                    sports: [], sportsAt: 0, cache: {}, remaining: null, used: null, picked: false,
-                   bankroll: 100, weekly: 0, league: "all", sugg: [], exYard: true, helperUrl: "", helperAt: 0, helperResAt: 0, planDone: false, freeMode: false, freeInfo: null, series: {}, accts: {}, fMaxOdds: 0, fMinEdge: 0, fMinScore: 0, fChance: 0, ntfy: "", ntfySeen: [], deps: [], cloudFileAt: 0, cloudFileFetched: "", cloudFileErr: "", mb: null, mkSort: "likely", live: null, simple: true, recAt: 0, autoKick: true, sharp: false, sharpBad: false, placeMin: 60, tuneN: 0, tomb: [], sb: { url: "", key: "", email: "", session: null, last: 0, status: "" }, extras: true, extraMax: 12, extraFreshH: 3, lossLimit: 0, lossStreak: 5, tour: false, afKey: "", newsOn: true, news: {}, afUse: { d: "", n: 0 }, afStatus: "", xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
+                   bankroll: 100, weekly: 0, league: "all", sugg: [], exYard: true, helperUrl: "", helperAt: 0, helperResAt: 0, planDone: false, freeMode: false, freeInfo: null, series: {}, accts: {}, fMaxOdds: 0, fMinEdge: 0, fMinScore: 0, fChance: 0, ntfy: "", ntfySeen: [], deps: [], cloudFileAt: 0, cloudFileFetched: "", cloudFileErr: "", apiErr: null, planHidden: false, mb: null, mkSort: "likely", live: null, simple: true, recAt: 0, autoKick: true, sharp: false, sharpBad: false, placeMin: 60, tuneN: 0, tomb: [], sb: { url: "", key: "", email: "", session: null, last: 0, status: "" }, extras: false, extrasV: 1, extraMax: 12, extraFreshH: 3, lossLimit: 0, lossStreak: 5, tour: false, afKey: "", newsOn: true, news: {}, afUse: { d: "", n: 0 }, afStatus: "", xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
   var GROUPS = { "Soccer": "Football", "American Football": "US football", "Ice Hockey": "Ice hockey",
                  "Mixed Martial Arts": "MMA", "Rugby League": "Rugby", "Rugby Union": "Rugby", "Aussie Rules": "Aussie rules" };
   var DEFAULT_FOOTBALL = ["soccer_epl", "soccer_efl_champ", "soccer_uefa_champs_league", "soccer_uefa_europa_league"];
@@ -926,6 +926,7 @@ body.simple .adv { display: none !important; }
   var EX_LIQUID = 1.025;
   var DAILY_CAP = 0.10, MIN_CREDITS = 60, LONGSHOT = 4, WEEK_CAP = 0.25;
 
+  var loadDamaged = false;
   var S = load();
   var busy = false;
   var openIds = {};
@@ -941,12 +942,18 @@ body.simple .adv { display: none !important; }
       ['series', 'accts'].forEach(function (k) { if (!s[k] || typeof s[k] !== 'object') s[k] = {}; });
       if (!s.mb || typeof s.mb !== 'object' || !Array.isArray(s.mb.offers)) s.mb = { offers: [] };
       if (!s.sb || typeof s.sb !== 'object') s.sb = { url: '', key: '', email: '', session: null, last: 0, status: '' };
+      if (o && !o.extrasV) { s.extras = false; s.extrasV = 1; }   /* extra markets cost about ten times a normal refresh: off unless chosen again */
       if (!o || !o.ver || o.ver < 2) s.mode = "value";   /* v2: Best bets is the default view */
       s.ver = 2;
       return s;
-    } catch (e) { var d = {}; for (var k2 in DEFAULTS) d[k2] = DEFAULTS[k2]; return d; }
+    } catch (e) {
+      try { var bad = localStorage.getItem(LS); if (bad) localStorage.setItem(LS + ".damaged", bad); } catch (e2) {}   /* kept so it can be recovered */
+      loadDamaged = true;
+      var d = {}; for (var k2 in DEFAULTS) d[k2] = DEFAULTS[k2]; return d;
+    }
   }
-  function save() { try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) {} }
+  var saveFailed = false;
+  function save() { try { localStorage.setItem(LS, JSON.stringify(S)); saveFailed = false; } catch (e) { saveFailed = true; } }
   function $(id) { return document.getElementById(id); }
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -987,8 +994,10 @@ body.simple .adv { display: none !important; }
       if (lastCost !== null && !isNaN(+lastCost)) spentCounter += +lastCost;
       if (rem !== null && !isNaN(+rem)) S.remaining = +rem;
       if (used !== null && !isNaN(+used)) S.used = +used;
+      if (res.ok && S.apiErr) S.apiErr = null;
       if (!res.ok) {
         var code = res.status === 401 ? "key" : res.status === 429 ? "quota" : "http";
+        if (code !== "http") S.apiErr = { code: S.remaining === 0 ? "quota" : code, at: Date.now() };
         var err = new Error(code); err.code = code; err.status = res.status; throw err;
       }
       return res.json();
@@ -1854,7 +1863,9 @@ body.simple .adv { display: none !important; }
   function dueSugg() { return S.sugg.filter(function (b) { return b.status === "open" && Date.now() > b.time + 2.5 * 3600000; }); }
   function suggKeys() { var k = []; dueSugg().forEach(function (b) { var a = apiKeyFor(b.key); if (a && k.indexOf(a) < 0) k.push(a); }); return k; }
   function dueBets() { return BETS().filter(function (b) { return b.status === "open" && Date.now() > b.time + 2.5 * 3600000; }); }
-  function dueKeys() { var k = []; dueBets().forEach(function (b) { var a = apiKeyFor(b.key); if (a && k.indexOf(a) < 0) k.push(a); }); return k; }
+  /* Bets worth an automatic results check: finished under 3 days ago (the feed only goes back 3 days) and not tried in the last 6 hours. */
+  function autoDue() { var now = Date.now(); return dueBets().filter(function (b) { return now - b.time < 3 * 86400000 && (!b.triedAt || now - b.triedAt > 6 * 3600000); }); }
+  function dueKeys() { var k = []; autoDue().forEach(function (b) { var a = apiKeyFor(b.key); if (a && k.indexOf(a) < 0) k.push(a); }); return k; }
   /* Works out won / lost / void for the market types with a settlement rule. Returns null when it cannot tell. */
   function ruleResult(rule, winner, a, b, sc) {
     if (rule.t === "dc") return rule.set.indexOf(winner) > -1 ? "won" : "lost";
@@ -1872,6 +1883,7 @@ body.simple .adv { display: none !important; }
     if (withRecord) { suggKeys().forEach(function (k) { if (keys.indexOf(k) < 0) keys.push(k); }); S.recAt = Date.now(); }
     if (!keys.length || busy) return Promise.resolve();
     busy = true; renderStatus(); renderBets();
+    autoDue().forEach(function (b) { b.triedAt = Date.now(); });
     var settled = 0, sg = 0, errs = [];
     return Promise.all(keys.map(function (k) {
       return api("/sports/" + k + "/scores/", { daysFrom: 3 }).then(function (rows) {
@@ -1996,7 +2008,8 @@ body.simple .adv { display: none !important; }
     var logged = findBet(p.id);
     var lb = el("button", "btn" + (logged ? " done" : ""), logged ? (S.practice ? "Logged ✓ Undo" : "Placed ✓ Undo") : (S.practice ? "Log practice bet" : "I placed it")); lb.type = "button";
     lb.addEventListener("click", function () {
-      if (logged) { removeBet(p.id); save(); renderAll(); }
+      if (logged) { if (logged.status !== "open") { showAlert("This bet has settled. Change it under My bets.", true); return; }
+        if (!window.confirm("Remove this bet from your record?")) return; removeBet(p.id); save(); renderAll(); }
       else logBet(p);
     });
     box.appendChild(lb);
@@ -2098,10 +2111,10 @@ body.simple .adv { display: none !important; }
   }
   /* The three displays every bet shows: risk (how often it loses), reward if it wins (as % of the stake), and value (price vs market).
      The risk bar fills as the chance of losing rises. Bands match the past-results tiers: 50%+ chance, 30 to 50%, under 30%. */
-  function riskWord(f) { return f >= 0.5 ? "Low" : f >= 0.3 ? "Medium" : "High"; }
+  function riskWord(f) { return "Wins about " + Math.max(1, Math.min(9, Math.round(f * 10))) + " in 10"; }
   function trioFor(fair, best, ev, suspect) {
     var t = el("span", "trio"), rw = best - 1;
-    t.appendChild(stat3("Risk", riskWord(fair), 1 - fair, fair >= 0.5 ? "good" : fair >= 0.3 ? "mid" : "warn"));
+    t.appendChild(stat3("Chance", riskWord(fair), 1 - fair, fair >= 0.5 ? "good" : fair >= 0.3 ? "mid" : "warn"));
     t.appendChild(stat3("Reward", "+" + Math.round(rw * 100) + "%", rw / 3, "info"));
     t.appendChild(stat3("Value", signed(ev), Math.max(ev, 0) / VALUE_MAX, suspect ? "warn" : ev >= VALUE_MIN ? "good" : ev >= 0.005 ? "mid" : "low"));
     return t;
@@ -2290,20 +2303,21 @@ body.simple .adv { display: none !important; }
   }
   function planCard() {
     var steps = planSteps(), i = 0; while (i < steps.length && steps[i].done) i++;
-    if (i >= steps.length) return null;
-    var st = steps[i], box = el("details", "learn plancard"); box.open = true;
+    if (i >= steps.length || S.planHidden) return null;
+    var st = steps[i], box = el("details", "learn plancard"); box.open = !S.bets.length;
     var sum = el("summary", null, "My plan · step " + (i + 1) + " of " + steps.length); box.appendChild(sum);
     var body = el("div", "body");
     body.appendChild(el("b", null, st.t)); body.appendChild(el("p", null, st.d));
     var b = el("button", "btn primary", st.btn); b.type = "button"; b.addEventListener("click", st.go); body.appendChild(b);
     var ol = el("ol", "planlist"); steps.forEach(function (x, k) { ol.appendChild(el("li", x.done ? "done" : k === i ? "now" : null, (x.done ? "✓ " : "") + x.t)); }); body.appendChild(ol);
+    var hide = el("button", "btn small", "Hide plan"); hide.type = "button"; hide.addEventListener("click", function () { S.planHidden = true; save(); renderAll(); }); body.appendChild(hide);
     box.appendChild(body); return box;
   }
   function renderPlan(d) {
     var box = $("plan"); box.textContent = "";
     if (!S.selected.some(function (k) { return S.cache[k]; })) {
       var pc0 = planCard(); if (pc0) box.appendChild(pc0);
-      box.appendChild(el("h2", null, "Today's level board"));
+      box.appendChild(el("h2", null, "Today's bets"));
       box.appendChild(el("p", null, busy ? "Loading odds…" : "Load today's prices and your ranked bets appear here."));
       if (!busy) { var go = el("button", "btn primary", "Load prices"); go.type = "button"; go.addEventListener("click", function () { refreshAll(); }); box.appendChild(go); }
       return;
@@ -2340,7 +2354,7 @@ body.simple .adv { display: none !important; }
       var act = d.ranked.filter(function (p) { var k = decision(p).k; return k === "place" || k === "consider"; }).slice(0, 5);
       if (act.length) picks = act; else { simpleEmpty = true; picks = d.ranked.slice(0, 2); }
     }
-    box.appendChild(el("h2", null, S.simple ? "Today" : "Today's level board"));
+    box.appendChild(el("h2", null, "Today's bets"));
     if (S.simple && simpleEmpty) box.appendChild(el("div", "reco", "Nothing worth acting on right now. The closest two are below, but skipping is a perfectly good choice."));
     if (d.value.length) {
       var nowN = 0, cons = 0, later = null;
@@ -2443,7 +2457,8 @@ body.simple .adv { display: none !important; }
       cp.addEventListener("click", function () { copyText(r.label + " · " + p.ev.h + " v " + p.ev.a + " · " + gbp(a) + " @ " + c.raw.toFixed(2) + " · " + sel.value, cp); });
       var lb = el("button", "btn" + (logged ? " done" : ""), logged ? (S.practice ? "Logged ✓ Undo" : "Placed ✓ Undo") : (S.practice ? "Log practice bet" : "I placed it")); lb.type = "button";
       lb.addEventListener("click", function () {
-        if (logged) { removeBet(pid); save(); renderAll(); return; }
+        if (logged) { if (logged.status !== "open") { showAlert("This bet has settled. Change it under My bets.", true); return; }
+          if (!window.confirm("Remove this bet from your record?")) return; removeBet(pid); save(); renderAll(); return; }
         if (a < 0.5) { showAlert("No stake is suggested at these odds or your weekly budget is used up.", false); return; }
         addBet({ pid: pid, evId: p.ev.id, key: p.key, league: p.league, h: p.ev.h, a: p.ev.a, sel: r.label, odds: c.v, book: sel.value, stake: a, fair: r.fair, refund: r.refund || 0, time: p.time, at: Date.now(),
           status: "open", profit: 0, mkt: "derived", rule: r.rule });
@@ -2696,7 +2711,7 @@ body.simple .adv { display: none !important; }
         left.appendChild(el("small", null, gist(r.fair, r.best, r.ev, r.ev > VALUE_MAX) + " Odds " + r.best.toFixed(2) + " with " + r.book + "."));
         left.appendChild(trioFor(r.fair, r.best, r.ev, r.ev > VALUE_MAX));
       } else {
-        left.appendChild(el("small", null, "Risk: " + riskWord(r.fair).toLowerCase() + ". No live price loaded. Worth betting only at odds of " + r.need.toFixed(2) + " or higher."));
+        left.appendChild(el("small", null, riskWord(r.fair) + ". No live price loaded. Worth betting only at odds of " + r.need.toFixed(2) + " or higher."));
       }
       var right = el("div", "mkr"); right.appendChild(el("b", null, pct(r.fair))); right.appendChild(el("span", null, "chance"));
       row.appendChild(left); row.appendChild(right); box.appendChild(row);
@@ -3085,9 +3100,11 @@ body.simple .adv { display: none !important; }
     var due = dueBets();
     if (due.length) {
       var keys = dueKeys();
-      var cb = el("button", "btn primary", "Check results · " + (keys.length * 2) + " credits"); cb.type = "button"; cb.disabled = busy;
-      cb.addEventListener("click", function () { showAlert(""); checkResults(); });
-      body.appendChild(cb);
+      if (keys.length || S.helperUrl) {
+        var cb = el("button", "btn primary", "Check results" + (keys.length ? " · " + (keys.length * 2) + " credits" : "")); cb.type = "button"; cb.disabled = busy;
+        cb.addEventListener("click", function () { showAlert(""); checkResults(); });
+        body.appendChild(cb);
+      }
     }
 
     open.concat(done.slice().sort(function (a, b) { return (b.settledAt || 0) - (a.settledAt || 0); })).forEach(function (b) {
@@ -3113,12 +3130,15 @@ body.simple .adv { display: none !important; }
           });
         }
         var rm = el("button", "btn small", "Remove"); rm.type = "button";
-        rm.addEventListener("click", function () { removeBet(b.pid); save(); renderAll(); });
+        rm.addEventListener("click", function () { if (!window.confirm("Remove this bet from your record? This cannot be undone.")) return; removeBet(b.pid); save(); renderAll(); });
         acts.appendChild(rm);
         row.appendChild(acts);
       } else {
         var rs = el("div", "res " + (b.status === "won" ? "pos" : b.status === "lost" ? "neg" : ""), b.status.toUpperCase() + " " + sgbp(b.profit) + " (" + gbp(b.stake) + " @ " + b.odds.toFixed(2) + ")");
         row.appendChild(rs);
+        var ch = el("button", "btn small", "Change result"); ch.type = "button";
+        ch.addEventListener("click", function () { b.status = "open"; b.profit = 0; b.settledAt = null; b.m = Date.now(); sbChanged(); save(); renderAll(); });
+        row.appendChild(ch);
       }
       body.appendChild(row);
     });
@@ -3291,6 +3311,12 @@ body.simple .adv { display: none !important; }
   /* Today's to-do: everything that needs you, in one place, each with the button that does it. */
   function todoItems() {
     var out = [], ls = lossState();
+    if (loadDamaged) out.push({ t: "Saved data could not be read", d: "A copy was kept. Restore your bets from Cloud backup or the bet export before logging new ones." });
+    if (saveFailed) out.push({ t: "Could not save", d: "Your phone's storage refused the last change. Free some space, then try again." });
+    if (S.apiErr) out.push(S.apiErr.code === "quota"
+      ? { t: "Out of Odds API credits", d: "Live prices and results stop until your credits renew. The free weekly prices still work.", btn: "Free prices", act: function () { setTab("more"); var f = $("freeBox"); if (f) f.scrollIntoView({ behavior: "smooth" }); } }
+      : { t: "Your Odds API key was refused", d: "Check the key under More, Settings.", btn: "Open More", act: function () { setTab("more"); } });
+    if (S.sb.url && !S.sb.session) out.push({ t: "Cloud backup has stopped", d: "You are signed out, so your bets are not being backed up.", btn: "Sign in", act: function () { setTab("more"); var b = $("sbBox"); if (b) b.scrollIntoView({ behavior: "smooth" }); } });
     if (ls.on) out.push({ t: ls.kind || "Betting paused", d: ls.reason });
     var keys = apiKeys(), noPrices = !Object.keys(S.cache).some(function (k) { return S.cache[k] && S.cache[k].events && S.cache[k].events.length; });
     if (noPrices) out.push({ t: "No prices loaded", d: S.key ? "Load today's prices to see what is worth a bet." : "Load the free weekly prices file under More.", btn: S.key ? "Refresh prices" : "Open More", act: S.key ? function () { $("refreshBtn").click(); } : function () { setTab("more"); } });
@@ -3299,12 +3325,20 @@ body.simple .adv { display: none !important; }
       var place = buildPicks("value", true).filter(function (p) { return decision(p).k === "place" && !findBet(p.id); });
       if (place.length) out.push({ t: place.length + (place.length === 1 ? " bet says PLACE" : " bets say PLACE"), d: "Check the price in your bookmaker's app first. Skipping is always fine.", btn: "Show me", act: function () { setTab("today"); var pl = $("plan"); if (pl) pl.scrollIntoView({ behavior: "smooth" }); } });
     }
-    var due = dueBets().length;
-    if (due) out.push({ t: due + (due === 1 ? " bet needs its result" : " bets need their results"), d: "The match has finished. Settling keeps your record and budget right.", btn: "Check results", act: function () { showAlert(""); checkResults(); } });
+    var due = dueBets().length, auto = dueKeys().length || (S.helperUrl && autoDue().length);
+    var toBets = function () { setTab("bets"); };
+    if (due) out.push({ t: due + (due === 1 ? " bet needs its result" : " bets need their results"),
+      d: auto ? "The match has finished. Settling keeps your record and budget right." : "Mark Won, Lost or Void under My bets: the app cannot fetch this result by itself.",
+      btn: auto ? "Check results" : "Mark result", act: auto ? function () { showAlert(""); checkResults(); } : toBets });
     var soon = soonBets().filter(function (b) { return !b.close || Date.now() - b.close.at > 20 * 60000; }).length;
     if (soon && S.key) out.push({ t: soon + (soon === 1 ? " bet starts within 3 hours" : " bets start within 3 hours"), d: "Saving the closing price now is how the app scores your bets.", btn: "Save closing prices", act: captureNow });
-    var offers = S.mb.offers.filter(mbLive).length;
-    if (offers) out.push({ t: offers + (offers === 1 ? " offer to finish" : " offers to finish"), d: "Each has a next step waiting.", btn: "Open Offers", act: function () { setTab("offers"); } });
+    var ready = S.mb.offers.filter(function (o) { return mbLive(o) && mbStage(o); });
+    if (ready.length) {
+      var o0 = ready[0], dl = mbDaysLeft(o0);
+      out.push({ t: ready.length + (ready.length === 1 ? " offer needs a step" : " offers need a step"),
+        d: o0.book + ": " + (mbStage(o0) === "qual" ? "place the qualifying bet" : "use the free bet") + (dl !== null ? ", " + dl + " day" + (dl === 1 ? "" : "s") + " left" : "") + (ready.length > 1 ? ", and " + (ready.length - 1) + " more" : "") + ".",
+        btn: "Open Offers", act: function () { setTab("offers"); } });
+    }
     return out;
   }
   function renderTodo() {
@@ -3955,7 +3989,7 @@ body.simple .adv { display: none !important; }
     return p.then(function () {
       if (!creditsOk()) return;
       var wantRecord = dueSugg().length > 0 && Date.now() - (S.recAt || 0) > 12 * 3600000 && S.remaining !== null && S.remaining >= MIN_CREDITS + 30;
-      if (dueBets().length || wantRecord) return checkResults(wantRecord);
+      if (autoDue().length || wantRecord) return checkResults(wantRecord);
     });
   }
 
@@ -4067,7 +4101,9 @@ body.simple .adv { display: none !important; }
   $("changeKey").addEventListener("click", function () {
     S.key = ""; S.remaining = null; save(); renderAll(); $("keyInput").focus();
   });
-  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") { renderAll(); autoRun(); if (S.helperUrl) { loadHelper(false); helperSettle(false); } if (sbReady()) { syncNow(true); loadCloudFile(false); } } });
+  /* Another window (the home-screen app and a browser tab, say) saved changes: pick them up rather than overwrite them. */
+  window.addEventListener("storage", function (e) { if (e.key === LS && e.newValue) { S = load(); renderAll(); } });
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") { S = load(); renderAll(); autoRun(); if (S.helperUrl) { loadHelper(false); helperSettle(false); } if (sbReady()) { syncNow(true); loadCloudFile(false); } } });
 
   /* ---------- Matched betting calculator ---------- */
   function initCalc() {
