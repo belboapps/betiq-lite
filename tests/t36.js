@@ -51,14 +51,14 @@ let fails=0; function check(name,ok,info){ if(!ok) fails++; console.log((ok?'PAS
  await p.click('[data-tab=today]'); await p.click('#refreshBtn'); await p.waitForTimeout(1200);
  await p.waitForFunction(()=>{ const s=JSON.parse(localStorage.getItem('betiqlite.v1')||'{}'); return !!(s.cache&&s.cache.soccer_epl&&s.cache.soccer_epl.events.length); },null,{timeout:15000});
  await p.click('[data-tab=more]'); await p.waitForSelector('#accaLegs .accaleg select'); if(!(await p.isVisible('#accaLegs'))) await p.click('#tAcca > summary');
- const opts=await p.$$eval('#accaLegs .accaleg >> nth=0 >> option',o=>o.map(x=>x.innerText)); check('picks offered from loaded prices',opts.length===7&&opts.some(o=>/^Arsenal to win · Arsenal v Everton · 2\.00$/.test(o)),opts.slice(1,3).join(' | '));
- await p.selectOption('#accaLegs .accaleg >> nth=0 >> select',{label:'Arsenal to win · Arsenal v Everton · 2.00'}); await p.waitForTimeout(100);
- await p.selectOption('#accaLegs .accaleg >> nth=1 >> select',{label:'Chelsea to win · Chelsea v Brighton · 2.50'}); await p.waitForTimeout(100);
+ const opts=await p.$$eval('#accaLegs .accaleg >> nth=0 >> option',o=>o.map(x=>x.innerText)); check('picks offered from loaded prices',opts.length===7&&opts.some(o=>/^Arsenal to win · Arsenal v Everton · 2\.00 typical$/.test(o)),opts.slice(1,3).join(' | '));
+ await p.selectOption('#accaLegs .accaleg >> nth=0 >> select',{label:'Arsenal to win · Arsenal v Everton · 2.00 typical'}); await p.waitForTimeout(100);
+ await p.selectOption('#accaLegs .accaleg >> nth=1 >> select',{label:'Chelsea to win · Chelsea v Brighton · 2.50 typical'}); await p.waitForTimeout(100);
  await p.click('#accaLegs .accaleg >> nth=2 >> text=Remove'); await p.waitForTimeout(100);
  s=await stats('#accaOut'); const real=await p.evaluate(()=>{const q=[1/2.0,1/3.6,1/3.8], r=[1/2.5,1/3.4,1/2.9]; return {a:q[0]/q.reduce((x,y)=>x+y,0), b:r[0]/r.reduce((x,y)=>x+y,0)};});
  console.log('   double from loaded prices:',JSON.stringify(s),'| simple fair chances for comparison',real.a.toFixed(3),real.b.toFixed(3));
  const ch=parseFloat(s['chance all win']); check('uses the real fair chances, not the 5% guess',/^£25\.00 \/ odds of 5\.00/.test(s['pays if all win'])&&Math.abs(ch-100*real.a*real.b)<1.5&&!/assumed to be 5%/.test(await p.innerText('#accaOut')),ch+' vs '+(100*real.a*real.b).toFixed(1));
- await p.selectOption('#accaLegs .accaleg >> nth=1 >> select',{label:'Draw · Arsenal v Everton · 3.60'}); await p.waitForTimeout(100);
+ await p.selectOption('#accaLegs .accaleg >> nth=1 >> select',{label:'Draw · Arsenal v Everton · 3.60 typical'}); await p.waitForTimeout(100);
  check('warns about two picks from one match',/Two of your picks are from the same match/.test(await p.innerText('#accaOut')));
  console.log('errs',errs,'overflow',await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),'fails',fails); await b.close(); process.exit(fails||errs.length?1:0);
 })();

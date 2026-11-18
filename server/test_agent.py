@@ -49,6 +49,16 @@ class Fair(unittest.TestCase):
         thin = A.fair_h2h(event("e", dict(books, betfair_ex_uk=[1.5, 3.0, 5.0])))     # 120%: not trusted
         self.assertLess(thin["Arsenal"], 0.6)
 
+    def test_a_bookmaker_missing_an_outcome_is_left_out(self):
+        full = {"a": [2.0, 3.4, 4.0], "b": [2.0, 3.4, 4.0], "c": [2.0, 3.4, 4.0]}
+        honest = A.fair_h2h(event("e", full))
+        partial = event("e", full)
+        partial["bookmakers"].append(dict(key="betfair_ex_uk", markets=[dict(key="h2h", outcomes=[
+            dict(name="Arsenal", price=2.04), dict(name="Everton", price=4.2)])]))
+        got = A.fair_h2h(partial)
+        self.assertAlmostEqual(got["Arsenal"], honest["Arsenal"])
+        self.assertLess(got["Arsenal"] * 2.0 - 1, 0)          # not shown as value: the honest edge is negative
+
     def test_too_few_bookmakers(self):
         self.assertEqual(A.fair_h2h(event("e", {"a": [2.0, 3.5, 3.8]})), {})
         self.assertEqual(A.fair_h2h({}), {})

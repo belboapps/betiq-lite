@@ -195,6 +195,8 @@ def fair_h2h(event):
     n_out = max(len(o) for _, o in books)
     per, ex = {}, {}
     for key, outs in books:
+        if len(outs) < n_out:
+            continue          # missing an outcome: scaling its prices to 100% would inflate the rest
         fairs = demargin([1 / p for _, p in outs])
         if key == "betfair_ex_uk" and len(outs) == n_out and sum(1 / p for _, p in outs) <= EX_LIQUID:
             ex = {name: f for (name, _), f in zip(outs, fairs)}

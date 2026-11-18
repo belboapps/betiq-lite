@@ -1241,6 +1241,7 @@ body.simple .adv { display: none !important; }
     var map = {}, order = [], nBooks = 0, sharpFair = {}, exFair = {}, nOut = 0;
     ev.books.forEach(function (b) { nOut = Math.max(nOut, b.o.length); });
     ev.books.forEach(function (b) {
+      if (b.o.length < nOut) return;   /* missing an outcome: scaling its prices to 100% would inflate the rest */
       var fairs = demargin(b.o.map(function (x) { return 1 / x[1]; }));
       /* Betfair Exchange as the yardstick, but only when its market is busy: every outcome priced and the prices adding up to within 2.5% of 100%.
          On 4,041 past matches a busy exchange predicted results as well as Pinnacle; thin exchange markets were badly wrong. */
@@ -1279,6 +1280,7 @@ body.simple .adv { display: none !important; }
     var lines = {};
     (ev.tb || []).forEach(function (b) {
       Object.keys(b.p).forEach(function (k) {
+        if (+k % 1 === 0) return;   /* whole-number lines can refund the stake, which this sum does not price */
         var o = b.p[k][0], u = b.p[k][1], fp = demargin([1 / o, 1 / u]);
         var L = lines[k] || (lines[k] = { point: +k, fo: [], ov: [], un: [] });
         if (b.sharp) { L.sf = fp[0]; return; }
@@ -1378,6 +1380,7 @@ body.simple .adv { display: none !important; }
       b.o.forEach(function (z) {
         if (z[0] !== ev.h || z[2] === null) return;
         var p = z[2]; if ((p * 2) % 1 !== 0) return;
+        if (p % 1 === 0) return;   /* whole lines can end in a refund that this sum does not price (draw no bet covers line 0) */
         var other = b.o.filter(function (q) { return q[0] === ev.a && q[2] !== null && Math.abs(q[2] + p) < 0.001; })[0];
         if (other) (lines[p] = lines[p] || []).push({ t: b.t, k: b.k, a: z[1], b: other[1] });
       });
@@ -1512,7 +1515,7 @@ body.simple .adv { display: none !important; }
     var R = weeklyLeft(), w = picks.map(function (p) { return Math.max(p.pick.ev, 0.005) / (p.pick.best - 1); });
     var tw = w.reduce(function (a, b) { return a + b; }, 0), cap = S.weekly * WEEK_CAP;
     picks.forEach(function (p, i) {
-      var amt = Math.min(R * w[i] / tw, cap), q = Math.floor(amt * 2) / 2;
+      var amt = Math.min(R * w[i] / tw, cap, baseStake(p.pick).amount), q = Math.floor(amt * 2) / 2;   /* never above the edge-based stake */
       planMap[p.id] = q >= 0.5 ? { amount: q, kind: "Share of your weekly budget" } : { amount: 0, kind: R < 0.5 ? "Weekly budget used up" : "Too small to bet" };
     });
   }
@@ -1812,7 +1815,7 @@ body.simple .adv { display: none !important; }
     var st = stakeFor(p.pick);
     if (st.amount < 0.5) { var lsx = lossState(); showAlert(lsx.on ? lsx.reason : "Your weekly budget is used up, so no stake is suggested. Raise it in Settings if you want to log this bet.", false); return; }
     addBet({ pid: p.id, evId: p.ev.id, key: p.key, league: p.league, h: p.ev.h, a: p.ev.a, sel: p.pick.name,
-      odds: p.pick.best, book: p.pick.bestBook, stake: st.amount, fair: p.pick.fair, time: p.time, at: Date.now(),
+      odds: p.pick.best, book: p.pick.bestBook, stake: st.amount, fair: p.pick.fair, refund: p.pick.refund || 0, time: p.time, at: Date.now(),
       mkt: p.pick.market || "", point: p.pick.point, side: p.pick.side, rule: p.pick.rule,
       status: "open", profit: 0 });
     save(); renderAll();
@@ -2012,8 +2015,8 @@ body.simple .adv { display: none !important; }
       text: "The only plan where the prices beat the market average. Expect a mix of wins and losses, and profit shows up over many bets." }); }
     if (likely.length >= 2) {
       var po = 1, pp = 1;
-      likely.forEach(function (p) { po *= p.pick.best; pp *= p.pick.fair; });
-      var ac = [{ p: pp, o: po, s: Math.min(round50(budget() * SMALL_STAKE), weeklyLeft() >= 0.5 ? weeklyLeft() : 0.5), name: likely.map(function (p) { return p.pick.name; }).join(" + "), book: "" }];
+      likely.forEach(function (p) { po *= accaPrice(p.pick) || p.pick.best; pp *= p.pick.fair; });
+      var ac = [{ p: pp, o: po, s: lossState().on || weeklyLeft() < 0.5 ? 0 : Math.min(round50(budget() * SMALL_STAKE), weeklyLeft()), name: likely.map(function (p) { return p.pick.name; }).join(" + "), book: "" }];
       plans.push({ id: "acca", title: "Accumulator", sub: "same picks, one combined bet", legs: ac, sim: simulate(ac),
         text: "Bigger payout, but every pick must win and the bookmaker's margin is applied on each one. Usually loses more for every £1 staked than the same picks as separate bets." });
     }
@@ -2414,7 +2417,7 @@ body.simple .adv { display: none !important; }
     var f2 = el("label", "field", "Which bookmaker"), sel = document.createElement("select");
     (names.length ? names : ["My bookmaker"]).forEach(function (n) { var o = el("option", null, n); o.value = n; sel.appendChild(o); }); f2.appendChild(sel); root.appendChild(f2);
     var out = el("div", "detail"); out.setAttribute("aria-live", "polite"); root.appendChild(out);
-    function cur() { var v = parseFloat(inp.value); if (!(v > 1)) return null; var pk = { name: r.label, fair: r.fair, best: v, ev: r.fair * v - 1 + (r.refund || 0), refund: r.refund || 0, bestBook: sel.value, market: "derived", pid: pid }; return { v: v, pk: pk, st: stakeFor(pk) }; }
+    function cur() { var raw = parseFloat(inp.value); if (!(raw > 1)) return null; var cm = commOf(sel.value), v = cm ? 1 + (raw - 1) * (1 - cm) : raw; var pk = { name: r.label, fair: r.fair, best: v, ev: r.fair * v - 1 + (r.refund || 0), refund: r.refund || 0, bestBook: sel.value, market: "derived", pid: pid }; return { v: v, raw: raw, pk: pk, st: stakeFor(pk) }; }
     function draw() {
       out.textContent = ""; var c = cur(); if (!c) return;
       var vd = verdictFor(c.pk.ev); out.appendChild(el("div", "pcres " + vd.k, vd.t));
@@ -2427,12 +2430,12 @@ body.simple .adv { display: none !important; }
       out.appendChild(g);
       var acts = el("div", "actions");
       var cp = el("button", "btn", "Copy bet"); cp.type = "button";
-      cp.addEventListener("click", function () { copyText(r.label + " · " + p.ev.h + " v " + p.ev.a + " · " + gbp(a) + " @ " + c.v.toFixed(2) + " · " + sel.value, cp); });
+      cp.addEventListener("click", function () { copyText(r.label + " · " + p.ev.h + " v " + p.ev.a + " · " + gbp(a) + " @ " + c.raw.toFixed(2) + " · " + sel.value, cp); });
       var lb = el("button", "btn" + (logged ? " done" : ""), logged ? (S.practice ? "Logged ✓ Undo" : "Placed ✓ Undo") : (S.practice ? "Log practice bet" : "I placed it")); lb.type = "button";
       lb.addEventListener("click", function () {
         if (logged) { removeBet(pid); save(); renderAll(); return; }
         if (a < 0.5) { showAlert("No stake is suggested at these odds or your weekly budget is used up.", false); return; }
-        addBet({ pid: pid, evId: p.ev.id, key: p.key, league: p.league, h: p.ev.h, a: p.ev.a, sel: r.label, odds: c.v, book: sel.value, stake: a, fair: r.fair, time: p.time, at: Date.now(),
+        addBet({ pid: pid, evId: p.ev.id, key: p.key, league: p.league, h: p.ev.h, a: p.ev.a, sel: r.label, odds: c.v, book: sel.value, stake: a, fair: r.fair, refund: r.refund || 0, time: p.time, at: Date.now(),
           status: "open", profit: 0, mkt: "derived", rule: r.rule });
         save(); renderAll();
       });
@@ -2964,7 +2967,7 @@ body.simple .adv { display: none !important; }
     var open = BETS().filter(function (b) { return b.status === "open"; });
     var done = BETS().filter(function (b) { return b.status !== "open"; });
     var staked = 0, profit = 0, exp = 0;
-    done.forEach(function (b) { staked += b.stake; profit += b.profit; exp += b.stake * (b.fair * b.odds - 1); });
+    done.forEach(function (b) { staked += b.stake; profit += b.profit; exp += b.stake * (b.fair * b.odds - 1 + (b.refund || 0)); });
     $("betsSum").textContent = (S.practice ? "Practice bets" : "My bets") + (BETS().length ? " · " + open.length + " open · " + sgbp(profit) : "");
     $("betsTabLbl").textContent = (S.practice ? "Practice" : "My bets") + (open.length ? " (" + open.length + ")" : "");
     if (S.practice) body.appendChild(el("div", "msg info", "Practice mode: these bets are pretend. No real money, and none of it counts towards your real record."));
@@ -3145,6 +3148,12 @@ body.simple .adv { display: none !important; }
       box.appendChild(row);
     });
     box.appendChild(el("p", "subnote", "Total across your accounts: " + gbp(total) + ". " + (S.accts && Object.keys(S.accts).some(function (k) { return S.accts[k].status === "limited" || S.accts[k].status === "closed"; }) ? "Limited and closed accounts are left out of the bets suggested." : "")));
+  }
+  /* Commission charged by a bookmaker name, if it is an exchange, from the prices loaded. */
+  function commOf(title) {
+    var c = 0;
+    Object.keys(S.cache).forEach(function (k) { S.cache[k].events.forEach(function (e) { e.books.forEach(function (b) { if (b.t === title && EXCH[b.k]) c = EXCH[b.k]; }); }); });
+    return c;
   }
   function seenBooks() {
     var seen = {};
@@ -3706,12 +3715,18 @@ body.simple .adv { display: none !important; }
     out.appendChild(el("p", "subnote", "An estimate, not a fact. It treats each team's goals as independent and is fitted to the fair match-result chances" + (m.pOver !== null ? " and the over 2.5 goals chance" : " only, because no goals prices are loaded for this match") + " (about " + fit.lh.toFixed(2) + " goals for " + m.h + ", " + fit.la.toFixed(2) + " for " + m.a + "). Picks about players, corners or cards are not covered."));
   }
   /* Outcomes from the loaded prices, soonest first, for picking accumulator legs without typing. */
+  /* An accumulator has to be placed with one bookmaker, and exchanges do not offer them. So each leg uses the
+     middle price across the bookmakers you use, not the best price from whichever bookmaker has it. */
+  function accaPrice(s) {
+    var v = (s.prices || []).filter(function (q) { return !q.ex && q.ok; }).map(function (q) { return q.raw; }).sort(function (a, b) { return a - b; });
+    return v.length ? v[Math.floor((v.length - 1) / 2)] : null;
+  }
   function accaChoices() {
     var now = Date.now(), out = [];
     Object.keys(S.cache).forEach(function (key) {
       S.cache[key].events.forEach(function (ev) {
         var t = Date.parse(ev.c); if (!(t > now)) return; var a = analyse(ev); if (!a) return;
-        a.sels.forEach(function (s) { out.push({ id: ev.id + "|" + s.name, evId: ev.id, time: t, odds: s.best, fair: s.fair, label: (s.name === "Draw" ? "Draw" : s.name + " to win") + " · " + ev.h + " v " + ev.a + " · " + s.best.toFixed(2) }); });
+        a.sels.forEach(function (s) { var o = accaPrice(s); if (!o) return; out.push({ id: ev.id + "|" + s.name, evId: ev.id, time: t, odds: o, fair: s.fair, label: (s.name === "Draw" ? "Draw" : s.name + " to win") + " · " + ev.h + " v " + ev.a + " · " + o.toFixed(2) + " typical" }); });
       });
     });
     out.sort(function (x, y) { return x.time - y.time; });
@@ -4265,9 +4280,9 @@ body.simple .adv { display: none !important; }
     return p;
   }
   function logLive(p) {
-    var st = baseStake(p.pick); if (st.amount < 0.5) { showAlert("No stake is suggested for this bet.", false); return; }
+    var st = stakeFor(p.pick); if (st.amount < 0.5) { showAlert(lossState().on ? lossState().reason : "No stake is suggested for this bet, or your weekly budget is used up.", false); return; }
     if (findBet(p.id)) { removeBet(p.id); save(); renderAll(); return; }
-    addBet({ pid: p.id, evId: p.ev.id, key: p.key, league: p.league, h: p.ev.h, a: p.ev.a, sel: p.pick.name, odds: p.pick.best, book: p.pick.bestBook, stake: st.amount, fair: p.pick.fair,
+    addBet({ pid: p.id, evId: p.ev.id, key: p.key, league: p.league, h: p.ev.h, a: p.ev.a, sel: p.pick.name, odds: p.pick.best, book: p.pick.bestBook, stake: st.amount, fair: p.pick.fair, refund: p.pick.refund || 0,
       time: p.time, at: Date.now(), mkt: p.pick.market || "", point: p.pick.point, side: p.pick.side, status: "open", profit: 0, live: true });
     save(); renderAll();
   }
@@ -4292,7 +4307,7 @@ body.simple .adv { display: none !important; }
     var sels = L.last.sels.slice().sort(function (x, y) { return y.ev - x.ev; }), standout = sels.filter(function (x) { return x.ev >= 0.05 && L.last.nBooks >= 4 && x.best <= LONGSHOT; });
     box.appendChild(el("p", "subnote", standout.length ? "Standout price" + (standout.length === 1 ? "" : "s") + " now: a bookmaker is at least 5% above the others. In-play prices move in seconds, so it may already be gone." : "No standout price right now. Prices are compared across " + L.last.nBooks + " bookmakers at each check."));
     sels.forEach(function (x) {
-      var p = livePick(x), st = baseStake(p.pick), row = el("div", "mkrow lrow"), left = el("div", "mkl");
+      var p = livePick(x), st = stakeFor(p.pick), row = el("div", "mkrow lrow"), left = el("div", "mkl");
       var nm = el("span", "mkname", x.name); if (p.isValue) nm.appendChild(el("span", "badge value", "STANDOUT")); if (p.suspect) nm.appendChild(el("span", "badge warn", "CHECK PRICE")); left.appendChild(nm);
       left.appendChild(el("small", null, "Best " + x.best.toFixed(2) + " with " + x.bestBook + " · " + signed(x.ev) + " vs the others" + (liveMove(x) ? " · " + liveMove(x) : "")));
       var right = el("div", "mkr"); right.appendChild(el("b", null, pct(x.fair))); right.appendChild(el("span", null, "chance now"));
