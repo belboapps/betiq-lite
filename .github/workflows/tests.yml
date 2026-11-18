@@ -1,5 +1,5 @@
 # Tester: runs the headless-browser checks on every change. GitHub emails you when a run fails.
-# A script passes when it finishes without crashing and reports no page errors ("errs []").
+# A script passes when it exits normally, prints no FAIL line and reports no page errors (see tests/run-all.sh).
 name: Tests
 on:
   push:
@@ -27,16 +27,7 @@ jobs:
         working-directory: tests
         run: |
           failed=""
-          for t in t*.js; do
-            echo "::group::$t"
-            if node "$t" > out.txt 2>&1 && grep -q "errs \[\]" out.txt; then
-              echo "passed"
-            else
-              failed="$failed $t"
-            fi
-            cat out.txt
-            echo "::endgroup::"
-          done
+          ./run-all.sh || failed="$failed browser-tests"
           if [ -f ../server/watcher/watcher.js ]; then
             echo "::group::price watcher self-test"
             if BETIQ_PAGE="file://$PWD/../index.html" NODE_PATH="$PWD/node_modules" node ../server/watcher/watcher.js --selftest; then echo passed; else failed="$failed watcher"; fi

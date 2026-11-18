@@ -20,7 +20,7 @@ async function setup(seed, opts={}){
   if(url.pathname.endsWith('/odds/')){ calls.push('MAIN'); remaining-=1; last=1; return r.fulfill({headers:h(),body:JSON.stringify(['m1','m2','m3'].map(mainEv))}); }
   if(url.pathname.includes('/scores/')) return r.fulfill({headers:h(),body:'[]'});
   return r.fulfill({headers:h(),body:JSON.stringify([{key:'soccer_epl',title:'EPL',group:'Soccer',active:true,has_outrights:false}])});});
- await p.addInitScript((seedObj)=>{ if(!sessionStorage.getItem('seeded')){sessionStorage.setItem('seeded','1'); localStorage.setItem('betiqlite.v1',JSON.stringify(Object.assign({key:'dummy',auto:false,ver:2,booksSet:true,pracAsked:true,tour:true,sports:[{key:'soccer_epl',title:'EPL',group:'Soccer'}],selected:['soccer_epl'],picked:true,windowH:168},seedObj)))}},seed);
+ await p.addInitScript((seedObj)=>{ if(!sessionStorage.getItem('seeded')){sessionStorage.setItem('seeded','1'); localStorage.setItem('betiqlite.v1',JSON.stringify(Object.assign({key:'dummy',auto:false,ver:2,booksSet:true,pracAsked:true,tour:true,simple:false,sports:[{key:'soccer_epl',title:'EPL',group:'Soccer'}],selected:['soccer_epl'],picked:true,windowH:168},seedObj)))}},seed);
  await p.goto('file://'+require('path').resolve(__dirname,'..','index.html')+''); await p.waitForTimeout(400);
  return {b,p,errs,calls};
 }

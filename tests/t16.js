@@ -7,7 +7,7 @@ const { setup } = require('./t15.js');
  await p.click('[data-tab=today]'); await p.click('#refreshBtn'); await p.waitForTimeout(1800);
  console.log('4b AF calls:',calls.filter(c=>c.startsWith('AF')).join(' | ').slice(0,200));
  await p.click('[data-tab=all]'); await p.waitForTimeout(200);
- console.log('4c badges:',await p.$$eval('#list .brow',r=>r.map(x=>x.querySelector('.bn1').innerText.replace(/\n/g,' ')+' '+x.querySelector('.bsub').innerText.slice(0,28))));
+ console.log('4c badges:',await p.$$eval('#list .brow',r=>r.filter(x=>x.querySelector('.bn1')&&x.querySelector('.bsub')).map(x=>x.querySelector('.bn1').innerText.replace(/\n/g,' ')+' '+x.querySelector('.bsub').innerText.slice(0,28))));
  const row=await p.$('#list .brow:has(.badge.warn:has-text("TEAM NEWS")) .bmain'); if(row){ await row.click(); await p.waitForTimeout(250); console.log('4d sheet news:',(await p.innerText('#sheetBody .plain >> nth=0')).replace(/\n/g,' | ').slice(0,260)); await p.screenshot({path:'n_sheet.png'}); } else console.log('4d no row with TEAM NEWS badge');
  console.log('errs',errs); await b.close();
  // ---- 4e. free plan blocks the season
