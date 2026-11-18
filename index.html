@@ -202,6 +202,11 @@ details.learn[open] > summary::after { content: "\2212"; }
 .slip { grid-column: 1 / -1; margin-top: 8px; padding: 8px 10px; background: var(--accent-soft); border-radius: 8px; font-size: 14px; color: var(--ink); }
 .slip b { font: 700 18px/1.2 var(--display); text-transform: uppercase; letter-spacing: .02em; }
 .slip .cost { font-size: 13px; }
+.todo { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line, rgba(127,127,127,.25)); }
+.todo:first-child { border-top: 0; }
+.todotxt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.todotxt span { font-size: 13px; opacity: .8; }
+.todo .btn { flex: none; min-height: 40px; }
 details.pick.isvalue { border-left: 5px solid var(--value); }
 .stat span, .chance span, .meta { font-size: 12px; }
 .panel { gap: 14px; }
@@ -565,6 +570,7 @@ body.simple .adv { display: none !important; }
     <div id="alerts"></div>
 
     <div class="tab" id="tab-today">
+      <section class="panel" id="todoBox"><h2>Today's to-do</h2><div id="todoBody"></div></section>
       <section class="panel" id="liveBox" hidden></section>
       <section class="panel" id="plan"></section>
       <div class="tiles" id="tiles"></div>
@@ -903,7 +909,7 @@ body.simple .adv { display: none !important; }
   var API = "https://api.the-odds-api.com/v4";
   var DEFAULTS = { key: "", selected: [], mode: "value", minOdds: 1.3, windowH: 72, group: "all",
                    sports: [], sportsAt: 0, cache: {}, remaining: null, used: null, picked: false,
-                   bankroll: 100, weekly: 0, league: "all", sugg: [], exYard: true, helperUrl: "", helperAt: 0, helperResAt: 0, planDone: false, freeMode: false, freeInfo: null, series: {}, accts: {}, fMaxOdds: 0, fMinEdge: 0, fMinScore: 0, fChance: 0, ntfy: "", ntfySeen: [], deps: [], mb: null, mkSort: "likely", live: null, simple: true, recAt: 0, autoKick: true, sharp: false, sharpBad: false, placeMin: 60, tuneN: 0, tomb: [], sb: { url: "", key: "", email: "", session: null, last: 0, status: "" }, extras: true, extraMax: 12, extraFreshH: 3, lossLimit: 0, lossStreak: 5, tour: false, afKey: "", newsOn: true, news: {}, afUse: { d: "", n: 0 }, afStatus: "", xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
+                   bankroll: 100, weekly: 0, league: "all", sugg: [], exYard: true, helperUrl: "", helperAt: 0, helperResAt: 0, planDone: false, freeMode: false, freeInfo: null, series: {}, accts: {}, fMaxOdds: 0, fMinEdge: 0, fMinScore: 0, fChance: 0, ntfy: "", ntfySeen: [], deps: [], cloudFileAt: 0, cloudFileFetched: "", cloudFileErr: "", mb: null, mkSort: "likely", live: null, simple: true, recAt: 0, autoKick: true, sharp: false, sharpBad: false, placeMin: 60, tuneN: 0, tomb: [], sb: { url: "", key: "", email: "", session: null, last: 0, status: "" }, extras: true, extraMax: 12, extraFreshH: 3, lossLimit: 0, lossStreak: 5, tour: false, afKey: "", newsOn: true, news: {}, afUse: { d: "", n: 0 }, afStatus: "", xmBad: [], xmOK: [], clog: [], tab: "today", ver: 2, myBooks: null, booksSet: false, hist: {}, bets: [], pbets: [], practice: false, pracAsked: false, auto: true, autoHours: 4, noLinks: false, totals: false };
   var GROUPS = { "Soccer": "Football", "American Football": "US football", "Ice Hockey": "Ice hockey",
                  "Mixed Martial Arts": "MMA", "Rugby League": "Rugby", "Rugby Union": "Rugby", "Aussie Rules": "Aussie rules" };
   var DEFAULT_FOOTBALL = ["soccer_epl", "soccer_efl_champ", "soccer_uefa_champs_league", "soccer_uefa_europa_league"];
@@ -3282,6 +3288,37 @@ body.simple .adv { display: none !important; }
     var d = planData();
     renderPlan(d); renderTiles(d); renderScenarios(d); renderList(); renderBets(); renderRecord(); renderSheet();
   }
+  /* Today's to-do: everything that needs you, in one place, each with the button that does it. */
+  function todoItems() {
+    var out = [], ls = lossState();
+    if (ls.on) out.push({ t: ls.kind || "Betting paused", d: ls.reason });
+    var keys = apiKeys(), noPrices = !Object.keys(S.cache).some(function (k) { return S.cache[k] && S.cache[k].events && S.cache[k].events.length; });
+    if (noPrices) out.push({ t: "No prices loaded", d: S.key ? "Load today's prices to see what is worth a bet." : "Load the free weekly prices file under More.", btn: S.key ? "Refresh prices" : "Open More", act: S.key ? function () { $("refreshBtn").click(); } : function () { setTab("more"); } });
+    else if (S.key && keys.length && stale()) out.push({ t: "Prices are out of date", d: "Refresh before choosing a bet: good prices go quickly.", btn: "Refresh prices", act: function () { $("refreshBtn").click(); } });
+    if (!ls.on && !noPrices) {
+      var place = buildPicks("value", true).filter(function (p) { return decision(p).k === "place" && !findBet(p.id); });
+      if (place.length) out.push({ t: place.length + (place.length === 1 ? " bet says PLACE" : " bets say PLACE"), d: "Check the price in your bookmaker's app first. Skipping is always fine.", btn: "Show me", act: function () { setTab("today"); var pl = $("plan"); if (pl) pl.scrollIntoView({ behavior: "smooth" }); } });
+    }
+    var due = dueBets().length;
+    if (due) out.push({ t: due + (due === 1 ? " bet needs its result" : " bets need their results"), d: "The match has finished. Settling keeps your record and budget right.", btn: "Check results", act: function () { showAlert(""); checkResults(); } });
+    var soon = soonBets().filter(function (b) { return !b.close || Date.now() - b.close.at > 20 * 60000; }).length;
+    if (soon && S.key) out.push({ t: soon + (soon === 1 ? " bet starts within 3 hours" : " bets start within 3 hours"), d: "Saving the closing price now is how the app scores your bets.", btn: "Save closing prices", act: captureNow });
+    var offers = S.mb.offers.filter(mbLive).length;
+    if (offers) out.push({ t: offers + (offers === 1 ? " offer to finish" : " offers to finish"), d: "Each has a next step waiting.", btn: "Open Offers", act: function () { setTab("offers"); } });
+    return out;
+  }
+  function renderTodo() {
+    var body = $("todoBody"); if (!body) return; body.textContent = "";
+    var items = todoItems();
+    if (!items.length) { body.appendChild(el("p", "subnote", "Nothing needs doing right now. Skipping a day is always fine.")); return; }
+    items.forEach(function (it) {
+      var row = el("div", "todo"), txt = el("div", "todotxt");
+      txt.appendChild(el("b", null, it.t)); if (it.d) txt.appendChild(el("span", null, it.d));
+      row.appendChild(txt);
+      if (it.btn) { var b = el("button", "btn small", it.btn); b.type = "button"; b.addEventListener("click", it.act); row.appendChild(b); }
+      body.appendChild(row);
+    });
+  }
   function renderAll() {
     var inApp = !!(S.key || S.freeMode);
     $("setup").hidden = inApp;
@@ -3307,7 +3344,7 @@ body.simple .adv { display: none !important; }
     $("fMaxOdds").value = String(S.fMaxOdds); $("fMinEdge").value = String(S.fMinEdge); $("fMinScore").value = String(S.fMinScore); $("fChance").value = String(S.fChance);
     $("filterSum").textContent = "Filters: budget £" + S.bankroll + " · min odds " + (+S.minOdds === 1 ? "any" : (+S.minOdds).toFixed(2)) + " · next " + wl +
       (S.fMaxOdds ? " · max odds " + S.fMaxOdds : "") + (S.fMinEdge ? " · edge " + (S.fMinEdge * 100) + "%+" : "") + (S.fMinScore ? " · score " + S.fMinScore + "+" : "") + (S.fChance ? " · chance " + Math.round(S.fChance * 100) + "%+" : "") + " (saved)";
-    renderCredits(); renderStatus(); renderChips(); renderView();
+    renderCredits(); renderStatus(); renderChips(); renderView(); renderTodo();
     notifyPlace();
     if (!$("tab-offers").hidden) renderOffers();
     if (!$("tab-more").hidden) { renderCreditLog(); renderMkCheck(); }
@@ -4030,7 +4067,7 @@ body.simple .adv { display: none !important; }
   $("changeKey").addEventListener("click", function () {
     S.key = ""; S.remaining = null; save(); renderAll(); $("keyInput").focus();
   });
-  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") { renderAll(); autoRun(); if (S.helperUrl) { loadHelper(false); helperSettle(false); } if (sbReady()) syncNow(true); } });
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") { renderAll(); autoRun(); if (S.helperUrl) { loadHelper(false); helperSettle(false); } if (sbReady()) { syncNow(true); loadCloudFile(false); } } });
 
   /* ---------- Matched betting calculator ---------- */
   function initCalc() {
@@ -4259,8 +4296,24 @@ body.simple .adv { display: none !important; }
       });
     })).then(function () { save(); if (n) { renderAll(); showAlert(n + (n === 1 ? " result" : " results") + " filled in free through your helper.", true); } return n; });
   }
+  /* The weekly prices file, fetched by your home server and kept privately in your Supabase project
+     (supabase/files.sql). Loaded by itself when the app opens, at most once an hour. */
+  function loadCloudFile(force) {
+    if (!sbReady()) return Promise.resolve(false);
+    if (!force && Date.now() - (S.cloudFileAt || 0) < 3600000) return Promise.resolve(false);
+    S.cloudFileAt = Date.now(); save();
+    return sbEnsureToken().then(function () { return sbReq("/rest/v1/files?name=eq.fixtures&select=body,fetched_at&limit=1"); }).then(function (rows) {
+      var r = rows && rows[0]; if (!r || !r.body) { S.cloudFileErr = "No prices file yet. The home server stores one within a few hours of starting."; save(); return false; }
+      if (r.fetched_at === S.cloudFileFetched && !force) return false;
+      var info = importFree(r.body); S.cloudFileFetched = r.fetched_at; S.cloudFileErr = ""; save(); renderAll(); return info;
+    }).then(null, function (e) {
+      S.cloudFileErr = e && e.status === 404 ? "Automatic weekly prices are not set up yet: run supabase/files.sql in your Supabase project once." : ""; save(); return false;
+    });
+  }
   function renderHelper() {
     var m = $("helperMsg"); if (!m) return; m.textContent = "";
+    if (S.cloudFileFetched) m.appendChild(el("div", "msg info", "Weekly prices load automatically from your home server (stored " + ago(Date.parse(S.cloudFileFetched)) + ")."));
+    else if (S.cloudFileErr) m.appendChild(el("div", "msg", S.cloudFileErr));
     if (S.helperErr) m.appendChild(el("div", "msg", S.helperErr));
     else if (S.helperUrl && S.helperAt) m.appendChild(el("div", "msg info", "Helper connected. Prices last loaded " + ago(S.helperAt) + ". They reload by themselves when you open the app, and finished football bets are settled free where the helper has the result."));
   }
@@ -4452,6 +4505,7 @@ body.simple .adv { display: none !important; }
   renderAll();
   if (S.key || S.freeMode) renderSettings();
   if (S.helperUrl) { loadHelper(false); helperSettle(false); }
+  if (sbReady()) loadCloudFile(false);
   if (S.sb.session && S.sb.url) { if (sbArrived) setTab("more"); syncNow(true); }
   if (S.live) { if (liveActive() && Date.now() - S.live.time > liveMins(S.live.group) * 60000) S.live.stopped = true; renderLive(); if (liveActive()) { scheduleLive(); liveCheck(); } }
   if (S.key && !S.tour && !S.booksSet && !S.bets.length && !S.pbets.length && !S.sb.session) openTour();

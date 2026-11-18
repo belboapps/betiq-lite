@@ -9,6 +9,8 @@ few minutes:
   - Spending guardian: a monthly summary of money staked and returned, and one warning when
     the month's stakes pass BETIQ_MONTHLY_LIMIT.
   - Morning message: how many bets kick off today and how many are waiting for a result.
+  - Weekly prices: fetches the free football-data.co.uk file every 3 hours and leaves it in your
+    Supabase project, so the app loads the weekend's fixtures and prices by itself.
   - Weekly review: each week, results and the closing-price score for real and practice bets.
   - Tipster tracker: rates tipsters from tips you forward (see tipsters.py). Needs TIPS_TOPIC.
   - Health checker: says when Supabase, the Odds API key, the page or the backup has stopped
@@ -116,6 +118,8 @@ def _sb(method, path, body=None, prefer=None):
         raise Problem("sb_down", "Supabase cannot be reached.")
     if status in (401, 403):
         raise Problem("sb_key", "Supabase rejected the server's key.")
+    if status == 404 and "PGRST205" in text and "/files" in path:
+        raise Problem("files_table", "Automatic weekly prices need a one-off setup: run supabase/files.sql in your Supabase project.")
     if status == 404 and "PGRST205" in text:
         raise Problem("sb_table", "This Supabase project has no bets table. Either it is not the project BetIQ's "
                                   "cloud backup uses, or supabase/setup.sql has not been run in it.")
@@ -139,6 +143,34 @@ def live_bets(rows, practice=None):
         if practice is None or bool(r.get("practice")) == practice:
             out.append(d)
     return out
+
+
+# ---------- Weekly prices file ----------
+FILE_EVERY = 3 * 3600 * 1000          # football-data.co.uk is asked at most 8 times a day
+FILE_URL = "https://www.football-data.co.uk/fixtures.csv"
+
+
+def store_weekly_file(state, now):
+    """Fetch the free weekly fixtures-and-prices file and leave it in your Supabase project, where the
+    app picks it up when it opens. Returns True when a new copy was stored."""
+    if now - state.get("file_at", 0) < FILE_EVERY:
+        return False
+    state["file_at"] = now
+    try:
+        status, _, text = http("GET", FILE_URL, {"User-Agent": "betiq-lite home server (personal use)"}, timeout=30)
+    except OSError:
+        return False                                   # tried again in three hours
+    text = text.lstrip("\ufeff")
+    if status != 200 or "HomeTeam" not in text[:600]:
+        return False
+    users = (_sb("GET", "/auth/v1/admin/users") or {}).get("users", [])
+    stamp = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
+    for u in users:
+        _sb("POST", "/rest/v1/files?on_conflict=user_id,name",
+            [dict(user_id=u["id"], name="fixtures", body=text, fetched_at=stamp)],
+            prefer="resolution=merge-duplicates,return=minimal")
+    state["file_stored"] = stamp
+    return bool(users)
 
 
 # ---------- Backup ----------
@@ -450,6 +482,11 @@ def one_pass(state, now=None):
         msg = weekly_review(rows, now, state)
         if msg:
             notify("BetIQ", msg)
+    try:
+        if store_weekly_file(state, now_ms()):
+            print("weekly prices file stored", flush=True)
+    except Problem as p:
+        found[p.key] = p.text
     try:
         tipped = tipsters.run(http, demargin, DATA, now_ms())
         if tipped and (tipped["added"] or tipped["settled"]):

@@ -335,5 +335,32 @@ def urllib_since(url):
     return urllib.parse.parse_qs(urllib.parse.urlsplit(url).query).get("since", [""])[0]
 
 
+class WeeklyFile(unittest.TestCase):
+    def test_file_is_fetched_at_most_every_three_hours_and_stored_for_each_user(self):
+        real_http, real_sb = A.http, A._sb
+        self.addCleanup(setattr, A, "http", real_http)
+        self.addCleanup(setattr, A, "_sb", real_sb)
+        fetched, stored = [], []
+        A.http = lambda method, url, headers=None, body=None, timeout=20: fetched.append(url) or (200, {}, "\ufeffDiv,Date,HomeTeam,AwayTeam\nE0,22/11/2026,Arsenal,Everton\n")
+        def sb(method, path, body=None, prefer=None):
+            if path.startswith("/auth/v1/admin/users"):
+                return {"users": [{"id": "u1"}]}
+            stored.append((path, body[0]["user_id"], body[0]["name"], body[0]["body"][:3]))
+        A._sb = sb
+        state = {}
+        self.assertTrue(A.store_weekly_file(state, NOW))
+        self.assertEqual(stored, [("/rest/v1/files?on_conflict=user_id,name", "u1", "fixtures", "Div")])
+        self.assertFalse(A.store_weekly_file(state, NOW + 3600 * 1000))          # an hour later: not asked again
+        self.assertEqual(len(fetched), 1)
+        self.assertTrue(A.store_weekly_file(state, NOW + 3 * 3600 * 1000))
+        self.assertEqual(len(fetched), 2)
+
+    def test_a_page_that_is_not_the_file_is_ignored(self):
+        real_http = A.http
+        self.addCleanup(setattr, A, "http", real_http)
+        A.http = lambda *a, **k: (200, {}, "<html>maintenance</html>")
+        self.assertFalse(A.store_weekly_file({}, NOW))
+
+
 if __name__ == "__main__":
     unittest.main()
