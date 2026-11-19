@@ -1,5 +1,8 @@
 # Cloud backup for BetIQ Lite (optional)
 
+> **Not needed on the home server.** The copy at `betiq.belboapps.co.uk` saves the bet log to the server itself.
+> This guide only applies to the old GitHub Pages copy.
+
 This keeps your bet log safe if you clear your browser or change phone, and shares it between devices.
 Only you can see it: you sign in with an email link, and the database only returns rows that belong to you.
 

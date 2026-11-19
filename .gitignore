@@ -1,3 +1,5 @@
 server/.env
 server/backups/
 __pycache__/
+.DS_Store
+hist2.sqlite
