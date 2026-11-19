@@ -1,4 +1,4 @@
-/* Belbo Apps design kit, v1.0 (19 Nov 2026). Source: github.com/belboapps/belbo-design
+/* Belbo Apps design kit, v1.1 (19 Nov 2026). Source: github.com/belboapps/belbo-design
    One look for every Belbo app: shared colours, type, spacing and components, with one accent
    colour per app. Taken from BelboRent (src/app/globals.css and docs/design-audit.md).
 
@@ -50,14 +50,14 @@
   --b-on-accent: #ffffff;
   --b-accent-text: #00478a;
 
-  /* Type: Plus Jakarta Sans. Nothing for reading below 14px. */
+  /* Type: Plus Jakarta Sans. Nothing for reading below 14px. Unitless line heights so children scale. */
   --b-font: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --b-text-display: 700 2rem/2.25rem var(--b-font);     /* 32/36 */
-  --b-text-figure: 800 2.5rem/2.5rem var(--b-font);     /* 40/40, with .b-numeral */
-  --b-text-heading: 600 1.25rem/1.625rem var(--b-font); /* 20/26 */
-  --b-text-body: 400 1rem/1.5rem var(--b-font);         /* 16/24 */
-  --b-text-small: 400 0.875rem/1.25rem var(--b-font);   /* 14/20 */
-  --b-text-badge: 600 0.75rem/1rem var(--b-font);       /* 12/16, badges only */
+  --b-text-display: 700 2rem/1.125 var(--b-font);        /* 32/36 */
+  --b-text-figure: 800 2.5rem/1 var(--b-font);           /* 40/40, with .b-numeral */
+  --b-text-heading: 600 1.25rem/1.3 var(--b-font);       /* 20/26 */
+  --b-text-body: 400 1rem/1.5 var(--b-font);             /* 16/24 */
+  --b-text-small: 400 0.875rem/1.4286 var(--b-font);     /* 14/20 */
+  --b-text-badge: 600 0.75rem/1.3333 var(--b-font);      /* 12/16, badges only */
 
   /* Spacing: 4px base. */
   --b-s1: 4px; --b-s2: 8px; --b-s3: 12px; --b-s4: 16px; --b-s5: 24px; --b-s6: 32px; --b-s7: 48px;
@@ -146,7 +146,9 @@
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
 }
-.b-page a, .b-link { color: var(--b-link); text-underline-offset: 2px; }
+/* Low specificity on purpose, so buttons and rows that are links keep their own colours. */
+:where(.b-page) a, .b-link { color: var(--b-link); text-underline-offset: 2px; }
+.b-page [hidden] { display: none !important; } /* kit buttons set display; [hidden] must still win */
 html:has(.b-page) { scroll-padding-bottom: 6rem; } /* keep focused fields clear of a bottom bar */
 
 /* One focus ring everywhere, visible on light and dark. */

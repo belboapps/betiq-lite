@@ -1,5 +1,6 @@
 /* Belbo design kit for Tailwind v4 apps (BelboRent and any Next.js app).
-   In src/app/globals.css:   @import "tailwindcss";  @import "../../belbo/tailwind.css";
+   In src/app/globals.css:   @import "tailwindcss";  @import "<path>/belbo/tailwind.css" layer(base);
+   (layer(base) matters: belbo.css is unlayered, and unlayered rules would beat every Tailwind utility.)
    and put data-app="<app>" on <html>. Gives Tailwind classes such as bg-accent, text-on-accent,
    text-accent-text, bg-surface, text-ink, text-muted, rounded-card, font-sans, shadow-depth. */
 @import "./belbo.css";
