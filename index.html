@@ -328,6 +328,56 @@ body.simple .bmain .cpay, body.simple .brow .actions .copy, body.simple .brow .b
 body.simple .brow .actions .btn:not(.go):not(.copy) { grid-column: 1 / -1; }
 body.simple .adv { display: none !important; }
 
+/* ---------- Simple view (the default): one thing to do, an icon and a few words; the numbers stay one tap away ---------- */
+svg.ico { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+#nowBox { display: flex; flex-direction: column; gap: var(--b-s3); }
+body:not(.simple) #nowBox, #nowBox:empty { display: none; }
+body.simple #todoBox, body.simple #tiles, body.simple #plan > h2, body.simple #plan > .subnote, body.simple #plan > .reco,
+body.simple #plan > .plancard, body.simple #plan > .nudge, body.simple #plan > .msg, body.simple #plan > .pracbar,
+body.simple #plan > .board.closest, body.simple.nokey #credits, body.simple.nokey #refreshBtn { display: none; }
+.nowhead { display: flex; align-items: center; gap: var(--b-s3); }
+.nowic { width: 48px; height: 48px; border-radius: 50%; background: var(--x-accent-soft); color: var(--b-accent-text); display: grid; place-items: center; flex: none; }
+.nowic svg.ico { width: 26px; height: 26px; }
+.nowt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.nowt b { font: 800 1.25rem/1.3 var(--b-font); color: var(--b-ink); }
+.nowt span { font: var(--b-text-small); color: var(--b-muted); }
+.nowchip { align-self: flex-start; display: inline-flex; align-items: center; gap: var(--b-s2); background: var(--b-surface-2); border-radius: var(--b-r-pill); padding: var(--b-s2) var(--b-s3); font: var(--b-text-small); font-weight: 600; }
+.nowchip svg.ico { width: 18px; height: 18px; color: var(--b-accent-text); }
+.nowrow { display: flex; align-items: center; gap: var(--b-s3); padding: var(--b-s2) var(--b-s3); border-radius: var(--b-r-row); background: var(--b-surface-2); min-height: 52px; }
+.nowrow.warn { background: var(--b-warn-bg); color: var(--b-warn); }
+.nowrow > b { flex: 1; min-width: 0; font-weight: 600; }
+.nowrow > b small { display: block; font: var(--b-text-small); color: var(--b-muted); font-weight: 400; }
+.nowrow .btn { flex: none; }
+.nowweek { display: flex; flex-direction: column; gap: var(--b-s2); }
+.nowweek > span { display: flex; justify-content: space-between; font: var(--b-text-small); }
+.nowweek > span b { font-weight: 600; }
+.nowweek > span em { font-style: normal; color: var(--b-muted); }
+.sbet { display: none; }
+body.simple .bmain > .sbet { display: flex; flex-direction: column; gap: var(--b-s3); }
+body.simple .bmain > .ctop, body.simple .bmain > .verdict, body.simple .bmain > .howto, body.simple .bmain > .cline,
+body.simple .bmain > .cgist, body.simple .bmain > .trio, body.simple .bmain > .cwhen, body.simple .bmain > .cmatch { display: none; }
+.shead { display: flex; justify-content: space-between; align-items: center; gap: var(--b-s2); }
+.sverd { display: inline-flex; align-items: center; gap: 6px; border-radius: var(--b-r-pill); padding: 6px var(--b-s3) 6px var(--b-s2); font: 700 1rem/1.25 var(--b-font); background: var(--b-surface-2); color: var(--b-ink); }
+.sverd svg.ico { width: 20px; height: 20px; stroke-width: 2.4; }
+.sverd.place { background: var(--b-ok-bg); color: var(--b-ok); }
+.sverd.consider, .sverd.check { background: var(--b-warn-bg); color: var(--b-warn); }
+.sverd.wait { color: var(--b-link); }
+.sverd.skip { background: var(--b-bad-bg); color: var(--b-bad); }
+.swhen, .smatch { font: var(--b-text-small); color: var(--b-muted); }
+.smatch { margin-bottom: calc(-1 * var(--b-s2)); }
+.spick { font: 800 1.75rem/1.15 var(--b-font); color: var(--b-ink); overflow-wrap: anywhere; letter-spacing: -0.01em; }
+.sfacts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--b-s2); }
+.sfact { background: var(--b-surface-2); border-radius: var(--b-r-row); padding: var(--b-s3) var(--b-s2); display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sfact svg.ico { color: var(--b-accent-text); margin-bottom: var(--b-s1); }
+.sfact span { font: var(--b-text-small); color: var(--b-muted); }
+.sfact b { font: 700 1rem/1.5rem var(--b-font); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.snote { display: flex; gap: var(--b-s2); align-items: flex-start; font: var(--b-text-small); color: var(--b-ink); }
+.snote svg.ico { width: 18px; height: 18px; color: var(--b-muted); margin-top: 1px; }
+body.simple .cmore { display: inline-flex; align-items: center; justify-content: center; gap: var(--b-s2); font-weight: 600; color: var(--b-link); min-height: 32px; }
+body.simple .cmore svg.ico { width: 20px; height: 20px; }
+body:not(.simple) .simplefoot, body.simple .advfoot { display: none; }
+body.simple footer { text-align: center; }
+
 /* Picks in the details sheet */
 .ptile { text-align: left; background: var(--b-surface); color: var(--b-ink); border: 0; border-radius: var(--b-r-card); box-shadow: var(--b-shadow); min-width: 0; display: grid; grid-template-columns: auto 1fr auto; column-gap: var(--b-s3); row-gap: 2px; align-items: center; padding: var(--b-s3); }
 .ptile.isvalue { box-shadow: inset 4px 0 0 var(--b-ok), var(--b-shadow); }
@@ -460,6 +510,7 @@ body.lock { overflow: hidden; }
     <div id="alerts"></div>
 
     <div class="tab" id="tab-today">
+      <section class="panel b-card" id="nowBox" aria-live="polite"></section>
       <section class="panel b-card" id="todoBox"><h2>Today's to-do</h2><div id="todoBody"></div></section>
       <section class="panel b-card" id="liveBox" hidden></section>
       <section class="panel" id="plan"></section>
@@ -766,9 +817,10 @@ body.lock { overflow: hidden; }
   </section>
 
   <footer>
-    <span><b>How it works.</b> Each bookmaker's margin is removed (taking proportionally more off long shots, which tested better on 30,000 past matches), then the chances are averaged to get a win chance. Edge compares the best price you can get with that average, with exchange commission taken off. It measures price against the market. It does not tell you who will win, and the market average can be wrong. A big edge is often a stale price, so confirm it on the bookmaker's site before betting.</span>
+    <span class="adv"><b>How it works.</b> Each bookmaker's margin is removed (taking proportionally more off long shots, which tested better on 30,000 past matches), then the chances are averaged to get a win chance. Edge compares the best price you can get with that average, with exchange commission taken off. It measures price against the market. It does not tell you who will win, and the market average can be wrong. A big edge is often a stale price, so confirm it on the bookmaker's site before betting.</span>
     <span id="verLine"></span>
-    <span>Horse racing is not covered by this data source. 18+ only. Bet only what you can afford to lose. <a href="https://www.begambleaware.org" target="_blank" rel="noopener">BeGambleAware.org</a></span>
+    <span class="advfoot">Horse racing is not covered by this data source. 18+ only. Bet only what you can afford to lose. <a href="https://www.begambleaware.org" target="_blank" rel="noopener">BeGambleAware.org</a></span>
+    <span class="simplefoot">18+ · Only bet what you can afford to lose · <a href="https://www.begambleaware.org" target="_blank" rel="noopener">BeGambleAware</a></span>
   </footer>
 </div>
 
@@ -794,7 +846,7 @@ body.lock { overflow: hidden; }
 <script>
 (function () {
   "use strict";
-  var VERSION = "v29 (19 Nov 2026)";   /* shown in the footer; bump on every release */
+  var VERSION = "v30 (19 Nov 2026)";   /* shown in the footer; bump on every release */
   var LS = "betiqlite.v1";
   var API = "https://api.the-odds-api.com/v4";
   var DEFAULTS = { key: "", selected: [], mode: "value", minOdds: 1.3, windowH: 72, group: "all",
@@ -2173,10 +2225,97 @@ body.lock { overflow: hidden; }
     return box;
   }
   /* One row of the level board. medal = 1, 2, 3 for gold, silver, bronze. */
+  /* ---------- Simple view: icons and plain words ---------- */
+  var RING = "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18";
+  var ICONS = {
+    check: "M5 12.5l4.5 4.5L19 7.5", maybe: RING + "M9.6 9.3a2.5 2.5 0 0 1 4.8 1c0 1.8-2.4 2.2-2.4 3.9M12 17h.01", clock: RING + "M12 7v5l3 2",
+    alert: "M12 3 2 20h20zM12 10v4M12 17h.01", x: "M6 6l12 12M18 6 6 18", where: "M4 20h16M6 20V9l6-5 6 5v11M10 20v-5h4v5",
+    coin: RING + "M14.5 8.6a2.4 2.4 0 0 0-4.6 1V16M8.5 12.5h4.5M8.5 16h7", back: "M7 17 17 7M9 7h8v8", info: RING + "M12 11v5M12 8h.01",
+    moon: "M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z", target: RING + "M12 7a5 5 0 1 0 0 10a5 5 0 1 0 0-10M12 11a1 1 0 1 0 0 2a1 1 0 1 0 0-2",
+    trophy: "M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3", step: "M5 21V4h11l-2 4 2 4H5",
+    pause: RING + "M10 9v6M14 9v6"
+  };
+  function icon(name) {
+    var NS = "http://www.w3.org/2000/svg", s = document.createElementNS(NS, "svg"), path = document.createElementNS(NS, "path");
+    s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("class", "ico"); s.setAttribute("aria-hidden", "true");
+    path.setAttribute("d", ICONS[name] || ICONS.info); s.appendChild(path); return s;
+  }
+  var SIMPLE_VERDICT = { place: ["check", "Bet"], consider: ["maybe", "Maybe"], wait: ["clock", "Wait"], check: ["alert", "Check the price first"], skip: ["x", "Skip"] };
+  function simpleVerdict(d) {
+    var m = d.label === "PAUSED" ? ["pause", "Paused"] : SIMPLE_VERDICT[d.k] || SIMPLE_VERDICT.skip, v = el("span", "sverd " + d.k);
+    v.appendChild(icon(m[0])); v.appendChild(document.createTextNode(m[1])); return v;
+  }
+  function pounds(x) { return Math.abs(x) % 1 < 0.005 ? "£" + Math.round(Math.abs(x)) : gbp(x); }
+  function capFirst(t) { return t.charAt(0).toUpperCase() + t.slice(1); }
+  /* The plain card: verdict, match, what to back, then where / how much / what comes back. Everything else is behind "Why this bet?". */
+  function simpleCard(p, st, showLeague) {
+    var s = p.pick, d = decision(p), sb = el("span", "sbet"), head = el("span", "shead");
+    head.appendChild(simpleVerdict(d)); head.appendChild(el("span", "swhen", TF.format(new Date(p.time))));
+    sb.appendChild(head);
+    sb.appendChild(el("span", "smatch", p.ev.h + " v " + p.ev.a + (showLeague ? " · " + p.league : "")));
+    sb.appendChild(el("span", "spick", capFirst(betWords(p))));
+    function note(ic, t) { var n = el("span", "snote"); n.appendChild(icon(ic)); n.appendChild(el("span", null, t)); sb.appendChild(n); }
+    if ((d.k === "place" || d.k === "consider") && st.amount >= 0.5) {
+      var facts = el("span", "sfacts");
+      function fact(ic, l, v) { var f = el("span", "sfact"); f.appendChild(icon(ic)); f.appendChild(el("span", null, l)); f.appendChild(el("b", null, v)); facts.appendChild(f); }
+      fact("where", "Where", s.bestBook); fact("coin", "Bet", gbp(st.amount)); fact("back", "If it wins", gbp(st.amount * s.best) + " back");
+      sb.appendChild(facts);
+      note("info", "Only if " + s.bestBook + " still shows odds of " + minRaw(s).toFixed(2) + " or more." + (d.k === "consider" ? " A fair price, but less sure: small or skip." : ""));
+    } else if (d.k === "check") note("alert", "This price looks wrong. Only bet if " + s.bestBook + " really shows " + s.best.toFixed(2) + ".");
+    else if (d.k === "wait") note("clock", "No good price yet. Look again an hour before kick-off.");
+    else note("x", d.label === "PAUSED" ? "Betting is paused: " + d.why + "." : "Not a good price. Most bets aren't.");
+    return sb;
+  }
+  /* The top of Today in Simple view: what needs you, then whether there is anything to bet on, then the week's budget. */
+  function renderNow(d) {
+    var box = $("nowBox"); if (!box) return; box.textContent = "";
+    var hasData = S.selected.some(function (k) { return S.cache[k]; }), ls = lossState();
+    if (hasData && !ls.on) {
+      var good = d.ranked.filter(function (p) { var k = decision(p).k; return (k === "place" || k === "consider") && !findBet(p.id); });
+      var nPlace = good.filter(function (p) { return decision(p).k === "place"; }).length, later = null;
+      d.ranked.forEach(function (p) { if (decision(p).k === "wait" && (!later || p.time < later)) later = p.time; });
+      var head = el("div", "nowhead"), ic = el("span", "nowic"), tx = el("div", "nowt");
+      ic.appendChild(icon(good.length ? "target" : "moon")); head.appendChild(ic);
+      if (good.length) {
+        tx.appendChild(el("b", null, nPlace ? nPlace + (nPlace === 1 ? " good bet today" : " good bets today") : good.length + (good.length === 1 ? " bet to think about" : " bets to think about")));
+        tx.appendChild(el("span", null, (S.practice ? "Practice: pretend money. " : "") + "Check the odds before you bet."));
+      } else {
+        tx.appendChild(el("b", null, "Nothing to bet on today"));
+        tx.appendChild(el("span", null, "No price is good enough. Most days are like this."));
+      }
+      head.appendChild(tx); box.appendChild(head);
+      if (!good.length && later && later - 3600000 > Date.now()) { var chip = el("span", "nowchip"); chip.appendChild(icon("clock")); chip.appendChild(document.createTextNode("Next check: " + TF.format(new Date(later - 3600000)))); box.appendChild(chip); }
+    }
+    function row(ic, t, sub, btn, act, cls) {
+      var r = el("div", "nowrow" + (cls ? " " + cls : "")); r.appendChild(icon(ic));
+      var b = el("b", null, t); if (sub) b.appendChild(el("small", null, sub)); r.appendChild(b);
+      if (btn && act) { var x = el("button", "btn small", btn); x.type = "button"; x.addEventListener("click", act); r.appendChild(x); }
+      box.appendChild(r);
+    }
+    todoItems().forEach(function (it) {
+      if (/says PLACE$/.test(it.t)) return;
+      var res = /result/i.test(it.t);
+      row(res ? "trophy" : "alert", it.t, null, it.btn, it.act, res ? null : "warn");
+    });
+    var steps = planSteps(), i = 0; while (i < steps.length && steps[i].done) i++;
+    if (i < steps.length && !S.planHidden) {
+      var stp = steps[i];
+      row("step", stp.t, "Step " + (i + 1) + " of " + steps.length, stp.btn === "See today's bets" ? null : stp.btn === stp.t ? "Start" : stp.btn, stp.go, "nowstep");
+    }
+    if (S.weekly > 0) {
+      var w = el("div", "nowweek"), line = el("span"), bar = el("div", "bar"), fill = el("i");
+      line.appendChild(el("b", null, "This week")); line.appendChild(el("em", null, pounds(spentWeek()) + " of " + pounds(S.weekly) + " used"));
+      fill.style.width = Math.min(100, spentWeek() / S.weekly * 100) + "%"; bar.appendChild(fill);
+      bar.setAttribute("role", "img"); bar.setAttribute("aria-label", Math.round(Math.min(100, spentWeek() / S.weekly * 100)) + "% of this week's budget used");
+      w.appendChild(line); w.appendChild(bar); box.appendChild(w);
+    }
+  }
+
   function boardRow(p, rank, medal, withActions, showLeague) {
     var s = p.pick, st = stakeFor(s), sc = scoreFor(p), age = priceAge(p);
     var wrap = el("div", "brow card" + (medal === 1 ? " gold" : ""));
     var main = el("button", "bmain"); main.type = "button";
+    main.appendChild(simpleCard(p, st, showLeague));
     var top = el("span", "ctop");
     top.appendChild(el("span", "clg", "#" + rank + " · " + p.league));
     var pills = el("span", "cpills"); badgesFor(p, pills);
@@ -2205,7 +2344,9 @@ body.lock { overflow: hidden; }
     l.appendChild(el("span", "cl", "Recommended stake")); l.appendChild(el("b", null, st.amount >= 0.5 ? gbp(st.amount) : "–")); l.appendChild(el("small", null, st.amount >= 0.5 ? pct(st.amount / budget(), 1) + " of budget" : st.kind));
     r.appendChild(el("span", "cl", "Potential payout")); r.appendChild(el("b", "pos", st.amount >= 0.5 ? gbp(st.amount * s.best) : "–")); r.appendChild(el("small", "pos", st.amount >= 0.5 ? "+" + gbp(st.amount * (s.best - 1)) + " profit" : ""));
     pay.appendChild(l); pay.appendChild(r); main.appendChild(pay);
-    main.appendChild(el("span", "cmore", "Tap for the price check and full details"));
+    var cm = el("span", "cmore");
+    if (S.simple) { cm.appendChild(icon("info")); cm.appendChild(document.createTextNode("Why this bet?")); } else cm.textContent = "Tap for the price check and full details";
+    main.appendChild(cm);
     main.addEventListener("click", function () { openSheet(p, main); });
     wrap.appendChild(main);
     var acts = el("div", "bacts"); acts.appendChild(actionsFor(p, st)); var rb = remindBtn(p); if (rb) acts.appendChild(rb);
@@ -2255,6 +2396,7 @@ body.lock { overflow: hidden; }
       box.appendChild(el("h2", null, "Today's bets"));
       box.appendChild(el("p", null, busy ? "Loading odds…" : "Load today's prices and your ranked bets appear here."));
       if (!busy) { var go = el("button", "btn primary", "Load prices"); go.type = "button"; go.addEventListener("click", function () { refreshAll(); }); box.appendChild(go); }
+      renderNow(d);
       return;
     }
     if (S.practice) {
@@ -2306,9 +2448,10 @@ body.lock { overflow: hidden; }
       box.appendChild(r);
     }
     if (!S.simple) box.appendChild(legend2());
-    var board = el("div", "board");
+    var board = el("div", "board" + (simpleEmpty ? " closest" : ""));
     picks.forEach(function (p, i) { board.appendChild(boardRow(p, i + 1, i < 3 ? i + 1 : 0, i === 0 && d.value.length > 0, true)); });
     box.appendChild(board);
+    renderNow(d);
     if (d.value.length) {
       var total = 0, ex = 0; d.value.forEach(function (p) { var st = stakeFor(p.pick); total += st.amount; ex += st.amount * p.pick.ev; });
       var cap = budget() * DAILY_CAP, today = stakedToday();
@@ -3296,6 +3439,7 @@ body.lock { overflow: hidden; }
     $("main").hidden = !inApp;
     $("tabbar").hidden = !inApp;
     document.body.classList.toggle("simple", !!S.simple);
+    document.body.classList.toggle("nokey", !S.key);
     applyTab();
     if (!inApp) return;
     $("modeLikely").setAttribute("aria-pressed", String(S.mode === "likely"));

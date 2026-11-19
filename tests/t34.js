@@ -1,4 +1,4 @@
-// Beginner guidance: the "how to place this bet" steps, fractional odds, page hints and the simpler card in Simple view.
+// Simple view: the "what to do now" box, the plain bet card, the how-to steps in the details sheet, fractional odds and page hints.
 const { chromium } = require('playwright');
 const books=['Bet365','Sky Bet','Paddy Power','William Hill','Ladbrokes','Betfair Sportsbook'];
 function ev(id,h,a,hrs,base,boost){return {id,sport_key:'soccer_epl',home_team:h,away_team:a,commence_time:new Date(Date.now()+hrs*3600e3).toISOString(),
@@ -16,28 +16,32 @@ let fails=0; function check(name,ok,info){ if(!ok) fails++; console.log((ok?'PAS
  await p.waitForFunction(()=>{ const s=JSON.parse(localStorage.getItem('betiqlite.v1')||'{}'); return !!(s.cache&&s.cache.soccer_epl&&s.cache.soccer_epl.events.length); },null,{timeout:15000});
  await p.waitForSelector('#tab-today .brow');
  // ---- Today, simple view, practice mode
- const card=await p.$eval('#tab-today .brow:has-text("Arsenal")',e=>({verdict:e.querySelector('.verdict b').innerText,steps:[...e.querySelectorAll('.howto .hstep')].map(x=>x.innerText.replace(/\n/g,' ')),
-   hidden:['.cgrid','.sbox','.pillev'].map(s=>{const x=e.querySelector(s); return !x||getComputedStyle(x).display==='none';}),trio:e.querySelectorAll('.trio .t3').length,order:[...e.querySelector('.bmain').children].map(x=>x.className.split(' ')[0])}));
- console.log('   steps:\n     '+card.steps.join('\n     '));
- check('PLACE card has six numbered steps',/PLACE/.test(card.verdict)&&card.steps.length===6&&card.steps.every((s,i)=>s.startsWith(String(i+1)+' ')));
- check('steps name the bookmaker, match and selection',/Open Paddy Power\./.test(card.steps[0])&&/Arsenal v Everton/.test(card.steps[1])&&/match result.*choose Arsenal\./.test(card.steps[2]));
- // minimum price 1.79: the smallest standard fraction that is not worse is 4/5 (1.80)
- check('minimum odds in decimal and fractional',/odds are 1\.79 \(shown as 4\/5 on some apps\) or higher\. If they are lower, do not bet\./.test(card.steps[3]),card.steps[3]);
- check('practice mode gives the stake but says not to pay',/Practice mode: the stake would be £1\.50, winning £1\.26\. Stop here and do not pay/.test(card.steps[4])&&/tap Log practice bet/.test(card.steps[5]),card.steps[4]);
- check('steps come straight after the verdict',card.order.indexOf('howto')===card.order.indexOf('verdict')+1,card.order.join(' > '));
- check('simple view hides the analyst numbers, keeps the three displays',card.hidden.every(Boolean)&&card.trio===3);
+ const card=await p.$eval('#tab-today .brow:has-text("Arsenal")',e=>{const vis=x=>!!x&&getComputedStyle(x).display!=='none'&&x.offsetParent!==null;
+   return {verdict:e.querySelector('.sverd').innerText.trim(),verdictCls:e.querySelector('.sverd').className,pick:e.querySelector('.spick').innerText,match:e.querySelector('.smatch').innerText,
+   facts:[...e.querySelectorAll('.sfact')].map(x=>x.innerText.replace(/\n/g,' ').trim()),note:e.querySelector('.snote').innerText,icons:e.querySelectorAll('.sbet svg.ico').length,
+   hidden:['.verdict','.howto','.cgrid','.sbox','.pillev','.trio','.cgist','.cmatch','.ctop'].map(s=>!vis(e.querySelector(s))),first:e.querySelector('.bmain').firstElementChild.className}; });
+ console.log('   simple card:',JSON.stringify(card));
+ check('plain verdict with an icon: Bet',card.verdict==='Bet'&&/place/.test(card.verdictCls),card.verdict);
+ check('says what to back in words',card.pick==='Arsenal to win'&&/^Arsenal v Everton/.test(card.match),card.pick);
+ check('three tiles: where, how much, what comes back',card.facts.length===3&&/^Where Paddy Power$/.test(card.facts[0])&&/^Bet £1\.50$/.test(card.facts[1])&&/^If it wins £[\d.]+ back$/.test(card.facts[2]),card.facts.join(' / '));
+ check('one line with the lowest odds worth taking',/Only if Paddy Power still shows odds of 1\.79 or more\./.test(card.note),card.note);
+ check('icons on the verdict, tiles and note',card.icons>=5,card.icons);
+ check('simple view hides the analyst numbers and the long steps',card.hidden.every(Boolean)&&card.first==='sbet',JSON.stringify(card.hidden));
+ const now=await p.$eval('#nowBox',e=>e.innerText.replace(/\n+/g,' | '));
+ check('top of Today says what to do',/1 good bet today/.test(now)&&/Practice: pretend money/.test(now),now);
  // the short card: verdict, steps, summary, three displays, two buttons
- const short=await p.$eval('#tab-today .brow:has-text("Arsenal")',e=>{const vis=s=>[...e.querySelectorAll(s)].filter(x=>getComputedStyle(x).display!=='none'&&x.offsetParent!==null); return {h:Math.round(e.getBoundingClientRect().height),btns:vis('.actions .btn').map(x=>x.innerText.trim()),links:vis('.bacts > .accbtn').length,pay:vis('.cpay').length,more:vis('.cmore').length};});
+ const short=await p.$eval('#tab-today .brow:has-text("Arsenal")',e=>{const vis=s=>[...e.querySelectorAll(s)].filter(x=>getComputedStyle(x).display!=='none'&&x.offsetParent!==null); return {h:Math.round(e.getBoundingClientRect().height),btns:vis('.actions .btn').map(x=>x.innerText.trim()),links:vis('.bacts > .accbtn').length,pay:vis('.cpay').length,more:vis('.cmore').length,why:/Why this bet\?/.test(e.querySelector('.cmore').innerText)};});
  console.log('   short card:',JSON.stringify(short));
- check('short card: two buttons, bookmaker first, nothing else to tap',short.btns.length===2&&/^Place on Paddy Power/.test(short.btns[0])&&/Log practice bet/.test(short.btns[1])&&short.links===0&&short.pay===0&&short.more===1);
+ check('short card: two buttons, bookmaker first, a Why? link, nothing else',short.btns.length===2&&/^Place on Paddy Power/.test(short.btns[0])&&/Log practice bet/.test(short.btns[1])&&short.links===0&&short.pay===0&&short.more===1&&short.why);
  // ---- real-money wording
  await p.click('[data-tab=more]'); await p.waitForSelector('#practiceOn'); await p.uncheck('#practiceOn'); await p.waitForTimeout(200);
  await p.click('[data-tab=today]'); await p.waitForSelector('#tab-today .brow');
- const real=await p.$$eval('#tab-today .brow:has-text("Arsenal") .howto .hstep',e=>e.map(x=>x.innerText.replace(/\n/g,' ')));
- check('real mode gives the stake and both outcomes',/Type in a stake of £[\d.]+ and confirm\. If it wins you get £[\d.]+ back, if it loses you lose the £[\d.]+\./.test(real[4])&&/tap I placed it/.test(real[5]),real[4]);
+ const real=await p.$eval('#tab-today .brow:has-text("Arsenal")',e=>({btns:[...e.querySelectorAll('.actions .btn')].filter(x=>getComputedStyle(x).display!=='none').map(x=>x.innerText.trim()),now:document.getElementById('nowBox').innerText}));
+ check('real mode: I placed it, and no practice wording',real.btns[1]==='I placed it'&&!/Practice/.test(real.now),JSON.stringify(real));
  // ---- detail sheet carries the same steps; full view keeps the analyst numbers
  await p.click('#tab-today .brow:has-text("Arsenal") >> .bmain'); await p.waitForSelector('#sheetBody .detail');
- check('detail sheet shows the steps too',await p.$$eval('#sheetBody .detail > .howto .hstep',e=>e.length)===6);
+ const steps=await p.$$eval('#sheetBody .detail > .howto .hstep',e=>e.map(x=>x.innerText.replace(/\n/g,' ')));
+ check('the six how-to steps are in the details',steps.length===6&&steps.every((t,i)=>t.startsWith(String(i+1)))&&/Open Paddy Power\./.test(steps[0])&&/Arsenal v Everton/.test(steps[1])&&/1\.79 \(shown as 4\/5 on some apps\) or higher/.test(steps[3])&&/Type in a stake of £[\d.]+ and confirm/.test(steps[4]),steps.join(' / '));
  check('what left the card is one tap away in the details',await p.$eval('#sheetBody',e=>/Copy bet/.test(e.innerText)&&/Suggested stake/i.test(e.innerText)&&/reminder to my calendar/.test(e.innerText))); await p.click('#sheetClose'); await p.waitForFunction(()=>document.getElementById('sheet').hidden);
  await p.click('[data-tab=more]'); await p.uncheck('#simpleOn'); await p.waitForTimeout(200); await p.click('[data-tab=all]'); await p.waitForSelector('#list .brow');
  check('full view still shows the analyst numbers',await p.$eval('#list .brow:has-text("Arsenal")',e=>['.cgrid','.sbox','.cpay','.actions .copy'].every(s=>getComputedStyle(e.querySelector(s)).display!=='none')));

@@ -23,13 +23,13 @@ tests/run-all.sh
 | t25 | recommended sports button |
 | t26 | Simple view and automatic record updates |
 | t27 | saved filters, price chart, spreadsheet export, bookmaker accounts |
-| t29 | helper auto-load and the My plan guide |
+| t29 | helper auto-load and the My plan guide (its next step sits at the top of Today) |
 | t30 | free results through the helper |
 | t28 | exchange yardstick, free weekly file (pass a real fixtures.csv as an argument to test it), credit saver |
 | t31 | evidence that matches your bookmakers, pounds outlook, STRONG EVIDENCE badge, minimum-chance filter, phone alerts |
 | t32 | Offers tab: matched-betting sums against hand-worked figures, close-match finder with real and estimated lay prices, offer tracker |
 | t33 | Risk / Reward / Value displays, plain-words line, sortable bets, the match page, the scorecard |
-| t34 | beginner guidance: how-to-place steps, fractional odds, page hints, simpler card in Simple view |
+| t34 | Simple view: the "what to do now" box, the plain bet card (verdict icon, where / bet / if it wins), how-to steps in the details, page hints |
 | t35 | Offers tab for beginners: the guided walk-through from adding an offer to finishing it |
 | t36 | Bet tools: odds converter, each-way calculator, accumulator checker, against hand-worked figures |
 | t37 | Bet tools: same-match bet checker against an independent calculation, losing-run simulator |
