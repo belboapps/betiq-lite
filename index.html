@@ -393,6 +393,40 @@ body.simple .detail.simplewhy:not(.showall) > :not(.swhy):not(.howto):not(.pchec
 .swarn b { color: inherit; }
 .swarn svg.ico { width: 20px; height: 20px; }
 .allnums { align-self: center; }
+/* My bets in Simple view: the week's result in big type, an icon on every bet; the scorecard and track record behind one button */
+.bsum, .bstat { display: none; }
+body.simple .bsum { display: flex; flex-direction: column; gap: 2px; }
+.bsum > span, .bsum small { font: var(--b-text-small); color: var(--b-muted); }
+.bsum b { font: var(--b-text-figure); font-variant-numeric: tabular-nums; color: var(--b-ink); }
+.bsum b.pos { color: var(--b-ok); } .bsum b.neg { color: var(--b-bad); }
+.scoretoggle { align-self: flex-start; display: inline-flex; align-items: center; gap: var(--b-s2); }
+body.simple #tab-bets .hint, body.simple #betsBox > h2, body.simple #betsBody > .stats, body.simple #betsBody > .subnote,
+body.simple #betsBody > .typerow, body.simple #betsBody > .chart, body.simple .bet .subclv, body.simple .bet .betedit,
+body.simple #tab-bets:not(.showscore) #scoreBox, body.simple #tab-bets:not(.showscore) #recordBox { display: none; }
+body.simple #tab-bets.showscore #betsBody > .stats { display: grid; } body.simple #tab-bets.showscore #betsBody > .chart { display: block; }
+body.simple .bet { display: grid; grid-template-columns: 40px 1fr; column-gap: var(--b-s3); row-gap: var(--b-s1); align-items: start; }
+body.simple .bet > :not(.bstat) { grid-column: 2; }
+body.simple .bstat { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; grid-row: 1 / span 3; background: var(--b-surface-2); color: var(--b-muted); }
+.bstat svg.ico { width: 20px; height: 20px; stroke-width: 2.4; }
+body.simple .bstat.won { background: var(--b-ok-bg); color: var(--b-ok); }
+body.simple .bstat.lost { background: var(--b-bad-bg); color: var(--b-bad); }
+body.simple .bstat.open { background: var(--b-warn-bg); color: var(--b-warn); }
+body.simple #tab-bets:not(.showscore) #exportBtn { display: none; }
+body.simple .bet > .btn.small, body.simple .bet .actions .btn.small { background: none; border: 0; box-shadow: none; color: var(--b-link); min-height: 36px; padding: 0 var(--b-s2) 0 0; justify-self: start; font-weight: 600; }
+body.simple .bet .actions { display: flex; flex-wrap: wrap; gap: var(--b-s3); }
+body.simple .bet .nm { font-weight: 700; font-size: 1rem; line-height: 1.5rem; }
+/* Three tabs in Simple view: All bets and Offers move to the top of More */
+body.simple #tabbar [data-tab="all"], body.simple #tabbar [data-tab="offers"], body:not(.simple) .morenav, body:not(.simple) .backmore { display: none; }
+body.simple .tabbar { grid-template-columns: repeat(3, 1fr); }
+.morenav { display: flex; flex-direction: column; background: var(--b-surface); border-radius: var(--b-r-card); box-shadow: var(--b-shadow); padding: var(--b-s1) var(--b-s4); }
+.morenav button { display: flex; align-items: center; gap: var(--b-s3); background: none; border: 0; border-top: 1px solid var(--b-line); padding: var(--b-s3) 0; min-height: 64px; text-align: left; color: var(--b-ink); }
+.morenav button:first-child { border-top: 0; }
+.morenav button > svg.ico:first-child { color: var(--b-accent-text); }
+.morenav span { flex: 1; display: flex; flex-direction: column; }
+.morenav b { font-weight: 700; }
+.morenav small { font: var(--b-text-small); color: var(--b-muted); }
+.morenav .chev { color: var(--b-muted); }
+.backmore { align-self: flex-start; display: inline-flex; align-items: center; gap: var(--b-s1); }
 body.simple footer { text-align: center; }
 
 /* Picks in the details sheet */
@@ -539,6 +573,7 @@ body.lock { overflow: hidden; }
     </div>
 
     <div class="tab" id="tab-all" hidden>
+      <button type="button" class="btn linkbtn backmore" data-goto="more"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>More</button>
       <p class="hint">Every bet the app found, best first. You do not need this page to bet: Today already shows the ones worth acting on.</p>
     <div class="controls">
       <div class="seg" role="group" aria-label="Ranking">
@@ -602,6 +637,7 @@ body.lock { overflow: hidden; }
     </div>
 
     <div class="tab" id="tab-offers" hidden>
+      <button type="button" class="btn linkbtn backmore" data-goto="more"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>More</button>
       <section class="panel b-card">
         <h2>Bookmaker offers</h2>
         <p>A bookmaker gives you a free bet for placing a first bet. By betting with the bookmaker and against the same result on an exchange, the two cancel out and you keep most of the free bet, whoever wins. You place every bet yourself. This page tells you exactly what to place.</p>
@@ -670,6 +706,10 @@ body.lock { overflow: hidden; }
     </div>
 
     <div class="tab" id="tab-more" hidden>
+      <nav class="morenav" id="moreNav" aria-label="More pages">
+        <button type="button" data-goto="all" id="goAll"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span><b>All bets</b><small>Every bet the app found, best first</small></span><svg class="ico chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+        <button type="button" data-goto="offers" id="goOffers"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16v10H4zM3 6h18v4H3zM12 6v14M12 6c-2-4-6-3-5 0M12 6c2-4 6-3 5 0"/></svg><span><b>Offers</b><small>Sign-up offers and free bets</small></span><svg class="ico chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+      </nav>
       <p class="hint">Settings. Set these once and leave them. The two that matter most are your weekly budget and which bookmakers you use.</p>
     <section class="panel b-card" id="settings">
       <h2>Settings</h2>
@@ -863,7 +903,7 @@ body.lock { overflow: hidden; }
 <script>
 (function () {
   "use strict";
-  var VERSION = "v31 (19 Nov 2026)";   /* shown in the footer; bump on every release */
+  var VERSION = "v32 (19 Nov 2026)";   /* shown in the footer; bump on every release */
   var LS = "betiqlite.v1";
   var API = "https://api.the-odds-api.com/v4";
   var DEFAULTS = { key: "", selected: [], mode: "value", minOdds: 1.3, windowH: 72, group: "all",
@@ -3015,7 +3055,8 @@ body.lock { overflow: hidden; }
     var t = ["today", "all", "bets", "offers", "more"].indexOf(S.tab) > -1 ? S.tab : "today";
     ["today", "all", "bets", "offers", "more"].forEach(function (k) { $("tab-" + k).hidden = (k !== t); });
     Array.prototype.forEach.call(document.querySelectorAll("#tabbar button"), function (b) {
-      if (b.getAttribute("data-tab") === t) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+      var cur = S.simple && (t === "all" || t === "offers") ? "more" : t;   /* in Simple view these two live under More */
+      if (b.getAttribute("data-tab") === cur) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
     });
   }
   function renderTiles(d) {
@@ -3196,8 +3237,24 @@ body.lock { overflow: hidden; }
     $("betsSum").textContent = (S.practice ? "Practice bets" : "My bets") + (BETS().length ? " · " + open.length + " open · " + sgbp(profit) : "");
     $("betsTabLbl").textContent = (S.practice ? "Practice" : "My bets") + (open.length ? " (" + open.length + ")" : "");
     if (S.practice) body.appendChild(el("div", "msg info", "Practice mode: these bets are pretend. No real money, and none of it counts towards your real record."));
-    if (!BETS().length) { body.appendChild(el("p", null, S.practice ? "Tap \"Log practice bet\" on a pick to try it with pretend money. Results are checked for you, and you can see how you would have done." : "Tap \"I placed it\" on a pick after you place it. It is logged here with the stake and price, and results are checked for you.")); return; }
 
+    if (S.simple) {
+      var ws = weekStart(), wk = done.filter(function (b) { return (b.settledAt || b.time) >= ws; }), wp = wk.reduce(function (t, b) { return t + b.profit; }, 0);
+      var nW = wk.filter(function (b) { return b.status === "won"; }).length, nL = wk.filter(function (b) { return b.status === "lost"; }).length;
+      var sum = el("div", "bsum"); sum.appendChild(el("span", null, wk.length ? "This week" : "So far"));
+      var allW = done.filter(function (b) { return b.status === "won"; }).length, allL = done.filter(function (b) { return b.status === "lost"; }).length;
+      var fig = wk.length ? wp : profit;
+      sum.appendChild(el("b", fig > 0.004 ? "pos" : fig < -0.004 ? "neg" : null, (fig > 0.004 ? "+" : fig < -0.004 ? "−" : "") + pounds(fig)));
+      var parts = [], nw = wk.length ? nW : allW, nl = wk.length ? nL : allL;
+      if (nw) parts.push(nw + " won"); if (nl) parts.push(nl + " lost"); if (open.length) parts.push(open.length + " waiting");
+      sum.appendChild(el("small", null, parts.join(" · ") || "No results yet"));
+      if (BETS().length) body.appendChild(sum);
+      var sc = el("button", "btn linkbtn scoretoggle"); sc.type = "button"; sc.appendChild(icon("target"));
+      sc.appendChild(document.createTextNode($("tab-bets").classList.contains("showscore") ? "Hide how I'm doing over time" : "Am I doing well over time?"));
+      sc.addEventListener("click", function () { $("tab-bets").classList.toggle("showscore"); renderBets(); });
+      body.appendChild(sc);
+    }
+    if (!BETS().length) { body.appendChild(el("p", null, S.practice ? "Tap \"Log practice bet\" on a pick to try it with pretend money. Results are checked for you, and you can see how you would have done." : "Tap \"I placed it\" on a pick after you place it. It is logged here with the stake and price, and results are checked for you.")); return; }
     var g = el("div", "stats");
     g.appendChild(statBox("Profit so far", sgbp(profit), done.length + " settled", profit >= 0 ? "pos" : "neg"));
     g.appendChild(statBox("Return", staked ? signed(profit / staked) : "–", "on " + gbp(staked) + " staked", profit >= 0 ? "pos" : "neg"));
@@ -3234,14 +3291,16 @@ body.lock { overflow: hidden; }
     }
 
     open.concat(done.slice().sort(function (a, b) { return (b.settledAt || 0) - (a.settledAt || 0); })).forEach(function (b) {
-      var row = el("div", "bet");
-      var nmEl = el("div", "nm", b.sel); if (b.live) nmEl.appendChild(el("span", "badge move", "LIVE")); row.appendChild(nmEl);
+      var row = el("div", "bet " + b.status);
+      var stI = el("span", "bstat " + b.status, null), stIc = b.status === "won" ? "check" : b.status === "lost" ? "x" : b.status === "open" ? "clock" : "pause";
+      stI.appendChild(icon(stIc)); stI.setAttribute("role", "img"); stI.setAttribute("aria-label", b.status === "open" ? "Waiting" : capFirst(b.status)); row.appendChild(stI);
+      var nmEl = el("div", "nm", S.simple && !b.mkt ? (b.sel === "Draw" ? "Draw: " + b.h + " v " + b.a : b.sel + " to win") : b.sel); if (b.live) nmEl.appendChild(el("span", "badge move", "LIVE")); row.appendChild(nmEl);
       row.appendChild(el("div", "sub", b.h + " v " + b.a + " · " + b.book + " · " + TF.format(new Date(b.time))));
       var cv = clvOf(b);
-      if (cv !== null) row.appendChild(el("div", "sub", "Closing-price check: " + signed(cv) + " against the final market price"));
-      else if (b.close) row.appendChild(el("div", "sub", "Price saved " + Math.round((b.time - b.close.at) / 3600000) + " h before kick-off, too early to count. Refresh nearer the start."));
+      if (cv !== null) row.appendChild(el("div", "sub subclv", "Closing-price check: " + signed(cv) + " against the final market price"));
+      else if (b.close) row.appendChild(el("div", "sub subclv", "Price saved " + Math.round((b.time - b.close.at) / 3600000) + " h before kick-off, too early to count. Refresh nearer the start."));
       if (b.status === "open") {
-        var edit = el("div", "row");
+        var edit = el("div", "row betedit");
         var l1 = el("label", null, "Stake £"), i1 = el("input"); i1.type = "number"; i1.step = "0.5"; i1.min = "0.1"; i1.value = b.stake.toFixed(2); i1.setAttribute("inputmode", "decimal");
         var l2 = el("label", null, "Odds"), i2 = el("input"); i2.type = "number"; i2.step = "0.01"; i2.min = "1.01"; i2.value = b.odds.toFixed(2); i2.setAttribute("inputmode", "decimal");
         i1.addEventListener("change", function () { var v = parseFloat(i1.value); if (isFinite(v) && v > 0) { b.stake = v; b.m = Date.now(); sbChanged(); save(); renderAll(); } });
@@ -4557,6 +4616,9 @@ body.lock { overflow: hidden; }
   });
   Array.prototype.forEach.call(document.querySelectorAll("#tabbar button"), function (b) {
     b.addEventListener("click", function () { setTab(b.getAttribute("data-tab")); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-goto]"), function (b) {
+    b.addEventListener("click", function () { setTab(b.getAttribute("data-goto")); });
   });
   $("sheetClose").addEventListener("click", closeSheet);
   $("sheetBack").addEventListener("click", closeSheet);

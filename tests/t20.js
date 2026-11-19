@@ -25,7 +25,7 @@ const DATA={soccer_efl_champ:[ev('c1','soccer_efl_champ','Leeds','Burnley',22,[2
  await p.click('#plan .brow >> nth=0 >> .bmain'); await p.waitForTimeout(200); console.log('SHEET timing:',(await p.innerText('#sheetBody .timing')).replace(/\n+/g,' | ').slice(0,260)); await p.click('#sheetClose');
  await p.click('[data-tab=bets]'); await p.waitForTimeout(150); console.log('RECORD early:',(await p.innerText('#recordBody')).replace(/\n+/g,' | ').slice(0,300));
  await p.evaluate(()=>{const s=JSON.parse(localStorage.getItem('betiqlite.v1')); s.sugg.forEach(x=>x.time=Date.now()-4*3600e3); localStorage.setItem('betiqlite.v1',JSON.stringify(s));}); await p.reload(); await p.waitForTimeout(500);
- await p.click('[data-tab=bets]'); await p.waitForTimeout(150); console.log('UPDATE BTN:',await p.$eval('#recordBody .btn',e=>e.innerText));
+ await p.click('[data-tab=bets]'); await p.waitForTimeout(150); if(!(await p.isVisible('#recordBox'))) await p.click('#betsBody .scoretoggle'); console.log('UPDATE BTN:',await p.$eval('#recordBody .btn',e=>e.innerText));
  await p.click('#recordBody .btn'); await p.waitForTimeout(900); console.log('SUGG settled:',await st());
  console.log('RECORD after:',(await p.innerText('#recordBody')).replace(/\n+/g,' | ').slice(0,700)); await p.screenshot({path:'rec.png',fullPage:true});
  console.log('errs',errs,'overflow',await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth)); await b.close();})();
