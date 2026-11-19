@@ -22,6 +22,7 @@
 :root {
   --x-accent-soft: color-mix(in srgb, var(--b-accent) 12%, var(--b-surface));
   --x-link-soft: color-mix(in srgb, var(--b-link) 14%, var(--b-surface));
+  --x-status-h: 3.25rem; /* height of the floating status bar; the league bar sticks just below it */
 }
 * { box-sizing: border-box; }
 body.b-page { padding-top: env(safe-area-inset-top, 0px); }
@@ -44,13 +45,29 @@ h1 span { color: var(--b-accent-text); }
 .credits b { display: block; font: 800 1.25rem/1.625rem var(--b-font); color: var(--b-ink); font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
 .credits b.low { color: var(--b-bad); }
 .credits b.low::before { content: "! "; }
+/* The status line floats as a frosted-glass bar (kit .b-glass on the element) below the phone's notch, so cards
+   that scroll under it are blurred, not readable through it. It never wraps, so its height is fixed and the
+   league bar can sit just below it. */
 .status {
-  position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; gap: var(--b-s3);
-  flex-wrap: wrap; padding: var(--b-s2) 0; font: var(--b-text-small); color: var(--b-muted);
-  background: color-mix(in srgb, var(--b-bg) 85%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  position: sticky; top: calc(env(safe-area-inset-top, 0px) + var(--b-s2)); z-index: 10;
+  display: flex; justify-content: space-between; align-items: center; gap: var(--b-s3); flex-wrap: nowrap;
+  height: var(--x-status-h); padding: var(--b-s1) var(--b-s1) var(--b-s1) var(--b-s4);
+  border-radius: var(--b-r-pill); box-shadow: var(--b-shadow);
+  font: var(--b-text-small); color: var(--b-muted);
 }
-.status .btn.primary { min-width: 150px; }
-.leaguebar { position: sticky; top: 60px; z-index: 9; background: color-mix(in srgb, var(--b-bg) 85%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); padding: var(--b-s2) 0; margin: 0 -2px; }
+.status #updated { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.status .btn.primary { flex: none; min-width: 150px; }
+/* League chips stick below the status bar, also on glass. They scroll sideways inside their own box: the right
+   edge fades and the row ends with padding, so a cut-off chip reads as "more this way". */
+.leaguebar {
+  position: sticky; top: calc(env(safe-area-inset-top, 0px) + var(--b-s2) + var(--x-status-h) + var(--b-s2)); z-index: 9;
+  padding: var(--b-s1); border-radius: var(--b-r-pill); box-shadow: var(--b-shadow); overflow: hidden;
+}
+.leaguebar .chips.scroll {
+  padding: 2px var(--b-s6) 2px 2px; scroll-padding-inline: var(--b-s2);
+  -webkit-mask-image: linear-gradient(to right, var(--b-ink) calc(100% - 2rem), transparent);
+  mask-image: linear-gradient(to right, var(--b-ink) calc(100% - 2rem), transparent);
+}
 
 /* ---------- Cards (the static ones also carry .b-card) ---------- */
 .panel { display: flex; flex-direction: column; gap: var(--b-s4); }
@@ -436,7 +453,7 @@ body.lock { overflow: hidden; }
   </section>
 
   <section id="main" hidden>
-    <div class="status">
+    <div class="status b-glass">
       <span id="updated"></span>
       <button class="btn small primary" id="refreshBtn">Refresh</button>
     </div>
@@ -504,7 +521,7 @@ body.lock { overflow: hidden; }
       <div class="chips" id="groupChips" role="group" aria-label="Sport"></div>
     </div>
 
-      <div class="leaguebar" id="leagueBar" hidden><div class="chips scroll" id="leagueChips" role="group" aria-label="League"></div></div>
+      <div class="leaguebar b-glass" id="leagueBar" hidden><div class="chips scroll" id="leagueChips" role="group" aria-label="League"></div></div>
       <h2 class="section" id="picksHead" hidden>Every pick</h2>
       <ol class="list" id="list"></ol>
     </div>
@@ -2644,20 +2661,21 @@ body.lock { overflow: hidden; }
     var ser = S.series[p.ev.id] && S.series[p.ev.id][p.pick.name], box = el("div", "plain");
     box.appendChild(el("b", null, "Price over time"));
     if (!ser || ser.length < 2) { box.appendChild(document.createTextNode("Each refresh adds a point here. After your next refresh you will see whether this price is rising or falling.")); return box; }
-    var NS = "http://www.w3.org/2000/svg", W = 300, H = 110, pad = 18, lo = Infinity, hi = -Infinity;
+    /* A right gutter holds the "fair" label beside the dashed line, so it never sits on the price line. */
+    var NS = "http://www.w3.org/2000/svg", W = 300, H = 110, pad = 18, padR = 58, lo = Infinity, hi = -Infinity;
     ser.forEach(function (x) { lo = Math.min(lo, x[1], 1 / x[2]); hi = Math.max(hi, x[1], 1 / x[2]); }); if (hi - lo < 0.05) { hi += 0.05; lo -= 0.05; }
     var t0 = ser[0][0], t1 = ser[ser.length - 1][0] || t0 + 1;
-    function X(t) { return pad + (W - 2 * pad) * (t1 === t0 ? 1 : (t - t0) / (t1 - t0)); }
+    function X(t) { return pad + (W - pad - padR) * (t1 === t0 ? 1 : (t - t0) / (t1 - t0)); }
     function Y(v) { return pad + (H - 2 * pad) * (1 - (v - lo) / (hi - lo)); }
     var svg = document.createElementNS(NS, "svg"); svg.setAttribute("viewBox", "0 0 " + W + " " + H); svg.setAttribute("class", "chart"); svg.setAttribute("role", "img");
     var fairNow = 1 / ser[ser.length - 1][2];
     svg.setAttribute("aria-label", "Best price went from " + ser[0][1].toFixed(2) + " to " + ser[ser.length - 1][1].toFixed(2));
     function mk(tag, at) { var e = document.createElementNS(NS, tag); Object.keys(at).forEach(function (k) { e.setAttribute(k, at[k]); }); svg.appendChild(e); return e; }
-    mk("line", { x1: pad, x2: W - pad, y1: Y(fairNow), y2: Y(fairNow), stroke: "currentColor", "stroke-dasharray": "4 3", "stroke-width": "1.2" });
+    mk("line", { x1: pad, x2: W - padR + 4, y1: Y(fairNow), y2: Y(fairNow), stroke: "currentColor", "stroke-dasharray": "4 3", "stroke-width": "1.2" });
     mk("polyline", { points: ser.map(function (x) { return X(x[0]).toFixed(1) + "," + Y(x[1]).toFixed(1); }).join(" "), fill: "none", stroke: "currentColor", "stroke-width": "2.5", "stroke-linejoin": "round" });
     ser.forEach(function (x) { mk("circle", { cx: X(x[0]).toFixed(1), cy: Y(x[1]).toFixed(1), r: 2.5, fill: "currentColor" }); });
     var a = mk("text", { x: pad, y: 11, "font-size": 11 }); a.textContent = "best price " + ser[0][1].toFixed(2) + " → " + ser[ser.length - 1][1].toFixed(2);
-    var b = mk("text", { x: W - pad, y: Y(fairNow) - 4, "text-anchor": "end", "font-size": 10 }); b.textContent = "fair " + fairNow.toFixed(2);
+    var b = mk("text", { x: W - 4, y: Y(fairNow), "text-anchor": "end", "dominant-baseline": "middle", "font-size": 10 }); b.textContent = "fair " + fairNow.toFixed(2);
     box.appendChild(svg);
     var d = ser[ser.length - 1][1] - ser[0][1];
     box.appendChild(el("div", "subnote", "Over your last " + ser.length + " refreshes (" + ago(ser[0][0]) + " to now) the best price " + (Math.abs(d) < 0.02 ? "barely moved." : d < 0 ? "fell. Falling prices are often corrected, so act on a good one early." : "rose. A rising price can mean the market is losing faith in this outcome.") + " The dashed line is the fair price now."));
@@ -2833,19 +2851,20 @@ body.lock { overflow: hidden; }
   }
 
   function chartFor(done) {
-    var NS = "http://www.w3.org/2000/svg", W = 300, H = 120, pad = 16;
+    /* Left gutter for the £0 label and room above for the profit label, so labels never sit on the line. */
+    var NS = "http://www.w3.org/2000/svg", W = 300, H = 120, padL = 30, padR = 12, padT = 24, padB = 10;
     var rows = done.slice().sort(function (a, b) { return (a.settledAt || a.time) - (b.settledAt || b.time); }), cum = 0, pts = [0];
     rows.forEach(function (b) { cum += b.profit; pts.push(cum); });
     var lo = Math.min.apply(null, pts.concat(0)), hi = Math.max.apply(null, pts.concat(0)); if (hi - lo < 1) { hi += 0.5; lo -= 0.5; }
-    function X(i) { return pad + (W - 2 * pad) * i / (pts.length - 1); }
-    function Y(v) { return pad + (H - 2 * pad) * (1 - (v - lo) / (hi - lo)); }
+    function X(i) { return padL + (W - padL - padR) * i / (pts.length - 1); }
+    function Y(v) { return padT + (H - padT - padB) * (1 - (v - lo) / (hi - lo)); }
     var svg = document.createElementNS(NS, "svg"); svg.setAttribute("viewBox", "0 0 " + W + " " + H); svg.setAttribute("class", "chart");
     svg.setAttribute("role", "img"); svg.setAttribute("aria-label", "Profit over time, now " + sgbp(cum));
     function mk(tag, attrs) { var e = document.createElementNS(NS, tag); Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); }); svg.appendChild(e); return e; }
-    mk("line", { x1: pad, x2: W - pad, y1: Y(0), y2: Y(0), stroke: "currentColor", "stroke-opacity": ".35", "stroke-dasharray": "3 3" });
+    mk("line", { x1: padL, x2: W - padR, y1: Y(0), y2: Y(0), stroke: "currentColor", "stroke-opacity": ".35", "stroke-dasharray": "3 3" });
     mk("polyline", { points: pts.map(function (v, i) { return X(i).toFixed(1) + "," + Y(v).toFixed(1); }).join(" "), fill: "none", stroke: "currentColor", "class": cum >= 0 ? "up" : "down", "stroke-width": "2.5", "stroke-linejoin": "round" });
-    var t = mk("text", { x: W - pad, y: 12, "text-anchor": "end" }); t.textContent = "Profit " + sgbp(cum);
-    var z = mk("text", { x: pad, y: Y(0) - 4 }); z.textContent = "£0";
+    var t = mk("text", { x: W - padR, y: 14, "text-anchor": "end" }); t.textContent = "Profit " + sgbp(cum);
+    var z = mk("text", { x: padL - 6, y: Y(0), "text-anchor": "end", "dominant-baseline": "middle" }); z.textContent = "£0";
     return svg;
   }
   /* Lets the record move the PLACE threshold, slowly and visibly: at most one step of 5 points per 30 newly settled results. */
