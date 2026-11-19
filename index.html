@@ -427,6 +427,10 @@ body.simple .tabbar { grid-template-columns: repeat(3, 1fr); }
 .morenav small { font: var(--b-text-small); color: var(--b-muted); }
 .morenav .chev { color: var(--b-muted); }
 .backmore { align-self: flex-start; display: inline-flex; align-items: center; gap: var(--b-s1); }
+/* More and All bets in Simple view: the settings and tools stay, the paragraphs explaining them go (Advanced view keeps them) */
+body.simple #tab-more > .hint, body.simple #settings > p, body.simple #settings > .subnote, body.simple #creditBox > p,
+body.simple #evidenceBox > p:first-of-type, body.simple #evidenceBox > .evid, body.simple #toolsBox > p, body.simple #tourBox > p,
+body.simple #acctBox > p, body.simple.nokey #creditBox, body.simple.onserver #freeBox, body.simple #tab-all > .hint, body.simple #modeHint { display: none; }
 body.simple footer { text-align: center; }
 
 /* Picks in the details sheet */
@@ -903,7 +907,7 @@ body.lock { overflow: hidden; }
 <script>
 (function () {
   "use strict";
-  var VERSION = "v32 (19 Nov 2026)";   /* shown in the footer; bump on every release */
+  var VERSION = "v33 (19 Nov 2026)";   /* shown in the footer; bump on every release */
   var LS = "betiqlite.v1";
   var API = "https://api.the-odds-api.com/v4";
   var DEFAULTS = { key: "", selected: [], mode: "value", minOdds: 1.3, windowH: 72, group: "all",
@@ -3545,6 +3549,7 @@ body.lock { overflow: hidden; }
     $("tabbar").hidden = !inApp;
     document.body.classList.toggle("simple", !!S.simple);
     document.body.classList.toggle("nokey", !S.key);
+    document.body.classList.toggle("onserver", SERVER);
     applyTab();
     if (!inApp) return;
     $("modeLikely").setAttribute("aria-pressed", String(S.mode === "likely"));
