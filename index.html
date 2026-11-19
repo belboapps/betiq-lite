@@ -376,6 +376,23 @@ body.simple .bmain > .cgist, body.simple .bmain > .trio, body.simple .bmain > .c
 body.simple .cmore { display: inline-flex; align-items: center; justify-content: center; gap: var(--b-s2); font-weight: 600; color: var(--b-link); min-height: 32px; }
 body.simple .cmore svg.ico { width: 20px; height: 20px; }
 body:not(.simple) .simplefoot, body.simple .advfoot { display: none; }
+/* The details sheet in Simple view: the plain "why", the steps, the price check and the buttons; the rest behind "Show all the numbers" */
+body.simple .detail.simplewhy:not(.showall) > :not(.swhy):not(.howto):not(.pcheck):not(.pickactions):not(.allnums) { display: none; }
+.swhy { display: flex; flex-direction: column; gap: var(--b-s4); }
+.swhy h3 { margin: calc(-1 * var(--b-s3)) 0 0; font: 800 1.5rem/1.25 var(--b-font); color: var(--b-ink); }
+.swhysub { font: var(--b-text-small); color: var(--b-muted); }
+.sreason { display: flex; gap: var(--b-s3); align-items: flex-start; }
+.sreason > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sreason b { font-weight: 700; }
+.sreason > div > span { font: var(--b-text-small); color: var(--b-muted); }
+.sric { width: 40px; height: 40px; border-radius: var(--b-r-row); display: grid; place-items: center; flex: none; background: var(--x-accent-soft); color: var(--b-accent-text); }
+.sric.good { background: var(--b-ok-bg); color: var(--b-ok); }
+.sric.warn { background: var(--b-warn-bg); color: var(--b-warn); }
+.sric.bad { background: var(--b-bad-bg); color: var(--b-bad); }
+.swarn { display: flex; gap: var(--b-s2); align-items: flex-start; background: var(--b-warn-bg); color: var(--b-warn); border-radius: var(--b-r-row); padding: var(--b-s3); font: var(--b-text-small); }
+.swarn b { color: inherit; }
+.swarn svg.ico { width: 20px; height: 20px; }
+.allnums { align-self: center; }
 body.simple footer { text-align: center; }
 
 /* Picks in the details sheet */
@@ -846,7 +863,7 @@ body.lock { overflow: hidden; }
 <script>
 (function () {
   "use strict";
-  var VERSION = "v30 (19 Nov 2026)";   /* shown in the footer; bump on every release */
+  var VERSION = "v31 (19 Nov 2026)";   /* shown in the footer; bump on every release */
   var LS = "betiqlite.v1";
   var API = "https://api.the-odds-api.com/v4";
   var DEFAULTS = { key: "", selected: [], mode: "value", minOdds: 1.3, windowH: 72, group: "all",
@@ -2311,6 +2328,29 @@ body.lock { overflow: hidden; }
     }
   }
 
+  /* "Why this bet?" in plain words: the price, the chance, the stake, and that it can still lose. The numbers sit behind one button. */
+  function whyPlain(p, st) {
+    var s = p.pick, box = el("div", "swhy"), stake = st.amount >= 0.5 ? st.amount : 1;
+    box.appendChild(el("span", "swhysub", capFirst(betWords(p)) + " · " + s.bestBook));
+    box.appendChild(el("h3", null, "Why this bet?"));
+    function reason(ic, cls, t, sub) {
+      var r = el("div", "sreason"), i = el("span", "sric" + (cls ? " " + cls : "")); i.appendChild(icon(ic)); r.appendChild(i);
+      var tx = el("div"); tx.appendChild(el("b", null, t)); tx.appendChild(el("span", null, sub)); r.appendChild(tx); box.appendChild(r);
+    }
+    var others = s.prices.filter(function (x) { return x.ok && !(x.book === s.bestBook && x.price === s.best); }).map(function (x) { return x.price; }).sort(function (a, b) { return a - b; });
+    var usual = others.length ? others[Math.floor(others.length / 2)] : null;
+    if (p.suspect) reason("alert", "warn", "This price looks too good", "It is often an old price. Check " + s.bestBook + " really shows " + s.best.toFixed(2) + ".");
+    else if (s.ev > 0.005) reason("back", "good", s.bestBook + " pays more than most", gbp(stake) + " returns " + gbp(stake * s.best) + " here" + (usual && usual < s.best ? ", about " + gbp(stake * usual) + " elsewhere." : "."));
+    else reason("x", "bad", "No bookmaker pays enough", "The best price is no better than fair, so it is not worth it.");
+    reason("target", null, "Wins about " + (s.fair >= 0.1 ? Math.round(s.fair * 10) + " times in 10" : "1 time in " + Math.round(1 / s.fair)), "That's what all the bookmakers' prices say together.");
+    if (st.amount >= 0.5) reason("coin", null, gbp(st.amount) + " keeps you safe", S.weekly > 0 ? "A small part of your " + pounds(S.weekly) + " weekly budget." : "Sized to your " + pounds(budget()) + " budget.");
+    else reason("pause", null, "No stake suggested", capFirst(st.kind.toLowerCase()) + ".");
+    var w = el("div", "swarn"); w.appendChild(icon("alert"));
+    var wt = el("span"); wt.appendChild(el("b", null, "You can still lose. ")); wt.appendChild(document.createTextNode("A good price only helps over many bets, not this one.")); w.appendChild(wt);
+    box.appendChild(w);
+    return box;
+  }
+
   function boardRow(p, rank, medal, withActions, showLeague) {
     var s = p.pick, st = stakeFor(s), sc = scoreFor(p), age = priceAge(p);
     var wrap = el("div", "brow card" + (medal === 1 ? " gold" : ""));
@@ -2683,6 +2723,7 @@ body.lock { overflow: hidden; }
     ht.appendChild(el("div", "dsub", p.ev.h + " v " + p.ev.a + " · " + p.league + " · " + TF.format(new Date(p.time))));
     ht.appendChild(el("div", "dsub", likeWord(s.fair) + " · " + inN(s.fair)));
     head.appendChild(ht); root.appendChild(head);
+    if (S.simple) { root.classList.add("simplewhy"); root.appendChild(whyPlain(p, st)); }
     root.appendChild(el("div", "cgist", gist(s.fair, s.best, s.ev, p.suspect)));
     root.appendChild(verdictStrip(p));
     var ht1 = howTo(p, st); if (ht1) root.appendChild(ht1);
@@ -2700,6 +2741,11 @@ body.lock { overflow: hidden; }
     var pt = plainText(p, st); if (pt) { var pe = el("div", "plain"); pe.appendChild(el("b", null, "In plain English")); pe.appendChild(document.createTextNode(pt)); root.appendChild(pe); }
     root.appendChild(priceCheck(p));
     var pa = el("div", "pickactions"); pa.appendChild(actionsFor(p, st)); root.appendChild(pa);
+    if (S.simple) {
+      var an = el("button", "btn linkbtn allnums", "Show all the numbers"); an.type = "button";
+      an.addEventListener("click", function () { var on = root.classList.toggle("showall"); an.textContent = on ? "Hide the numbers" : "Show all the numbers"; });
+      root.appendChild(an);
+    }
     var grid = el("div", "stats");
     grid.appendChild(statBox("Bet with", s.bestBook, "odds " + s.best.toFixed(2) + (s.bestEx ? " after commission" : "")));
     if (s.yard && !s.market) grid.appendChild(statBox("Fair price from", s.yard === "the bookmaker average" ? "Bookmaker average" : s.yard, s.yard === "Pinnacle" ? "the sharpest bookmaker's price, margin removed" : s.yard === "Betfair Exchange" ? "a busy exchange market, as accurate as Pinnacle on past matches" : "no busy exchange market for this match, so less reliable"));

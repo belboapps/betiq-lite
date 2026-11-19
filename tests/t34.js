@@ -42,7 +42,10 @@ let fails=0; function check(name,ok,info){ if(!ok) fails++; console.log((ok?'PAS
  await p.click('#tab-today .brow:has-text("Arsenal") >> .bmain'); await p.waitForSelector('#sheetBody .detail');
  const steps=await p.$$eval('#sheetBody .detail > .howto .hstep',e=>e.map(x=>x.innerText.replace(/\n/g,' ')));
  check('the six how-to steps are in the details',steps.length===6&&steps.every((t,i)=>t.startsWith(String(i+1)))&&/Open Paddy Power\./.test(steps[0])&&/Arsenal v Everton/.test(steps[1])&&/1\.79 \(shown as 4\/5 on some apps\) or higher/.test(steps[3])&&/Type in a stake of £[\d.]+ and confirm/.test(steps[4]),steps.join(' / '));
- check('what left the card is one tap away in the details',await p.$eval('#sheetBody',e=>/Copy bet/.test(e.innerText)&&/Suggested stake/i.test(e.innerText)&&/reminder to my calendar/.test(e.innerText))); await p.click('#sheetClose'); await p.waitForFunction(()=>document.getElementById('sheet').hidden);
+ const why=await p.innerText('#sheetBody .detail');
+ check('details open with a plain why: price, chance, stake, can still lose',/Why this bet\?/.test(why)&&/Paddy Power pays more than most/.test(why)&&/Wins about \d+ times in 10/.test(why)&&/£1\.50 keeps you safe/.test(why)&&/You can still lose/.test(why)&&!/Suggested stake/i.test(why),why.split('\n').slice(0,8).join(' / '));
+ await p.click('#sheetBody .allnums');
+ check('the numbers are one tap away: Show all the numbers',await p.$eval('#sheetBody',e=>/Copy bet/.test(e.innerText)&&/Suggested stake/i.test(e.innerText)&&/reminder to my calendar/.test(e.innerText))); await p.click('#sheetClose'); await p.waitForFunction(()=>document.getElementById('sheet').hidden);
  await p.click('[data-tab=more]'); await p.uncheck('#simpleOn'); await p.waitForTimeout(200); await p.click('[data-tab=all]'); await p.waitForSelector('#list .brow');
  check('full view still shows the analyst numbers',await p.$eval('#list .brow:has-text("Arsenal")',e=>['.cgrid','.sbox','.cpay','.actions .copy'].every(s=>getComputedStyle(e.querySelector(s)).display!=='none')));
  const full=await p.$eval('#list .brow:has-text("Arsenal")',e=>Math.round(e.getBoundingClientRect().height)); console.log('   card height: simple',short.h,'px, full',full,'px');
