@@ -1,7 +1,8 @@
 """BetIQ's page and data on the home server, at https://betiq.<your domain> behind the home
 dashboard's login. Standard library only.
 
-- The page (index.html, manifest, icon) comes from PAGE_DIR, which the deploy script fills.
+- The page (index.html, manifest, icon, and the design kit in belbo/) comes from PAGE_DIR, which the
+  deploy script fills.
 - /rest/v1/... answers the app's bet-log and prices-file requests from betiqdb, for the person
   named in the dashboard's signed login pass only.
 - /results?div=E0 passes on the latest results for one league from football-data.co.uk (last 80
@@ -24,8 +25,13 @@ import cfaccess
 
 PAGE_DIR = os.environ.get("PAGE_DIR", "/page")
 FILES = {"/": "index.html", "/index.html": "index.html", "/manifest.webmanifest": "manifest.webmanifest",
-         "/icon.png": "icon.png"}
-TYPES = {"html": "text/html; charset=utf-8", "webmanifest": "application/manifest+json", "png": "image/png"}
+         "/icon.png": "icon.png",
+         # The Belbo design kit (copied in by belbo-design's install.sh): its stylesheet and font.
+         "/belbo/belbo.css": "belbo/belbo.css",
+         "/belbo/fonts/PlusJakartaSans-Variable.woff2": "belbo/fonts/PlusJakartaSans-Variable.woff2",
+         "/belbo/fonts/PlusJakartaSans-Variable-Italic.woff2": "belbo/fonts/PlusJakartaSans-Variable-Italic.woff2"}
+TYPES = {"html": "text/html; charset=utf-8", "webmanifest": "application/manifest+json", "png": "image/png",
+         "css": "text/css; charset=utf-8", "woff2": "font/woff2"}
 DB = None
 
 # Results: the same leagues and trimming as helper/worker.js.

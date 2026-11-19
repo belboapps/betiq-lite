@@ -60,6 +60,11 @@ class Web(unittest.TestCase):
         os.makedirs(os.path.join(d, "page"))
         with open(os.path.join(d, "page", "index.html"), "w") as f:
             f.write("<html><head><title>x</title></head><body>hi</body></html>")
+        os.makedirs(os.path.join(d, "page", "belbo", "fonts"))
+        with open(os.path.join(d, "page", "belbo", "belbo.css"), "w") as f:
+            f.write(":root{}")
+        with open(os.path.join(d, "page", "belbo", "fonts", "PlusJakartaSans-Variable.woff2"), "wb") as f:
+            f.write(b"wOF2")
         web.PAGE_DIR = os.path.join(d, "page")
         web.DB = betiqdb.connect(os.path.join(d, "b.db"))
         web.who = lambda headers: {"good": "me@x.com"}.get(headers.get("Cf-Access-Jwt-Assertion"))
@@ -92,6 +97,12 @@ class Web(unittest.TestCase):
         self.assertEqual(code, 200)
         self.assertIn(b"window.BETIQ_SERVER = true;", body)
         self.assertIn(b"https://dash.example.co.uk/public/home.js", body)
+
+    def test_design_kit_is_served(self):
+        self.assertEqual(self.req("/belbo/belbo.css"), (200, b":root{}"))
+        self.assertEqual(self.req("/belbo/fonts/PlusJakartaSans-Variable.woff2"), (200, b"wOF2"))
+        self.assertEqual(self.req("/belbo/../server/web.py")[0], 404)
+        self.assertEqual(self.req("/belbo/tailwind.css")[0], 404)
 
     def test_data_needs_the_login_pass(self):
         self.assertEqual(self.req("/rest/v1/bets")[0], 401)
