@@ -932,6 +932,17 @@ body.simple .adv { display: none !important; }
 
   var loadDamaged = false;
   var S = load();
+  /* On the home server the page is told so (window.BETIQ_SERVER): bets are saved there instead of
+     Supabase, for whoever signed in through the home dashboard. No keys or sign-in link needed. */
+  var SERVER = !!window.BETIQ_SERVER;
+  var MOVE_TO = "https://betiq.belboapps.co.uk/";
+  var MOVE_SKIP = ["cache", "series", "hist", "news", "sb", "live", "apiErr"];
+  function serverSession() {
+    if (!SERVER) return;
+    S.sb = { url: location.origin, key: "server", email: "", session: { at: "", rt: "", exp: 8.64e15, uid: "me" },
+             last: (S.sb && S.sb.last) || 0, status: (S.sb && S.sb.status) || "" };
+  }
+  serverSession();
   var busy = false;
   var openIds = {};
 
@@ -4194,6 +4205,10 @@ body.simple .adv { display: none !important; }
     }, function () { var e = new Error("net"); e.net = true; throw e; });
   }
   function sbErr(e) {
+    if (SERVER) {
+      if (e.net || e.status === 401 || e.status === 403) return "Could not reach your home server, or your dashboard sign-in has expired. Reload the page to sign in again.";
+      return "Your home server returned an error (" + e.status + ").";
+    }
     if (e.net) return "Could not reach Supabase. Check your signal and the project URL.";
     if (e.status === 401 || e.status === 403) return "Signed out or not allowed. Send yourself a new sign-in link.";
     if (e.status === 404) return "The bets table was not found. Run the setup SQL in your Supabase project first.";
@@ -4252,10 +4267,16 @@ body.simple .adv { display: none !important; }
       return done.then(function () { return { pushed: push.length, pulled: pulled }; });
     }).then(function (r) {
       sbBusy = false; sbDirty = false; S.sb.last = Date.now(); S.sb.status = "Synced: " + r.pushed + " sent, " + r.pulled + " received."; save(); renderAll(); renderSb();
-    }, function (e) { sbBusy = false; S.sb.status = sbErr(e); if (e.status === 401 || e.status === 403) S.sb.session = null; save(); renderSb(); });
+    }, function (e) { sbBusy = false; S.sb.status = sbErr(e); if (!SERVER && (e.status === 401 || e.status === 403)) S.sb.session = null; save(); renderSb(); });
   }
   function renderSb() {
     var m = $("sbMsg"); if (!m) return; m.textContent = "";
+    if (SERVER) {
+      $("sbBox").classList.remove("adv");
+      ["sbSignIn", "sbOut"].forEach(function (id) { $(id).hidden = true; }); $("sbSync").hidden = false;
+      m.appendChild(el("div", "msg info", "Your bets are saved on your home server and shared between your devices" + (S.sb.last ? " · last synced " + ago(S.sb.last) : "") + ". " + (S.sb.status || "")));
+      return;
+    }
     var signedIn = sbReady();
     $("sbBox").classList.toggle("adv", !(S.sb.url || S.sb.session));   /* once backup is set up it stays visible in Simple view */
     $("sbSignIn").hidden = signedIn; $("sbSync").hidden = !signedIn; $("sbOut").hidden = !signedIn;
@@ -4569,7 +4590,51 @@ body.simple .adv { display: none !important; }
   }
   document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible" && liveActive()) { scheduleLive(); if (!S.live.last || Date.now() - S.live.last.at > S.live.every * 1000) liveCheck(); } });
 
+  /* ---------- Moving to the home server ----------
+     The old address hands everything except caches to the new one inside the address's #part,
+     which the browser never sends to any server, and the new page takes it in after asking. */
+  function movePayload() {
+    var out = { app: "betiqlite-move", v: 1, s: {} };
+    Object.keys(S).forEach(function (k) { if (MOVE_SKIP.indexOf(k) < 0) out.s[k] = S[k]; });
+    return btoa(unescape(encodeURIComponent(JSON.stringify(out)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+  function moveToServer() {
+    var data = movePayload();
+    if (data.length > 1500000) { alert("Too much to move in one go. Copy a backup instead (More, Back up your bets)."); return; }
+    location.href = MOVE_TO + "#move=" + data;
+  }
+  function moveFromHash() {
+    if (!SERVER || location.hash.indexOf("#move=") !== 0) return false;
+    var raw = location.hash.slice(6);
+    try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
+    var d;
+    try { d = JSON.parse(decodeURIComponent(escape(atob(raw.replace(/-/g, "+").replace(/_/g, "/"))))); } catch (e) { d = null; }
+    if (!d || d.app !== "betiqlite-move" || !d.s || !Array.isArray(d.s.bets)) { alert("The move did not arrive in one piece. Go back to the old address and tap the button again."); return false; }
+    var n = d.s.bets.length + (Array.isArray(d.s.pbets) ? d.s.pbets.length : 0);
+    if (!window.confirm("Bring " + n + " bets and your settings across from the old address?")) return false;
+    function merge(a, b) {
+      var by = {}; (a || []).concat(b || []).forEach(function (x) { if (x && x.pid && (!by[x.pid] || (x.m || 0) > (by[x.pid].m || 0))) by[x.pid] = x; });
+      return Object.keys(by).map(function (k) { return by[k]; });
+    }
+    Object.keys(d.s).forEach(function (k) {
+      if (MOVE_SKIP.indexOf(k) >= 0 || !(k in DEFAULTS)) return;
+      if (k === "bets" || k === "pbets") S[k] = merge(S[k], d.s[k]);
+      else S[k] = d.s[k];
+    });
+    serverSession(); save();
+    return true;
+  }
+  (function () {
+    var box = $("backupBox"); if (!box) return;
+    if (!SERVER && /github\.io$/.test(location.hostname)) {
+      var p = el("div", "msg info", "BetIQ now lives on your home server. Tap below to take your bets and settings there (sign in to the home dashboard first). This address keeps working until you switch it off.");
+      var b = el("button", "btn primary", "Move to my server"); b.type = "button"; b.id = "moveBtn"; b.addEventListener("click", moveToServer);
+      box.insertBefore(b, box.children[1]); box.insertBefore(p, b);
+    }
+  })();
+
   /* ---------- Start ---------- */
+  var moved = moveFromHash();
   sbFromHash();
   $("verLine").textContent = "BetIQ Lite " + VERSION + ". If the page looks out of date, add ?" + VERSION.slice(0, 3) + " to the address to skip your phone's saved copy.";
   initCalc();
@@ -4578,7 +4643,7 @@ body.simple .adv { display: none !important; }
   if (S.key || S.freeMode) renderSettings();
   if (S.helperUrl) { loadHelper(false); helperSettle(false); }
   if (sbReady()) loadCloudFile(false);
-  if (S.sb.session && S.sb.url) { if (sbArrived) setTab("more"); syncNow(true); }
+  if (S.sb.session && S.sb.url) { if (sbArrived) setTab("more"); syncNow(true).then(function () { if (moved) { S.sb.status = "Moved across: your bets are now on your home server. " + (S.sb.status || ""); save(); renderSb(); setTab("more"); } }); }
   if (S.live) { if (liveActive() && Date.now() - S.live.time > liveMins(S.live.group) * 60000) S.live.stopped = true; renderLive(); if (liveActive()) { scheduleLive(); liveCheck(); } }
   if (S.key && !S.tour && !S.booksSet && !S.bets.length && !S.pbets.length && !S.sb.session) openTour();
   if (S.key) {

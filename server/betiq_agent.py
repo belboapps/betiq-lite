@@ -21,6 +21,7 @@ Everything is set through environment variables (see server/README.md); nothing 
 """
 import datetime as dt
 import json
+import sqlite3
 import os
 import shutil
 import time
@@ -29,6 +30,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+import betiqdb
 import tipsters
 
 EVERY = 5 * 60                 # seconds between passes
@@ -38,6 +40,8 @@ EX_LIQUID = 1.025              # an exchange market is trusted when its prices a
 KEEP_DAYS = 30
 BRIEF_AT = dt.time(7, 30)      # UK time
 APP_URL = os.environ.get("BETIQ_APP_URL", "https://belboapps.github.io/betiq-lite/")
+# Where to check the page is up: the server's own copy when it has one (no login needed there).
+PAGE_CHECK_URL = os.environ.get("BETIQ_PAGE_CHECK_URL", "") or APP_URL
 DATA = os.environ.get("BETIQ_DATA", "/data")
 BACKUPS = os.environ.get("BETIQ_BACKUP_DIR", "/backups")
 
@@ -99,8 +103,38 @@ def notify(title, body):
         return False
 
 
-# ---------- Supabase ----------
+# ---------- Bet log: the home server's own store, or Supabase ----------
+_DB = None
+
+
 def _sb(method, path, body=None, prefer=None):
+    """One bet-log request. With BETIQ_DB set it is answered by the store on this server
+    (betiqdb); otherwise by Supabase, as before."""
+    global _DB
+    if os.environ.get("BETIQ_DB"):
+        try:
+            if _DB is None:
+                _DB = betiqdb.connect()
+            return betiqdb.handle(_DB, method, path, body)
+        except betiqdb.BadRequest as e:
+            raise Problem("db", f"The bet log store refused a request: {e}")
+        except sqlite3.Error:
+            raise Problem("db", "The bet log store on the server could not be read.")
+    return _supabase(method, path, body, prefer)
+
+
+def import_from_supabase():
+    """One-off move: copy every bet from Supabase into the server's store, under each person's
+    email. Safe to run again: it keeps whichever copy of a bet is newer."""
+    users = {u["id"]: (u.get("email") or "").strip().lower()
+             for u in (_supabase("GET", "/auth/v1/admin/users") or {}).get("users", []) if u.get("email")}
+    rows = _supabase("GET", "/rest/v1/bets?select=user_id,pid,practice,m,data&limit=100000") or []
+    n = betiqdb.import_rows(betiqdb.connect(), rows, users)
+    print(f"{len(rows)} rows in Supabase for {len(users)} people; {n} copied in.", flush=True)
+    return n
+
+
+def _supabase(method, path, body=None, prefer=None):
     url, key = os.environ.get("SUPABASE_URL", "").strip(), os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
     if not url or not key:
         raise Problem("sb_missing", "The Supabase address or key is not set on the server.")
@@ -450,7 +484,7 @@ def announce(found, state):
 
 def page_up():
     try:
-        return http("GET", APP_URL, timeout=15)[0] == 200
+        return http("GET", PAGE_CHECK_URL, timeout=15)[0] == 200
     except OSError:
         return False
 
@@ -516,4 +550,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    if sys.argv[1:] == ["import-supabase"]:
+        import_from_supabase()
+    else:
+        main()
