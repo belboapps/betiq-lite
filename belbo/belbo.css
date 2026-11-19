@@ -1,0 +1,287 @@
+/* Belbo Apps design kit, v1.0 (19 Nov 2026). Source: github.com/belboapps/belbo-design
+   One look for every Belbo app: shared colours, type, spacing and components, with one accent
+   colour per app. Taken from BelboRent (src/app/globals.css and docs/design-audit.md).
+
+   Use:  <link rel="stylesheet" href="/belbo/belbo.css">   and   <html lang="en-GB" data-app="cat-care">
+   Everything is prefixed (--b-* variables, .b-* classes) so it can sit beside an app's own CSS.
+   Rules for using it are in DESIGN.md. Copy, don't hand-edit: change it here and re-run scripts/install.sh. */
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("fonts/PlusJakartaSans-Variable.woff2") format("woff2-variations"), url("fonts/PlusJakartaSans-Variable.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("fonts/PlusJakartaSans-Variable-Italic.woff2") format("woff2-variations"), url("fonts/PlusJakartaSans-Variable-Italic.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* ---------- Tokens (light) ---------- */
+:root {
+  color-scheme: light;
+
+  /* Family colours: the same in every app. */
+  --b-blue: #00478a;          /* Belbo blue: links, selected, primary buttons */
+  --b-orange: #f06e1e;        /* Belbo orange: the parent brand mark */
+  --b-bg: #f2f4f8;            /* page */
+  --b-surface: #ffffff;       /* cards, sheets */
+  --b-surface-2: #f7f8fb;     /* rows inside a card, inputs */
+  --b-ink: #0a0d14;           /* text */
+  --b-muted: #4b5563;         /* secondary text (6.9:1 on the page) */
+  --b-line: #e5e7eb;          /* borders, dividers */
+  --b-link: #00478a;
+  --b-on-blue: #ffffff;
+  --b-blue-btn: #00478a;      /* primary button fill (lifted in dark mode) */
+
+  /* Status: only ever for status, always with an icon and a word. */
+  --b-ok: #14532d;   --b-ok-bg: #f0fdf4;
+  --b-warn: #78350f; --b-warn-bg: #fffbeb;
+  --b-bad: #991b1b;  --b-bad-bg: #fef2f2;
+
+  /* App accent (set by data-app below). Default = Belbo blue, for the dashboard and anything unnamed.
+     --b-accent: the fill (one call to action per screen, the page glow, icon tints)
+     --b-on-accent: text on that fill      --b-accent-text: the accent as text on a page or card */
+  --b-accent: #00478a;
+  --b-on-accent: #ffffff;
+  --b-accent-text: #00478a;
+
+  /* Type: Plus Jakarta Sans. Nothing for reading below 14px. */
+  --b-font: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --b-text-display: 700 2rem/2.25rem var(--b-font);     /* 32/36 */
+  --b-text-figure: 800 2.5rem/2.5rem var(--b-font);     /* 40/40, with .b-numeral */
+  --b-text-heading: 600 1.25rem/1.625rem var(--b-font); /* 20/26 */
+  --b-text-body: 400 1rem/1.5rem var(--b-font);         /* 16/24 */
+  --b-text-small: 400 0.875rem/1.25rem var(--b-font);   /* 14/20 */
+  --b-text-badge: 600 0.75rem/1rem var(--b-font);       /* 12/16, badges only */
+
+  /* Spacing: 4px base. */
+  --b-s1: 4px; --b-s2: 8px; --b-s3: 12px; --b-s4: 16px; --b-s5: 24px; --b-s6: 32px; --b-s7: 48px;
+
+  /* Radius. */
+  --b-r-row: 12px;     /* inputs, rows */
+  --b-r-card: 20px;    /* cards, sheets */
+  --b-r-pill: 9999px;  /* buttons, badges */
+
+  /* Depth: a soft layered shadow and a thin highlight along the top edge. */
+  --b-shadow: 0 1px 2px rgb(10 13 20 / 0.06), 0 6px 16px -6px rgb(10 13 20 / 0.14), inset 0 1px 0 rgb(255 255 255 / 0.55);
+  --b-glass: rgb(255 255 255 / 0.78);
+  --b-glow-opacity: 1;
+}
+
+/* ---------- App accents ----------
+   Accents avoid red, amber and green (those mean status). Each passes WCAG AA for its text.
+   A new app gets a new accent here: pick a hue not already used, then check contrast (DESIGN.md). */
+[data-app="belborent"]       { --b-accent: #f06e1e; --b-on-accent: #0a0d14; --b-accent-text: #b54c0b; }
+[data-app="cat-care"]        { --b-accent: #a3307a; --b-on-accent: #ffffff; --b-accent-text: #a3307a; }
+[data-app="portfolio-agent"] { --b-accent: #5b3fd1; --b-on-accent: #ffffff; --b-accent-text: #5b3fd1; }
+[data-app="betiq-lite"]      { --b-accent: #0a6f8f; --b-on-accent: #ffffff; --b-accent-text: #0a6f8f; }
+[data-app="home-dashboard"]  { --b-accent: #00478a; --b-on-accent: #ffffff; --b-accent-text: #00478a; }
+[data-app="shopping"]        { --b-accent: #8b5e34; --b-on-accent: #ffffff; --b-accent-text: #8b5e34; }
+
+/* ---------- Dark mode: follows the phone; data-theme="light" or "dark" on <html> overrides it.
+   Surfaces, text, links and status swap; accent fills stay. ---------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --b-bg: #0a0d14;
+      --b-surface: #151b28;
+      --b-surface-2: #1a2130;
+      --b-ink: #f2f4f8;
+      --b-muted: #aab4c5;
+      --b-line: #2b3447;
+      --b-link: #7db3f5;
+      --b-ok: #bdf0cf;   --b-ok-bg: #10301d;
+      --b-warn: #ffe3a3; --b-warn-bg: #3a2a0a;
+      --b-bad: #ffb4ae;  --b-bad-bg: #3a1618;
+      --b-accent-text: #7db3f5;
+      --b-shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 20px -8px rgb(0 0 0 / 0.6), inset 0 1px 0 rgb(255 255 255 / 0.07);
+      --b-glass: rgb(21 27 40 / 0.78);
+      --b-glow-opacity: 0.35;
+      --b-blue-btn: #1d5fa6;      /* white text 6.5:1 */
+  }
+  :root:not([data-theme="light"])[data-app="belborent"] { --b-accent-text: #ff9a55; }
+  :root:not([data-theme="light"])[data-app="cat-care"] { --b-accent-text: #f08ac8; }
+  :root:not([data-theme="light"])[data-app="portfolio-agent"] { --b-accent-text: #b3a4ff; }
+  :root:not([data-theme="light"])[data-app="betiq-lite"] { --b-accent-text: #5cc8e8; }
+  :root:not([data-theme="light"])[data-app="home-dashboard"] { --b-accent-text: #7db3f5; }
+:root:not([data-theme="light"])[data-app="shopping"] { --b-accent-text: #e0b080; }
+}
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --b-bg: #0a0d14;
+    --b-surface: #151b28;
+    --b-surface-2: #1a2130;
+    --b-ink: #f2f4f8;
+    --b-muted: #aab4c5;
+    --b-line: #2b3447;
+    --b-link: #7db3f5;
+    --b-ok: #bdf0cf;   --b-ok-bg: #10301d;
+    --b-warn: #ffe3a3; --b-warn-bg: #3a2a0a;
+    --b-bad: #ffb4ae;  --b-bad-bg: #3a1618;
+    --b-accent-text: #7db3f5;
+    --b-shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 20px -8px rgb(0 0 0 / 0.6), inset 0 1px 0 rgb(255 255 255 / 0.07);
+    --b-glass: rgb(21 27 40 / 0.78);
+    --b-glow-opacity: 0.35;
+    --b-blue-btn: #1d5fa6;      /* white text 6.5:1 */
+}
+:root[data-theme="dark"][data-app="belborent"] { --b-accent-text: #ff9a55; }
+:root[data-theme="dark"][data-app="cat-care"] { --b-accent-text: #f08ac8; }
+:root[data-theme="dark"][data-app="portfolio-agent"] { --b-accent-text: #b3a4ff; }
+:root[data-theme="dark"][data-app="betiq-lite"] { --b-accent-text: #5cc8e8; }
+:root[data-theme="dark"][data-app="home-dashboard"] { --b-accent-text: #7db3f5; }
+:root[data-theme="dark"][data-app="shopping"] { --b-accent-text: #e0b080; }
+
+/* ---------- Base ---------- */
+.b-page, body.b-page {
+  margin: 0;
+  background: var(--b-bg);
+  color: var(--b-ink);
+  font: var(--b-text-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+.b-page a, .b-link { color: var(--b-link); text-underline-offset: 2px; }
+html:has(.b-page) { scroll-padding-bottom: 6rem; } /* keep focused fields clear of a bottom bar */
+
+/* One focus ring everywhere, visible on light and dark. */
+.b-page :focus-visible { outline: 3px solid var(--b-link); outline-offset: 2px; }
+
+/* "Skip to main content": first thing in <body>, shown when a keyboard user tabs to it. */
+.b-skip-link {
+  position: absolute; left: 1rem; top: -4rem; z-index: 50;
+  border-radius: var(--b-r-pill); background: var(--b-surface);
+  padding: 0.5rem 1rem; font-weight: 600; color: var(--b-link);
+}
+.b-skip-link:focus { top: 0.5rem; }
+
+/* Layout: phone column, wider on laptops. */
+.b-wrap {
+  max-width: 40rem; margin: 0 auto; padding-block: var(--b-s4);
+  padding-left: max(var(--b-s4), env(safe-area-inset-left, 0px)); padding-right: max(var(--b-s4), env(safe-area-inset-right, 0px));
+}
+@media (min-width: 64rem) { .b-wrap.b-wide { max-width: 72rem; } }
+.b-stack > * + * { margin-top: var(--b-s4); }
+
+/* ---------- Type ---------- */
+.b-display { font: var(--b-text-display); letter-spacing: -0.02em; margin: 0; }
+.b-heading { font: var(--b-text-heading); margin: 0; }
+.b-body    { font: var(--b-text-body); }
+.b-small   { font: var(--b-text-small); }
+.b-muted   { color: var(--b-muted); }
+.b-figure  { font: var(--b-text-figure); }
+.b-numeral { font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+
+/* ---------- Surfaces ---------- */
+.b-card {
+  background: var(--b-surface);
+  border-radius: var(--b-r-card);
+  padding: var(--b-s5);
+  box-shadow: var(--b-shadow);
+}
+.b-glass {
+  background: var(--b-glass);
+  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  backdrop-filter: blur(18px) saturate(1.6);
+}
+/* Soft glow behind the top of a page: the app's accent on the left, Belbo blue on the right. Decorative. */
+.b-glow { position: relative; isolation: isolate; }
+.b-glow::before {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 18rem; z-index: -1; pointer-events: none;
+  opacity: var(--b-glow-opacity);
+  background:
+    radial-gradient(60% 100% at 15% 0%, color-mix(in srgb, var(--b-accent) 16%, transparent), transparent 70%),
+    radial-gradient(55% 100% at 90% 0%, rgb(0 71 138 / 0.14), transparent 70%);
+}
+
+/* Row: icon, title, detail, badge, chevron. Whole row is the tap target (min 48px). */
+.b-row {
+  display: flex; align-items: center; gap: var(--b-s3);
+  min-height: 48px; padding: var(--b-s3) var(--b-s4);
+  background: var(--b-surface-2); border-radius: var(--b-r-row);
+  color: inherit; text-decoration: none;
+}
+.b-row + .b-row { margin-top: var(--b-s2); }
+.b-row .b-row-main { flex: 1; min-width: 0; }
+.b-row .b-row-title { font-weight: 600; }
+.b-row .b-row-detail { font: var(--b-text-small); color: var(--b-muted); }
+.b-row .b-chevron::after { content: "›"; font-size: 1.5rem; color: var(--b-muted); }
+.b-icon-tint { color: var(--b-accent-text); }
+
+/* ---------- Buttons (min 44px, pills) ----------
+   .b-btn-primary: Belbo blue, the usual main action.  .b-btn-accent: the ONE call to action on a screen.
+   .b-btn-quiet: everything else. */
+.b-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--b-s2);
+  min-height: 44px; padding: 0 var(--b-s5);
+  border: 1px solid transparent; border-radius: var(--b-r-pill);
+  font: 600 1rem/1 var(--b-font); text-decoration: none; cursor: pointer;
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+.b-btn:active { transform: scale(0.98); }
+.b-btn:disabled, .b-btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
+.b-btn-primary { background: var(--b-blue-btn); color: var(--b-on-blue); }
+.b-btn-accent  { background: var(--b-accent); color: var(--b-on-accent); }
+.b-btn-quiet   { background: var(--b-surface); color: var(--b-link); border-color: var(--b-line); }
+.b-btn-primary:hover, .b-btn-accent:hover { filter: brightness(1.06); }
+
+/* ---------- Inputs ---------- */
+.b-field { display: block; }
+.b-label { display: block; font-weight: 600; margin-bottom: var(--b-s1); }
+.b-hint  { display: block; font: var(--b-text-small); color: var(--b-muted); margin-bottom: var(--b-s2); }
+.b-input {
+  box-sizing: border-box; width: 100%; min-height: 44px;
+  padding: var(--b-s2) var(--b-s3);
+  background: var(--b-surface); color: var(--b-ink);
+  border: 1px solid var(--b-line); border-radius: var(--b-r-row);
+  font: var(--b-text-body);
+}
+.b-input:focus-visible { border-color: var(--b-link); }
+
+/* ---------- Status badge: always icon + word, e.g. <span class="b-badge b-bad"><span aria-hidden="true">✕</span> Overdue</span> ---------- */
+.b-badge {
+  display: inline-flex; align-items: center; gap: var(--b-s1);
+  padding: 2px var(--b-s2); border-radius: var(--b-r-pill);
+  font: var(--b-text-badge); white-space: nowrap;
+}
+.b-badge.b-ok   { background: var(--b-ok-bg);   color: var(--b-ok); }
+.b-badge.b-warn { background: var(--b-warn-bg); color: var(--b-warn); }
+.b-badge.b-bad  { background: var(--b-bad-bg);  color: var(--b-bad); }
+
+/* ---------- Bottom bar (phone) ---------- */
+.b-bottom-bar {
+  position: fixed; left: var(--b-s3); right: var(--b-s3); bottom: calc(var(--b-s3) + env(safe-area-inset-bottom));
+  display: flex; justify-content: space-around; padding: var(--b-s2);
+  border-radius: var(--b-r-card); box-shadow: var(--b-shadow); z-index: 40;
+}
+.b-bottom-bar a { min-width: 48px; min-height: 48px; display: grid; place-items: center; color: var(--b-muted); text-decoration: none; font: var(--b-text-badge); }
+.b-bottom-bar a[aria-current="page"] { color: var(--b-accent-text); }
+
+/* ---------- Toast (for Undo) ---------- */
+.b-toast {
+  position: fixed; left: 50%; bottom: calc(6rem + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  display: flex; align-items: center; gap: var(--b-s4);
+  padding: var(--b-s3) var(--b-s4); border-radius: var(--b-r-pill);
+  background: var(--b-ink); color: var(--b-bg); box-shadow: var(--b-shadow); z-index: 60;
+}
+.b-toast button { background: none; border: 0; color: inherit; font: 700 1rem/1 var(--b-font); text-decoration: underline; cursor: pointer; min-height: 44px; }
+
+/* ---------- Motion: tiles rise in one after another (movement only, never fading). ---------- */
+@keyframes b-rise-in { from { transform: translateY(10px); } to { transform: none; } }
+.b-rise-in { animation: b-rise-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(min(var(--i, 0), 6) * 45ms); }
+@media (prefers-reduced-motion: reduce) {
+  .b-rise-in { animation: none; }
+  .b-page, .b-page * { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+}
+
+/* ---------- Print: plain, black on white, no chrome. ---------- */
+@media print {
+  .b-page { background: #fff; color: #000; }
+  .b-card { box-shadow: none; border: 1px solid #ccc; }
+  .b-bottom-bar, .b-toast, .b-skip-link, .b-glow::before { display: none; }
+}

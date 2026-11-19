@@ -1,0 +1,27 @@
+/* Belbo design kit for Tailwind v4 apps (BelboRent and any Next.js app).
+   In src/app/globals.css:   @import "tailwindcss";  @import "../../belbo/tailwind.css";
+   and put data-app="<app>" on <html>. Gives Tailwind classes such as bg-accent, text-on-accent,
+   text-accent-text, bg-surface, text-ink, text-muted, rounded-card, font-sans, shadow-depth. */
+@import "./belbo.css";
+
+@theme inline {
+  --color-brand-blue: var(--b-blue);
+  --color-brand-orange: var(--b-orange);
+  --color-bg: var(--b-bg);
+  --color-surface: var(--b-surface);
+  --color-surface-2: var(--b-surface-2);
+  --color-ink: var(--b-ink);
+  --color-muted: var(--b-muted);
+  --color-line: var(--b-line);
+  --color-link: var(--b-link);
+  --color-accent: var(--b-accent);
+  --color-on-accent: var(--b-on-accent);
+  --color-accent-text: var(--b-accent-text);
+  --color-ok: var(--b-ok);     --color-ok-bg: var(--b-ok-bg);
+  --color-warn: var(--b-warn); --color-warn-bg: var(--b-warn-bg);
+  --color-bad: var(--b-bad);   --color-bad-bg: var(--b-bad-bg);
+  --font-sans: var(--b-font);
+  --radius-row: var(--b-r-row);
+  --radius-card: var(--b-r-card);
+  --shadow-depth: var(--b-shadow);
+}
