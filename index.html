@@ -908,7 +908,7 @@ body.simple .adv { display: none !important; }
 <script>
 (function () {
   "use strict";
-  var VERSION = "v28 (19 Nov 2026)";   /* shown in the footer; bump on every release */
+  var VERSION = "v29 (19 Nov 2026)";   /* shown in the footer; bump on every release */
   var LS = "betiqlite.v1";
   var API = "https://api.the-odds-api.com/v4";
   var DEFAULTS = { key: "", selected: [], mode: "value", minOdds: 1.3, windowH: 72, group: "all",
@@ -943,6 +943,8 @@ body.simple .adv { display: none !important; }
              last: (S.sb && S.sb.last) || 0, status: (S.sb && S.sb.status) || "" };
   }
   serverSession();
+  /* Where free football results come from: the home server itself (its /results), or the user's own Cloudflare helper. */
+  function resultsBase() { return SERVER ? location.origin : (S.helperUrl || "").replace(/\/+$/, ""); }
   var busy = false;
   var openIds = {};
 
@@ -1894,7 +1896,7 @@ body.simple .adv { display: none !important; }
     var now = Date.now(), added = 0;
     buildPicks("value", true).filter(function (p) { return p.isValue && !p.suspect; }).slice(0, 10).forEach(function (p) {
       if (S.sugg.some(function (x) { return x.pid === p.id; })) return;
-      if (p.free && !apiKeyFor(p.key) && !S.helperUrl) return;      /* no way to fetch the result later, so it would sit open for ever */
+      if (p.free && !apiKeyFor(p.key) && !resultsBase()) return;      /* no way to fetch the result later, so it would sit open for ever */
       var s = p.pick, sc = scoreFor(p);
       S.sugg.push({ sugg: true, pid: p.id, evId: p.ev.id, key: p.key, league: p.league, h: p.ev.h, a: p.ev.a, sel: s.name, odds: s.best, book: s.bestBook,
         fair: s.fair, ev: s.ev, score: sc.total, v: decision(p).k, stake: 1, time: p.time, at: now, mkt: s.market || "", point: s.point, side: s.side, rule: s.rule, status: "open", profit: 0 });
@@ -1921,7 +1923,7 @@ body.simple .adv { display: none !important; }
     return null;
   }
   function checkResults(withRecord) {
-    if (S.helperUrl && !checkResults.viaHelper) { checkResults.viaHelper = true; return helperSettle(true).then(function () { var r = checkResults(withRecord); checkResults.viaHelper = false; return r; }, function () { checkResults.viaHelper = false; }); }
+    if (resultsBase() && !checkResults.viaHelper) { checkResults.viaHelper = true; return helperSettle(true).then(function () { var r = checkResults(withRecord); checkResults.viaHelper = false; return r; }, function () { checkResults.viaHelper = false; }); }
     var keys = dueKeys();
     if (withRecord) { suggKeys().forEach(function (k) { if (keys.indexOf(k) < 0) keys.push(k); }); S.recAt = Date.now(); }
     if (!keys.length || busy) return Promise.resolve();
@@ -3147,7 +3149,7 @@ body.simple .adv { display: none !important; }
     var due = dueBets();
     if (due.length) {
       var keys = dueKeys();
-      if (keys.length || S.helperUrl) {
+      if (keys.length || resultsBase()) {
         var cb = el("button", "btn primary", "Check results" + (keys.length ? " · " + (keys.length * 2) + " credits" : "")); cb.type = "button"; cb.disabled = busy;
         cb.addEventListener("click", function () { showAlert(""); checkResults(); });
         body.appendChild(cb);
@@ -3372,7 +3374,7 @@ body.simple .adv { display: none !important; }
       var place = buildPicks("value", true).filter(function (p) { return decision(p).k === "place" && !findBet(p.id); });
       if (place.length) out.push({ t: place.length + (place.length === 1 ? " bet says PLACE" : " bets say PLACE"), d: "Check the price in your bookmaker's app first. Skipping is always fine.", btn: "Show me", act: function () { setTab("today"); var pl = $("plan"); if (pl) pl.scrollIntoView({ behavior: "smooth" }); } });
     }
-    var due = dueBets().length, auto = dueKeys().length || (S.helperUrl && autoDue().length);
+    var due = dueBets().length, auto = dueKeys().length || (resultsBase() && autoDue().length);
     var toBets = function () { setTab("bets"); };
     if (due) out.push({ t: due + (due === 1 ? " bet needs its result" : " bets need their results"),
       d: auto ? "The match has finished. Settling keeps your record and budget right." : "Mark Won, Lost or Void under My bets: the app cannot fetch this result by itself.",
@@ -4150,7 +4152,7 @@ body.simple .adv { display: none !important; }
   });
   /* Another window (the home-screen app and a browser tab, say) saved changes: pick them up rather than overwrite them. */
   window.addEventListener("storage", function (e) { if (e.key === LS && e.newValue) { S = load(); renderAll(); } });
-  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") { S = load(); renderAll(); autoRun(); if (S.helperUrl) { loadHelper(false); helperSettle(false); } if (sbReady()) { syncNow(true); loadCloudFile(false); } } });
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") { S = load(); renderAll(); autoRun(); if (S.helperUrl) loadHelper(false); if (resultsBase()) helperSettle(false); if (sbReady()) { syncNow(true); loadCloudFile(false); } } });
 
   /* ---------- Matched betting calculator ---------- */
   function initCalc() {
@@ -4368,7 +4370,7 @@ body.simple .adv { display: none !important; }
     return true;
   }
   function helperSettle(force) {
-    var u = (S.helperUrl || "").replace(/\/+$/, ""); if (!/^https:\/\//.test(u)) return Promise.resolve(0);
+    var u = resultsBase(); if (!/^https:\/\//.test(u)) return Promise.resolve(0);
     var now = Date.now(), due = S.bets.concat(S.pbets).concat(S.sugg).filter(function (b) { return b.status === "open" && now > b.time + 2.5 * 3600000 && divFor(b.key); });
     if (!due.length || (!force && now - (S.helperResAt || 0) < 3 * 3600000)) return Promise.resolve(0);
     var divs = []; due.forEach(function (b) { var d = divFor(b.key); if (divs.indexOf(d) < 0) divs.push(d); });
@@ -4387,7 +4389,7 @@ body.simple .adv { display: none !important; }
           });
         });
       });
-    })).then(function () { save(); if (n) { renderAll(); showAlert(n + (n === 1 ? " result" : " results") + " filled in free through your helper.", true); } return n; });
+    })).then(function () { save(); if (n) { renderAll(); showAlert(n + (n === 1 ? " result" : " results") + (SERVER ? " filled in free from your home server." : " filled in free through your helper."), true); } return n; });
   }
   /* The weekly prices file, fetched by your home server and kept privately in your Supabase project
      (supabase/files.sql). Loaded by itself when the app opens, at most once an hour. */
@@ -4407,6 +4409,7 @@ body.simple .adv { display: none !important; }
     var m = $("helperMsg"); if (!m) return; m.textContent = "";
     if (S.cloudFileFetched) m.appendChild(el("div", "msg info", "Weekly prices load automatically from your home server (stored " + ago(Date.parse(S.cloudFileFetched)) + ")."));
     else if (S.cloudFileErr) m.appendChild(el("div", "msg", S.cloudFileErr));
+    if (SERVER) m.appendChild(el("div", "msg info", "On your home server you don't need the helper: finished football bets are settled free from the server."));
     if (S.helperErr) m.appendChild(el("div", "msg", S.helperErr));
     else if (S.helperUrl && S.helperAt) m.appendChild(el("div", "msg info", "Helper connected. Prices last loaded " + ago(S.helperAt) + ". They reload by themselves when you open the app, and finished football bets are settled free where the helper has the result."));
   }
@@ -4641,7 +4644,8 @@ body.simple .adv { display: none !important; }
   initTools();
   renderAll();
   if (S.key || S.freeMode) renderSettings();
-  if (S.helperUrl) { loadHelper(false); helperSettle(false); }
+  if (S.helperUrl) loadHelper(false);
+  if (resultsBase()) helperSettle(false);
   if (sbReady()) loadCloudFile(false);
   if (S.sb.session && S.sb.url) { if (sbArrived) setTab("more"); syncNow(true).then(function () { if (moved) { S.sb.status = "Moved across: your bets are now on your home server. " + (S.sb.status || ""); save(); renderSb(); setTab("more"); } }); }
   if (S.live) { if (liveActive() && Date.now() - S.live.time > liveMins(S.live.group) * 60000) S.live.stopped = true; renderLive(); if (liveActive()) { scheduleLive(); liveCheck(); } }

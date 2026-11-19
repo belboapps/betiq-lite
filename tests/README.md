@@ -36,5 +36,6 @@ tests/run-all.sh
 | t38 | Account health: the signs that a bookmaker may limit an account (no browser needed) |
 | t39 | True-cost line, edge panel, alert decay, offer value checker, account stages and deposit tracker (no browser needed) |
 | t40 | Moving to the home server: the GitHub copy offers the move, the server copy takes in bets and settings and saves to the server |
+| t41 | Free results on the home server: the server copy settles football bets from its own `/results`, with no helper and no credits |
 
 Mock data is for testing only and never ships in the page.

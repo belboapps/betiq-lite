@@ -1,5 +1,9 @@
 # The helper (optional)
 
+> **Not needed on the home server.** The copy at `betiq.belboapps.co.uk` gets the weekly prices file from the server's
+> agent and free results from the server's own `/results`. The helper only matters for the old GitHub Pages copy.
+> (Its once-a-day phone alert is the one thing the server does not do.)
+
 A tiny free program that fetches the weekly prices file for the app, so you never download it by hand. It can also send
 one phone notification when a new file contains value bets. It holds no keys and no betting-account details.
 

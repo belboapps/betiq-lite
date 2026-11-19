@@ -107,6 +107,46 @@ class Web(unittest.TestCase):
         code, _ = self.req("/rest/v1/bets", tok="good", body=[], **{"Content-Type": "text/plain"})
         self.assertEqual(code, 415)
 
+    def test_results_need_the_login_pass_and_a_known_league(self):
+        self.assertEqual(self.req("/results?div=E0")[0], 401)
+        self.assertEqual(self.req("/results?div=../x", tok="good")[0], 400)
+        self.assertEqual(self.req("/results", tok="good")[0], 400)
+
+
+class Results(unittest.TestCase):
+    CSV = "﻿Div,Date,Time,HomeTeam,AwayTeam,FTHG,FTAG,FTR,B365H\n" + "".join(
+        f"E0,{d:02d}/08/2026,15:00,Home{d},Away{d},{d % 3},1,H,2.1\n" for d in range(1, 100))
+
+    def setUp(self):
+        web._results.clear()
+
+    def test_season_code(self):
+        self.assertEqual(web.season_code(1795046400), "2627")     # 19 Nov 2026
+        self.assertEqual(web.season_code(1804464000), "2627")     # 8 Mar 2027
+        self.assertEqual(web.season_code(1817078400), "2728")     # 1 Aug 2027
+
+    def test_trimmed_like_the_helper(self):
+        lines = web.slim_results(self.CSV).split("\n")
+        self.assertEqual(lines[0], "Div,Date,Time,HomeTeam,AwayTeam,FTHG,FTAG,FTR")
+        self.assertEqual(len(lines), 81)
+        self.assertEqual(lines[-1], "E0,99/08/2026,15:00,Home99,Away99,0,1,H")
+        self.assertIsNone(web.slim_results("a,b\n1,2"))
+
+    def test_kept_three_hours_and_old_copy_used_if_the_site_fails(self):
+        calls = []
+        def get(url):
+            calls.append(url)
+            return self.CSV
+        def broken(url):
+            raise OSError("down")
+        t = 1794700800
+        first = web.fetch_results("E0", now=t, get=get)
+        self.assertEqual(calls, ["https://www.football-data.co.uk/mmz4281/2627/E0.csv"])
+        self.assertEqual(web.fetch_results("E0", now=t + 3600, get=get), first)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(web.fetch_results("E0", now=t + 4 * 3600, get=broken), first)
+        self.assertIsNone(web.fetch_results("E1", now=t, get=broken))
+
 
 if __name__ == "__main__":
     unittest.main()
