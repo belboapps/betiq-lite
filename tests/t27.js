@@ -10,7 +10,7 @@ function ev(id,h,a,hrs,base,boost,bump){return {id,sport_key:'soccer_epl',home_t
   if(/\/odds\/\?/.test(u)){ round++; const bump=round>1?0.96:1; return r.fulfill({headers:h,body:JSON.stringify([ev('e1','Arsenal','Everton',20,[1.9,3.6,4.2],1.12,bump),ev('e2','Chelsea','Brighton',30,[2.6,3.4,2.9],1.05,1),ev('e3','Spurs','Fulham',40,[1.7,3.9,5.0],1.09,1)])}); }
   return r.fulfill({headers:h,body:'[]'});});
  const now=Date.now();
- await p.addInitScript((bets)=>{ if(!sessionStorage.getItem('s')){sessionStorage.setItem('s','1'); localStorage.setItem('betiqlite.v1',JSON.stringify({key:'dummy',auto:false,ver:2,booksSet:true,pracAsked:true,tour:true,simple:false,bets,sports:[{key:'soccer_epl',title:'EPL',group:'Soccer'}],selected:['soccer_epl'],picked:true,series:{e1:{Arsenal:[[Date.now()-3*3600e3,2.30,0.50]]}}}))}},
+ await p.addInitScript((bets)=>{ if(!localStorage.getItem('betiqlite.v1')){ localStorage.setItem('betiqlite.v1',JSON.stringify({key:'dummy',auto:false,ver:2,booksSet:true,pracAsked:true,tour:true,simple:false,bets,sports:[{key:'soccer_epl',title:'EPL',group:'Soccer'}],selected:['soccer_epl'],picked:true,series:{e1:{Arsenal:[[Date.now()-3*3600e3,2.30,0.50]]}}}))}},
   [{pid:'x1',evId:'o1',key:'soccer_epl',league:'EPL',h:'A',a:'B, Ltd',sel:'A',odds:2.1,book:'Bet365',stake:2,fair:.5,time:now-9e6,at:now-1e7,status:'won',profit:2.2,mkt:'',m:now},{pid:'x2',evId:'o2',key:'soccer_epl',league:'EPL',h:'C',a:'D',sel:'Over 2.5 goals',odds:1.9,book:'Paddy Power',stake:3,fair:.5,time:now-9e6,at:now-1e7,status:'lost',profit:-3,mkt:'totals',point:2.5,side:'Over',m:now}]);
  await p.goto('file://'+require('path').resolve(__dirname,'..','index.html')); await p.waitForTimeout(500);
  await p.click('#refreshBtn'); await p.waitForTimeout(1200);
@@ -32,14 +32,14 @@ function ev(id,h,a,hrs,base,boost,bump){return {id,sport_key:'soccer_epl',home_t
  const [dl]=await Promise.all([p.waitForEvent('download'),p.click('#exportBtn')]); const path=await dl.path(); const csv=require('fs').readFileSync(path,'utf8');
  console.log('CSV file:',dl.suggestedFilename(),'| lines:',csv.trim().split(/\r?\n/).length); console.log(csv.split(/\r?\n/).slice(0,3).join('\n'));
  // ---- accounts
- await p.click('[data-tab=more]'); await p.waitForTimeout(250);
+ await p.click('[data-tab=more]'); await p.waitForSelector('#acctList .acct b:text-is("Paddy Power")');
  console.log('accounts listed:',await p.$$eval('#acctList .acct b',e=>e.map(x=>x.innerText)));
  console.log('Paddy Power stats line:',await p.$eval('#acctList .acct:has(b:text-is("Paddy Power")) .subnote',e=>e.innerText));
  await p.fill('#acctList .acct:has(b:text-is("Paddy Power")) input[type=number]','25'); await p.dispatchEvent('#acctList .acct:has(b:text-is("Paddy Power")) input[type=number]','change');
  await p.selectOption('#acctList .acct:has(b:text-is("Paddy Power")) select','limited'); await p.waitForTimeout(250);
- await p.click('[data-tab=today]'); await p.waitForTimeout(200);
+ await p.click('[data-tab=today]'); await p.waitForSelector('#plan .brow .cgrid');
  console.log('best price books after limiting Paddy Power:',await p.$$eval('#plan .brow .cgrid',g=>g.map(x=>x.innerText.replace(/\n/g,' ')).slice(0,3)));
- await p.click('[data-tab=more]'); await p.fill('#acctNew','Midnite'); await p.click('#acctAdd'); await p.waitForTimeout(150);
+ await p.click('[data-tab=more]'); await p.fill('#acctNew','Midnite'); await p.click('#acctAdd'); await p.waitForSelector('#acctList .acct b:text-is("Midnite")');
  console.log('manual add:',await p.$$eval('#acctList .acct b',e=>e.map(x=>x.innerText).includes('Midnite')),'| total line:',await p.$eval('#acctList + .row, #acctList .subnote:last-child',e=>e.innerText).catch(()=>''));
  console.log('stored:',JSON.stringify(await p.evaluate(()=>JSON.parse(localStorage.getItem('betiqlite.v1')).accts['Paddy Power'])));
  console.log('errs',errs,'overflow',await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth)); await b.close();
