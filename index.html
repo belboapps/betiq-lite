@@ -393,6 +393,22 @@ body.simple .detail.simplewhy:not(.showall) > :not(.swhy):not(.howto):not(.pchec
 .swarn b { color: inherit; }
 .swarn svg.ico { width: 20px; height: 20px; }
 .allnums { align-self: center; }
+/* First-time setup card at the top of Today */
+.setupcard { display: flex; flex-direction: column; gap: var(--b-s3); background: var(--x-accent-soft); border-radius: var(--b-r-row); padding: var(--b-s4); }
+.sutop { display: flex; justify-content: space-between; align-items: center; font: var(--b-text-small); color: var(--b-muted); }
+.sudots { display: flex; gap: 6px; }
+.sudots i { width: 24px; height: 6px; border-radius: var(--b-r-pill); background: var(--b-line); }
+.sudots i.done, .sudots i.now { background: var(--b-accent); }
+.setupcard .nowic { background: var(--b-surface); }
+.setupcard h3 { margin: 0; font: 800 1.375rem/1.25 var(--b-font); color: var(--b-ink); }
+.setupcard p { margin: 0; font: var(--b-text-small); color: var(--b-muted); }
+.suopts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--b-s2); }
+.suopt, .suother { min-height: 56px; border-radius: var(--b-r-row); border: 2px solid var(--b-line); background: var(--b-surface); color: var(--b-ink); font: 700 1.125rem/1.25 var(--b-font); padding: var(--b-s2); }
+.suopts.books .suopt { font: 600 1rem/1.25 var(--b-font); }
+.suopt[aria-pressed="true"] { border-color: var(--b-accent); color: var(--b-accent-text); }
+.suother { display: flex; align-items: center; gap: var(--b-s1); }
+.suother input { flex: 1; min-width: 0; border: 0; background: none; font: inherit; color: inherit; padding: 0; }
+.suacts { display: flex; flex-direction: column; gap: var(--b-s1); }
 /* My bets in Simple view: the week's result in big type, an icon on every bet; the scorecard and track record behind one button */
 .bsum, .bstat { display: none; }
 body.simple .bsum { display: flex; flex-direction: column; gap: 2px; }
@@ -907,7 +923,7 @@ body.lock { overflow: hidden; }
 <script>
 (function () {
   "use strict";
-  var VERSION = "v33 (19 Nov 2026)";   /* shown in the footer; bump on every release */
+  var VERSION = "v34 (20 Nov 2026)";   /* shown in the footer; bump on every release */
   var LS = "betiqlite.v1";
   var API = "https://api.the-odds-api.com/v4";
   var DEFAULTS = { key: "", selected: [], mode: "value", minOdds: 1.3, windowH: 72, group: "all",
@@ -2327,9 +2343,73 @@ body.lock { overflow: hidden; }
     else note("x", d.label === "PAUSED" ? "Betting is paused: " + d.why + "." : "Not a good price. Most bets aren't.");
     return sb;
   }
-  /* The top of Today in Simple view: what needs you, then whether there is anything to bet on, then the week's budget. */
+  /* First-time setup, one question at a time: weekly budget, when to pause, which bookmakers. Each answer saves at once. */
+  function setupSteps() {
+    var names = seenBooks();
+    return [
+      { id: "budget", done: S.weekly > 0 }, { id: "stop", done: S.lossLimit > 0 },
+      { id: "books", done: !!S.booksSet || !names.length }
+    ];
+  }
+  function setupCard() {
+    if (S.setupSkip) return null;
+    var steps = setupSteps(), i = 0; while (i < steps.length && steps[i].done) i++;
+    if (i >= steps.length) return null;
+    var st = steps[i], card = el("div", "setupcard"), top = el("div", "sutop"), dots = el("span", "sudots");
+    dots.setAttribute("role", "img"); dots.setAttribute("aria-label", "Step " + (i + 1) + " of " + steps.length);
+    steps.forEach(function (x, k) { dots.appendChild(el("i", k < i || x.done ? "done" : k === i ? "now" : null)); });
+    top.appendChild(dots); top.appendChild(el("span", null, "Setup · step " + (i + 1) + " of " + steps.length)); card.appendChild(top);
+    var ic = el("span", "nowic"); card.appendChild(ic);
+    var opts = el("div", "suopts");
+    function choice(label, on, pick) { var b = el("button", "suopt", label); b.type = "button"; b.setAttribute("aria-pressed", String(!!on)); b.addEventListener("click", pick); opts.appendChild(b); return b; }
+    function done() { save(); renderAll(); }
+    if (st.id === "budget") {
+      ic.appendChild(icon("coin"));
+      card.appendChild(el("h3", null, "How much can you spend each week?"));
+      card.appendChild(el("p", null, "Money you'd be fine to lose, like a night out. The app never suggests more."));
+      [10, 20, 50].forEach(function (v) { choice("£" + v, false, function () { S.weekly = v; done(); }); });
+      var other = el("label", "suother"), inp = document.createElement("input");
+      inp.type = "number"; inp.min = "1"; inp.step = "1"; inp.setAttribute("inputmode", "decimal"); inp.placeholder = "Other"; inp.setAttribute("aria-label", "Other weekly amount in pounds");
+      other.appendChild(document.createTextNode("£")); other.appendChild(inp);
+      inp.addEventListener("change", function () { var v = parseFloat(inp.value); if (isFinite(v) && v >= 1) { S.weekly = Math.round(v); done(); } });
+      opts.appendChild(other);
+    } else if (st.id === "stop") {
+      ic.appendChild(icon("pause"));
+      card.appendChild(el("h3", null, "Pause if you lose this much in a week?"));
+      card.appendChild(el("p", null, "Bad runs happen. A pause stops one from snowballing."));
+      var half = Math.max(1, Math.round(S.weekly / 2));
+      choice("£" + half, false, function () { S.lossLimit = half; done(); });
+      choice("£" + Math.round(S.weekly), false, function () { S.lossLimit = Math.round(S.weekly); done(); });
+    } else {
+      ic.appendChild(icon("where"));
+      card.appendChild(el("h3", null, "Which bookmakers do you have?"));
+      card.appendChild(el("p", null, "Tap the ones you have an account with. Three or more is best."));
+      var names = seenBooks();
+      names.forEach(function (n) {
+        choice(n, allowed(n) && !!S.myBooks, function () {
+          var cur = S.myBooks ? S.myBooks.slice() : [], k = cur.indexOf(n);
+          if (k > -1) cur.splice(k, 1); else cur.push(n);
+          S.myBooks = cur; save(); renderAll();
+        });
+      });
+      opts.classList.add("books");
+    }
+    card.appendChild(opts);
+    var acts = el("div", "suacts");
+    if (st.id === "books") {
+      var ok = el("button", "btn primary", S.myBooks && S.myBooks.length ? "Done" : "I don't have any yet"); ok.type = "button";
+      ok.addEventListener("click", function () { if (S.myBooks && !S.myBooks.length) S.myBooks = null; S.booksSet = true; done(); });
+      acts.appendChild(ok);
+    }
+    var sk = el("button", "btn linkbtn", "Skip for now"); sk.type = "button";
+    sk.addEventListener("click", function () { S.setupSkip = true; done(); });
+    acts.appendChild(sk); card.appendChild(acts);
+    return card;
+  }
+  /* The top of Today in Simple view: setup if it is not done, what needs you, whether there is anything to bet on, the week's budget. */
   function renderNow(d) {
     var box = $("nowBox"); if (!box) return; box.textContent = "";
+    var suc = setupCard(); if (suc) box.appendChild(suc);
     var hasData = S.selected.some(function (k) { return S.cache[k]; }), ls = lossState();
     if (hasData && !ls.on) {
       var good = d.ranked.filter(function (p) { var k = decision(p).k; return (k === "place" || k === "consider") && !findBet(p.id); });
@@ -2359,7 +2439,7 @@ body.lock { overflow: hidden; }
       row(res ? "trophy" : "alert", it.t, null, it.btn, it.act, res ? null : "warn");
     });
     var steps = planSteps(), i = 0; while (i < steps.length && steps[i].done) i++;
-    if (i < steps.length && !S.planHidden) {
+    if (i < steps.length && !S.planHidden && !(suc && i === 0)) {
       var stp = steps[i];
       row("step", stp.t, "Step " + (i + 1) + " of " + steps.length, stp.btn === "See today's bets" ? null : stp.btn === stp.t ? "Start" : stp.btn, stp.go, "nowstep");
     }
